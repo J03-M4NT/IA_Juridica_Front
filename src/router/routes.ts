@@ -4,7 +4,13 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     component: () => import('layouts/MainLayout.vue'),
-    children: [{ path: '', component: () => import('pages/IndexPage.vue') }],
+    children: [
+      { path: '', component: () => import('pages/IndexPage.vue') },
+  { path: 'consultas', component: () => import('pages/ConsultasPage.vue') },
+  { path: 'contratos', component: () => import('pages/ContratosPage.vue') },
+  { path: 'subir-contrato', component: () => import('pages/SubirContrato.vue') },
+      // Puedes agregar aquí más páginas: casos, plantillas, etc.
+    ],
   },
 
   // Always leave this as last one,
