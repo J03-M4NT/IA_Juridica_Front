@@ -12,10 +12,19 @@
         />
 
         <q-toolbar-title>
-          Quasar App
+          Prototipado de IA Juridica
         </q-toolbar-title>
 
+        <q-btn
+          flat
+          round
+          dense
+          :icon="isDark ? 'mdi-weather-sunny' : 'mdi-weather-night'"
+          @click="toggleDark"
+          aria-label="Alternar modo oscuro"
+        />
         <div>Quasar v{{ $q.version }}</div>
+
       </q-toolbar>
     </q-header>
 
@@ -65,11 +74,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { Dark } from 'quasar';
 
 const leftDrawerOpen = ref(false);
+const isDark = computed(() => Dark.isActive);
 
+// Abrir/Cerrar Barra Lateral
 function toggleLeftDrawer () {
   leftDrawerOpen.value = !leftDrawerOpen.value;
+}
+
+// Modo Oscuro
+function toggleDark () {
+  Dark.toggle();
 }
 </script>

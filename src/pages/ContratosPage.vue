@@ -14,6 +14,6 @@
 
 <style scoped>
 .text-primary {
-  color: #0a2342 !important;
+  color: #4d46e3 !important;
 }
 </style>
