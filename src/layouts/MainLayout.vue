@@ -28,47 +28,53 @@
       </q-toolbar>
     </q-header>
 
-    <q-drawer
-      v-model="leftDrawerOpen"
-      show-if-above
-      bordered
-    >
-      <q-list>
-        <q-item clickable v-ripple to="/contratos">
-          <q-item-section avatar>
-            <q-icon name="description" />
-          </q-item-section>
-          <q-item-section>Contratos</q-item-section>
-        </q-item>
-        <q-item clickable v-ripple to="/subir-contrato">
-          <q-item-section avatar>
-            <q-icon name="upload_file" />
-          </q-item-section>
-          <q-item-section>Subir Contrato</q-item-section>
-        </q-item>
-        <q-item clickable v-ripple to="/consultas">
-          <q-item-section avatar>
-            <q-icon name="question_answer" />
-          </q-item-section>
-          <q-item-section>Consultas</q-item-section>
-        </q-item>
-        <q-item clickable v-ripple to="/casos">
-          <q-item-section avatar>
-            <q-icon name="gavel" />
-          </q-item-section>
-          <q-item-section>Casos</q-item-section>
-        </q-item>
-        <q-item clickable v-ripple to="/plantillas">
-          <q-item-section avatar>
-            <q-icon name="article" />
-          </q-item-section>
-          <q-item-section>Plantillas</q-item-section>
-        </q-item>
-      </q-list>
-    </q-drawer>
+    <transition name="slide-left">
+      <q-drawer
+          v-if="leftDrawerOpen"
+          v-model="leftDrawerOpen"
+          show-if-above
+          color="primary"
+          :width="250"
+      >
+        <q-list>
+          <q-item clickable v-ripple to="/contratos">
+            <q-item-section avatar>
+              <q-icon name="description" />
+            </q-item-section>
+            <q-item-section>Contratos</q-item-section>
+          </q-item>
+          <q-item clickable v-ripple to="/subir-contrato">
+            <q-item-section avatar>
+              <q-icon name="upload_file" />
+            </q-item-section>
+            <q-item-section>Subir Contrato</q-item-section>
+          </q-item>
+          <q-item clickable v-ripple to="/consultas">
+            <q-item-section avatar>
+              <q-icon name="question_answer" />
+            </q-item-section>
+            <q-item-section>Consultas</q-item-section>
+          </q-item>
+          <q-item clickable v-ripple to="/casos">
+            <q-item-section avatar>
+              <q-icon name="gavel" />
+            </q-item-section>
+            <q-item-section>Casos</q-item-section>
+          </q-item>
+          <q-item clickable v-ripple to="/plantillas">
+            <q-item-section avatar>
+              <q-icon name="article" />
+            </q-item-section>
+            <q-item-section>Plantillas</q-item-section>
+          </q-item>
+        </q-list>
+      </q-drawer>
+    </transition>
 
     <q-page-container>
-      <router-view />
+      <transition name="fade">
+        <router-view />
+      </transition>
     </q-page-container>
   </q-layout>
 </template>
