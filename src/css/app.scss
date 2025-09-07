@@ -1,1 +1,40 @@
 // app global css in SCSS form
+
+// Animacion para la barra izquierda
+.q-drawer {
+  transition: transform 0.4s cubic-bezier(.25,.8,.25,1);
+}
+
+.formatted-message {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.formatted-message strong {
+  font-weight: 700;
+}
+
+.formatted-message em {
+  font-style: italic;
+}
+
+.formatted-message h1 {
+  font-size: 1.8em;
+  margin: 0.5em 0;
+}
+
+.formatted-message h2 {
+  font-size: 1.5em;
+  margin: 0.4em 0;
+}
+
+.formatted-message h3 {
+  font-size: 1.2em;
+  margin: 0.3em 0;
+}
+
+.formatted-message br {
+  display: block;
+  margin-bottom: 0.5em;
+}
