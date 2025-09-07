@@ -118,6 +118,8 @@ async function enviarConsulta() {
   }
 }
 
+
+//Commit de seguridad: .env agregado al gitignore
 // Limpiar mensajes al montar el componente
 onMounted(() => {
   store.limpiar();
