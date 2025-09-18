@@ -70,15 +70,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue';
+import { ref, onMounted, nextTick, computed } from 'vue';
 import { useConsultasStore } from '../stores/consultas-store';
 import { storeToRefs } from 'pinia';
+import { useQuasar } from 'quasar';
+
+const $q = useQuasar();
 
 const store = useConsultasStore();
 const pregunta = ref('');
 const scrollArea = ref();
 
 const { mensajes } = storeToRefs(store);
+
+const isDark = computed(() => $q.dark.isActive);
 
 function formatMessage(text: string): string {
   // Simple markdown-like formatting to HTML
