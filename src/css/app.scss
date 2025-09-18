@@ -1,18 +1,46 @@
 // app global css in SCSS form
 
+// Fuente global minimalista como ChatGPT
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.6;
+}
+
 // Animacion para la barra izquierda
 .q-drawer {
   transition: transform 0.4s cubic-bezier(.25,.8,.25,1);
 }
 
+// Estilos minimalistas
+.q-card,
+.q-btn,
+.q-input,
+.q-field {
+  border-radius: 12px !important;
+}
+
+.q-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+.q-btn {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+  transition: all 0.2s ease;
+}
+
+.q-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
 .formatted-message {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: inherit;
   white-space: pre-wrap;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .formatted-message strong {
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .formatted-message em {
@@ -22,19 +50,32 @@
 .formatted-message h1 {
   font-size: 1.8em;
   margin: 0.5em 0;
+  font-weight: 600;
 }
 
 .formatted-message h2 {
   font-size: 1.5em;
   margin: 0.4em 0;
+  font-weight: 600;
 }
 
 .formatted-message h3 {
   font-size: 1.2em;
   margin: 0.3em 0;
+  font-weight: 600;
 }
 
 .formatted-message br {
   display: block;
   margin-bottom: 0.5em;
+}
+
+.bg-dark {
+  background-color: #121212 !important;
+  color: #e0e0e0 !important;
+}
+
+.bg-light {
+  background-color: #f7f7f8 !important;
+  color: #000000 !important;
 }
