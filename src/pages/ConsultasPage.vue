@@ -4,6 +4,24 @@
     <div class="q-pa-md q-pb-none" style="position: absolute; top: 0; left: 0; width: 100%; z-index: 10; background: var(--q-page-container-bg);">
       <h1 class="text-h5 text-weight-medium text-dark q-ma-none">Consultas Jurídicas</h1>
       <p class="text-body2 text-grey-6 q-mt-xs">Haz preguntas sobre leyes y contratos</p>
+
+      <!-- Botón para ir a analizar contratos -->
+      <div class="q-mt-md">
+        <q-btn
+          color="primary"
+          icon="picture_as_pdf"
+          label="Analizar Contrato PDF"
+          @click="$router.push('/subir-contrato')"
+          class="q-mr-sm"
+        />
+        <q-btn
+          color="secondary"
+          icon="help"
+          label="Centro de Ayuda"
+          flat
+          @click="showHelp = true"
+        />
+      </div>
     </div>
 
     <!-- Chat Container -->
@@ -33,19 +51,19 @@
       <!-- Input Area -->
       <div class="q-pa-md q-pt-sm" style="border-top: 1px solid var(--q-border-color);">
         <q-form @submit.prevent="enviarConsulta" class="input-form" style="display: flex; align-items: center;">
-        <q-input
-          v-model="pregunta"
-          placeholder="Escribe tu consulta legal aquí..."
-          type="textarea"
-          autogrow
-          outlined
-          :disable="store.loading"
-          :max-height="120"
-          class="chat-input"
-          :bg-color="isDark ? '#2a2a2a' : 'white'"
-          hide-bottom-space
-          style="flex-grow: 1; margin-right: 8px; color: inherit;"
-        >
+          <q-input
+            v-model="pregunta"
+            placeholder="Escribe tu consulta legal aquí..."
+            type="textarea"
+            autogrow
+            outlined
+            :disable="store.loading"
+            :max-height="120"
+            class="chat-input"
+            :bg-color="$q.dark.isActive ? '#2a2a2a' : 'white'"
+            hide-bottom-space
+            style="flex-grow: 1; margin-right: 8px; color: inherit;"
+          >
             <template v-slot:append>
               <q-btn
                 round
@@ -66,11 +84,30 @@
         </div>
       </div>
     </div>
+
+    <!-- Help Dialog -->
+    <q-dialog v-model="showHelp">
+      <q-card style="min-width: 400px">
+        <q-card-section>
+          <div class="text-h6">Centro de Ayuda</div>
+        </q-card-section>
+        <q-card-section class="q-pt-none">
+          <div class="text-body2">
+            <p><strong>💬 Consultas:</strong> Haz preguntas sobre leyes, contratos y temas jurídicos.</p>
+            <p><strong>📄 Análisis de Contratos:</strong> Usa el botón "Analizar Contrato PDF" para subir y analizar contratos en formato PDF.</p>
+            <p><strong>⚖️ Asesoramiento:</strong> Recuerda que esta herramienta es informativa y no sustituye el consejo de un abogado profesional.</p>
+          </div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Entendido" color="primary" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, computed } from 'vue';
+import { ref, onMounted, nextTick } from 'vue';
 import { useConsultasStore } from '../stores/consultas-store';
 import { storeToRefs } from 'pinia';
 import { useQuasar } from 'quasar';
@@ -79,11 +116,9 @@ const $q = useQuasar();
 
 const store = useConsultasStore();
 const pregunta = ref('');
-const scrollArea = ref();
+const showHelp = ref(false);
 
 const { mensajes } = storeToRefs(store);
-
-const isDark = computed(() => $q.dark.isActive);
 
 function formatMessage(text: string): string {
   // Simple markdown-like formatting to HTML
@@ -108,19 +143,12 @@ async function enviarConsulta() {
 
       // Scroll al final
       await nextTick();
-      if (scrollArea.value && typeof scrollArea.value.scrollToBottom === 'function') {
-        scrollArea.value.scrollToBottom();
-      }
     } catch (error) {
       console.error('Error al enviar consulta:', error);
     }
   }
 }
 
-
-
-
-//Commit de seguridad: .env agregado al gitignore
 // Limpiar mensajes al montar el componente
 onMounted(() => {
   store.limpiar();

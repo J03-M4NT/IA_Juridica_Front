@@ -6,9 +6,10 @@ const routes: RouteRecordRaw[] = [
     component: () => import('layouts/MainLayout.vue'),
     children: [
       { path: '', component: () => import('pages/IndexPage.vue') },
-  { path: 'consultas', component: () => import('pages/ConsultasPage.vue') },
-  { path: 'contratos', component: () => import('pages/ContratosPage.vue') },
-  { path: 'subir-contrato', component: () => import('pages/SubirContrato.vue') },
+      { path: 'consultas', component: () => import('pages/ConsultasPage.vue') },
+      { path: 'contratos', component: () => import('pages/ContratosPage.vue') },
+      { path: 'subir-contrato', component: () => import('pages/SubirContrato.vue') },
+      { path: 'analizador-pdf', component: () => import('pages/AnalyzerPage.vue') },
       // Puedes agregar aquí más páginas: casos, plantillas, etc.
     ],
   },
