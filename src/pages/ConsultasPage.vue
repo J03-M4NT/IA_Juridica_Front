@@ -15,6 +15,14 @@
           class="q-mr-sm"
         />
         <q-btn
+          color="positive"
+          icon="verified"
+          label="Probar API Key"
+          @click="probarAPIKey"
+          :loading="store.loading"
+          class="q-mr-sm"
+        />
+        <q-btn
           color="secondary"
           icon="help"
           label="Centro de Ayuda"
@@ -146,6 +154,18 @@ async function enviarConsulta() {
     } catch (error) {
       console.error('Error al enviar consulta:', error);
     }
+  }
+}
+
+async function probarAPIKey() {
+  console.log('Probando API key desde la interfaz...');
+  try {
+    await store.probarAPIKey();
+
+    // Scroll al final para ver el resultado
+    await nextTick();
+  } catch (error) {
+    console.error('Error al probar API key:', error);
   }
 }
 

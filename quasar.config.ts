@@ -67,7 +67,7 @@ export default defineConfig((/* ctx */) => {
 
       // extendViteConf (viteConf) {},
       // viteVuePluginOptions: {},
-      
+
       vitePlugins: [
         ['vite-plugin-checker', {
           vueTsc: true,
@@ -76,7 +76,19 @@ export default defineConfig((/* ctx */) => {
             useFlatConfig: true
           }
         }, { server: false }]
-      ]
+      ],
+
+      extendViteConf(viteConf) {
+        // Configurar PDF.js worker
+        viteConf.optimizeDeps = {
+          ...viteConf.optimizeDeps,
+          include: ['pdfjs-dist']
+        };
+        viteConf.define = {
+          ...viteConf.define,
+          global: 'globalThis'
+        };
+      }
     },
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#devserver

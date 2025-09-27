@@ -1,8 +1,9 @@
 import * as pdfjsLib from "pdfjs-dist";
+import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.js?url";
 
-// Configurar el worker de PDF.js
-const pdfjsWorker = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+// ✅ Configurar el worker de PDF.js con import ?url (método más estable en Vite)
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+console.log('✅ Worker de PDF.js configurado en pdfExtractor con import ?url:', pdfjsWorker);
 
 export async function extraerTextoPDF(file: File): Promise<string> {
   try {

@@ -10,10 +10,12 @@ interface Mensaje {
 }
 
 // Debug log para verificar la API key
-console.log('API Key presente:', !!import.meta.env.VITE_GEMINI_API_KEY);
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyD29u6VTcZz93zuALe5k1Ri7u4l__5eUHI';
+console.log('API Key presente:', !!API_KEY);
+console.log('API Key (primeros 10 caracteres):', API_KEY.substring(0, 10) + '...');
 
 // Inicializar Gemini con la configuración correcta
-const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+const genAI = new GoogleGenerativeAI(API_KEY);
 
 // Prompt base para el asistente legal
 const PROMPT_BASE: string = [
@@ -167,8 +169,39 @@ export const useConsultasStore = defineStore('consultas', {
         }
 
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-        this.error = `Error al consultar la IA jurídica: ${errorMessage}`;
+        console.error('Error completo:', error);
+
+        let errorMessage = 'Error desconocido';
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+
+        // Manejo específico de errores de API key
+        if (errorMessage.includes('API Key not found') || errorMessage.includes('API_KEY_INVALID')) {
+          this.error = `❌ Error de API Key: La clave API no es válida para Google Generative AI.
+
+🔧 Soluciones:
+1. Verifica que tienes habilitada la API de Generative Language en Google Cloud Console
+2. Asegúrate de que la API key tenga permisos para usar Gemini
+3. Si usas una API key de Google Maps, necesitas una específica para AI
+
+📋 Tu API key actual: ${API_KEY.substring(0, 10)}...
+
+💡 Para obtener una API key válida:
+- Ve a https://makersuite.google.com/app/apikey
+- Crea una nueva API key
+- Asegúrate de que tenga habilitada la facturación (necesario para usar Gemini)`;
+        } else if (errorMessage.includes('QUOTA_EXCEEDED') || errorMessage.includes('RATE_LIMIT_EXCEEDED')) {
+          this.error = `⚠️ Límite de cuota excedido: Has alcanzado el límite de uso de la API.
+
+🔧 Soluciones:
+1. Espera unos minutos antes de intentar nuevamente
+2. Verifica tu plan de facturación en Google Cloud Console
+3. Considera actualizar tu plan si necesitas más uso`;
+        } else {
+          this.error = `❌ Error al consultar la IA jurídica: ${errorMessage}`;
+        }
+
         console.error('Error detallado:', error);
       } finally {
         this.loading = false;
@@ -282,18 +315,50 @@ export const useConsultasStore = defineStore('consultas', {
         this.mensajes = [...this.mensajes];
 
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-        this.error = `Error al analizar el PDF: ${errorMessage}`;
-        console.error('Error detallado:', error);
+        console.error('Error completo en análisis PDF:', error);
 
-        // Agregar mensaje de error al chat
+        let errorMessage = 'Error desconocido';
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+
+        // Agregar mensaje de error al chat con información específica
+        let mensajeError = `❌ **Error al analizar el contrato**\n\n${errorMessage}`;
+
+        // Manejo específico de errores de API key en análisis PDF
+        if (errorMessage.includes('API Key not found') || errorMessage.includes('API_KEY_INVALID')) {
+          mensajeError = `❌ **Error de API Key en análisis PDF**
+
+La clave API no es válida para Google Generative AI.
+
+🔧 **Para solucionarlo:**
+1. Ve a https://makersuite.google.com/app/apikey
+2. Crea una nueva API key específica para AI
+3. Asegúrate de tener facturación habilitada
+
+📋 Tu API key actual: ${API_KEY.substring(0, 10)}...`;
+        } else if (errorMessage.includes('QUOTA_EXCEEDED') || errorMessage.includes('RATE_LIMIT_EXCEEDED')) {
+          mensajeError = `⚠️ **Límite de cuota excedido**
+
+Has alcanzado el límite de uso de la API para análisis de PDFs.
+
+🔧 **Soluciones:**
+1. Espera unos minutos antes de intentar nuevamente
+2. Verifica tu plan de facturación en Google Cloud Console
+3. Considera actualizar tu plan si necesitas más uso`;
+        }
+
+        this.error = `Error al analizar el PDF: ${errorMessage}`;
+
         this.mensajes.push({
-          contenido: `❌ **Error al analizar el contrato**\n\n${errorMessage}`,
+          contenido: mensajeError,
           esIA: true,
           timestamp: new Date(),
           referencias: []
         });
         this.mensajes = [...this.mensajes];
+
+        console.error('Error detallado:', error);
       } finally {
         this.loading = false;
       }
@@ -381,6 +446,71 @@ export const useConsultasStore = defineStore('consultas', {
       this.mensajes = [];
       this.archivosPDF = [];
       this.archivoActual = null;
+    },
+
+    // Método para probar la API key
+    async probarAPIKey() {
+      console.log('Probando API key...');
+      this.loading = true;
+      this.error = '';
+
+      try {
+        const model = genAI.getGenerativeModel({
+          model: "gemini-1.5-flash",
+          generationConfig: {
+            temperature: 0.1,
+            topK: 1,
+            topP: 0.1,
+            maxOutputTokens: 50,
+          },
+        });
+
+        const result = await model.generateContent({
+          contents: [{
+            role: "user",
+            parts: [{ text: "Responde solo con 'OK' si puedes leer este mensaje." }]
+          }]
+        });
+
+        if (result.response) {
+          const respuesta = result.response.text();
+          console.log('✅ API Key funciona correctamente. Respuesta:', respuesta);
+
+          this.mensajes.push({
+            contenido: `✅ **API Key válida**\n\nLa API key funciona correctamente. Puedes usar todas las funciones de IA jurídica.`,
+            esIA: true,
+            timestamp: new Date(),
+            referencias: []
+          });
+          this.mensajes = [...this.mensajes];
+
+          return true;
+        } else {
+          throw new Error('No se recibió respuesta de la API');
+        }
+
+      } catch (error) {
+        console.error('❌ Error al probar API key:', error);
+
+        let errorMessage = 'Error desconocido';
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+
+        this.error = `❌ Error al probar API key: ${errorMessage}`;
+
+        this.mensajes.push({
+          contenido: `❌ **API Key no válida**\n\nError: ${errorMessage}\n\n**Solución:**\n1. Ve a https://makersuite.google.com/app/apikey\n2. Crea una nueva API key\n3. Asegúrate de tener facturación habilitada`,
+          esIA: true,
+          timestamp: new Date(),
+          referencias: []
+        });
+        this.mensajes = [...this.mensajes];
+
+        return false;
+      } finally {
+        this.loading = false;
+      }
     }
   }
 });
