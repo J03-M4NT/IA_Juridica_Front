@@ -1,8 +1,13 @@
-Ahi# TODO: Mejora UI Minimalista Inspirada en ChatGPT
+# Fix ESLint and TypeScript Errors in PdfAnalyzer.vue
 
-- [x] Actualizar src/css/quasar.variables.scss con paleta de colores minimalista
-- [x] Actualizar src/css/app.scss con fuente global, border-radius y estilos minimalistas
-- [x] Actualizar src/layouts/MainLayout.vue para simplificar header y drawer
-- [x] Actualizar src/pages/ConsultasPage.vue para estilo de chat como ChatGPT
-- [x] Ejecutar la aplicación y verificar cambios
-- [x] Ajustar si es necesario
+## Errors to Fix:
+1. [ ] Remove unused `computed` import (line 217)
+2. [ ] Fix `any[]` type for rejectedEntries parameter (line 303)
+3. [ ] Fix `any` type for PDF text item (line 326)
+4. [ ] Fix potential undefined error for match[1] (line 410)
+
+## Plan:
+1. Remove unused `computed` import from Vue
+2. Create proper TypeScript interfaces for type safety
+3. Add null checking for regex match result
+4. Update function signatures to use proper types
