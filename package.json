@@ -18,9 +18,12 @@
     "@google/generative-ai": "^0.24.1",
     "@quasar/extras": "^1.16.4",
     "axios": "^1.2.1",
+    "docx": "^9.5.1",
+    "html-docx-js": "^0.3.1",
+    "html2pdf.js": "^0.12.1",
     "pdfjs-dist": "^3.11.174",
     "pinia": "^3.0.1",
-    "quasar": "^2.16.0",
+    "quasar": "^2.18.5",
     "vue": "^3.5.22",
     "vue-router": "^4.0.12"
   },

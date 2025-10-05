@@ -58,9 +58,11 @@
     <!-- Main Content Area -->
     <q-page-container class="main-container">
       <div class="page-wrapper">
-        <transition name="fade" mode="out-in">
-          <router-view />
-        </transition>
+        <router-view v-slot="{ Component }">
+          <transition name="fade" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
       </div>
     </q-page-container>
   </q-layout>
