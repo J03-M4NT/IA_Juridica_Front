@@ -38,7 +38,7 @@
             label="Seleccionar archivo PDF"
             accept=".pdf"
             :max-file-size="20971520"
-            @added="(files) => onFileAdded(files as File[])"
+            @added="(files: File[]) => onFileAdded(files)"
             @rejected="onRejected"
             :disable="loading"
             flat
@@ -556,7 +556,7 @@ const extractTextFromPDF = async (file: File): Promise<string> => {
 const analyzeContract = async (text: string) => {
   try {
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash-lite",
       generationConfig: {
         temperature: 0.3,
         topK: 40,
@@ -762,7 +762,7 @@ const probarAPIKey = async () => {
     error.value = '';
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash-lite",
       generationConfig: {
         temperature: 0.1,
         topK: 1,
