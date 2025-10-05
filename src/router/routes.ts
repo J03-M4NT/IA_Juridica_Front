@@ -5,7 +5,7 @@ const routes: RouteRecordRaw[] = [
     path: '/',
     component: () => import('layouts/MainLayout.vue'),
     children: [
-      { path: '', component: () => import('pages/IndexPage.vue') },
+      { path: '', component: () => import('pages/AnalyzerPage.vue') },
       { path: 'consultas', component: () => import('pages/ConsultasPage.vue') },
       { path: 'contratos', component: () => import('pages/ContratosPage.vue') },
       { path: 'subir-contrato', component: () => import('pages/SubirContrato.vue') },

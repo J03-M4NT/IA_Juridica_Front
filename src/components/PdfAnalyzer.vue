@@ -1,279 +1,287 @@
 <template>
-  <div class="pdf-analyzer">
-    <q-card class="q-pa-md" :class="isDark ? 'bg-dark' : 'bg-white'">
-      <q-card-section>
-        <div class="text-h6 q-mb-md">
-          <q-icon name="picture_as_pdf" class="q-mr-sm" />
-          Analizador de Contratos PDF
+  <div class="pdf-analyzer-container">
+    <div class="analyzer-card-wrapper">
+      <q-card class="analyzer-main-card modern-card">
+        <q-card-section class="card-header-section">
+          <div class="header-content">
+            <div class="title-section">
+              <q-icon name="gavel" size="32px" class="title-icon q-mr-md" />
+              <div>
+                <h1 class="main-title">ANALIZADOR DE CONTRATOS PDF</h1>
+                <p class="subtitle-text">Herramienta inteligente de análisis legal</p>
+              </div>
+            </div>
 
-          <!-- Botones para probar funcionalidades -->
-          <div class="q-ml-md">
-            <q-btn
-              color="positive"
-              icon="verified"
-              label="Probar API Key"
-              @click="probarAPIKey"
-              :loading="loading"
-              class="q-mr-sm"
-              size="sm"
-              flat
-            />
-            <q-btn
-              color="info"
-              icon="build"
-              label="Probar PDF Worker"
-              @click="probarWorkerPDF"
-              :loading="loading"
-              size="sm"
-              flat
-            />
+            <!-- Action Buttons -->
+            <div class="header-actions">
+              <q-btn
+                color="primary"
+                icon="verified"
+                label="PROBAR API KEY"
+                @click="probarAPIKey"
+                :loading="loading"
+                class="action-button q-mr-sm"
+                size="sm"
+                unelevated
+                rounded
+              />
+              <q-btn
+                color="secondary"
+                icon="build"
+                label="PROBAR PDF WORKER"
+                @click="probarWorkerPDF"
+                :loading="loading"
+                class="action-button"
+                size="sm"
+                unelevated
+                rounded
+              />
+            </div>
           </div>
-        </div>
+        </q-card-section>
 
         <!-- File Upload Section -->
-        <div class="q-mb-lg">
-          <q-uploader
-            ref="uploaderRef"
-            :url="''"
-            label="Seleccionar archivo PDF"
-            accept=".pdf"
-            :max-file-size="20971520"
-            @added="(files) => onFileAdded(files as File[])"
-            @rejected="onRejected"
-            :disable="loading"
-            flat
-            bordered
-            style="max-width: 100%"
-          >
-            <template v-slot:header="scope">
-              <div class="row no-wrap items-center q-pa-sm q-gutter-xs">
-                <q-btn
-                  icon="attach_file"
-                  :disable="scope.isUploading"
-                  flat
-                  dense
-                  round
-                />
-                <div class="col">
-                  <div class="q-uploader__title">
-                    {{ scope.isUploading ? 'Subiendo...' : 'Seleccionar archivo PDF' }}
-                  </div>
-                  <div class="q-uploader__subtitle">
-                    {{ scope.isUploading ? 'Procesando archivo...' : 'Arrastra y suelta o haz clic para seleccionar' }}
-                  </div>
-                </div>
-                <q-btn
-                  v-if="scope.canUpload"
-                  icon="cloud_upload"
-                  @click="scope.upload"
-                  :loading="scope.isUploading"
-                  color="primary"
-                  round
-                  flat
-                />
+        <q-card-section class="upload-section">
+          <div class="upload-card modern-card">
+            <q-card-section>
+              <div class="upload-header">
+                <q-icon name="upload_file" size="24px" class="upload-icon q-mr-sm" />
+                <h3 class="section-title">CARGA TU CONTRATO PDF</h3>
               </div>
-            </template>
-          </q-uploader>
-        </div>
+              <p class="upload-description">Selecciona o arrastra un archivo PDF para comenzar el análisis inteligente</p>
+
+              <q-uploader
+                ref="uploaderRef"
+                :url="''"
+                label="Seleccionar archivo PDF"
+                accept=".pdf"
+                :max-file-size="20971520"
+                @added="(files: readonly any[]) => onFileAdded(files as File[])"
+                @rejected="onRejected"
+                :disable="loading"
+                flat
+                bordered
+                class="modern-uploader"
+              >
+                <template v-slot:header="scope">
+                  <div class="uploader-header-content">
+                    <q-icon name="attach_file" size="20px" class="uploader-icon q-mr-sm" />
+                    <div class="uploader-text">
+                      <div class="uploader-title">
+                        {{ scope.isUploading ? 'Procesando archivo...' : 'Seleccionar archivo PDF' }}
+                      </div>
+                      <div class="uploader-subtitle">
+                        {{ scope.isUploading ? 'Analizando documento...' : 'Arrastra y suelta o haz clic para seleccionar' }}
+                      </div>
+                    </div>
+                    <q-btn
+                      v-if="scope.canUpload"
+                      icon="cloud_upload"
+                      @click="scope.upload"
+                      :loading="scope.isUploading"
+                      color="primary"
+                      round
+                      unelevated
+                      class="upload-btn"
+                    />
+                  </div>
+                </template>
+              </q-uploader>
+            </q-card-section>
+          </div>
+        </q-card-section>
 
         <!-- Loading State -->
-        <div v-if="loading" class="text-center q-mb-lg">
-          <q-linear-progress indeterminate color="primary" class="q-mb-sm" />
-          <div class="text-body2 text-grey-6">
-            <q-icon name="hourglass_empty" class="q-mr-sm" />
-            {{ loadingMessage }}
+        <q-card-section v-if="loading" class="loading-section">
+          <div class="loading-card modern-card">
+            <q-card-section class="text-center">
+              <q-icon name="hourglass_empty" size="48px" class="loading-icon q-mb-md" />
+              <h3 class="loading-title">PROCESANDO DOCUMENTO</h3>
+              <p class="loading-message">{{ loadingMessage }}</p>
+              <q-linear-progress indeterminate color="primary" class="loading-progress q-mt-md" />
+            </q-card-section>
           </div>
-        </div>
+        </q-card-section>
 
         <!-- Error Notification -->
-        <q-banner v-if="error" class="bg-negative text-white q-mb-md" rounded>
-          <template v-slot:avatar>
-            <q-icon name="error" />
-          </template>
-          {{ error }}
-          <template v-slot:action>
-            <q-btn flat label="Cerrar" @click="error = ''" />
-          </template>
-        </q-banner>
+        <q-card-section v-if="error" class="error-section">
+          <q-banner class="error-banner modern-banner" rounded>
+            <template v-slot:avatar>
+              <q-icon name="error" size="24px" />
+            </template>
+            <div class="error-content">
+              <h4 class="error-title">ERROR DETECTADO</h4>
+              <p class="error-message">{{ error }}</p>
+            </div>
+            <template v-slot:action>
+              <q-btn flat label="Cerrar" @click="error = ''" class="error-close-btn" />
+            </template>
+          </q-banner>
+        </q-card-section>
 
         <!-- Extracted Text Section -->
-        <div v-if="extractedText" class="extracted-text-section">
-          <q-separator class="q-mb-md" />
-
-          <div class="text-h6 q-mb-md">
-            <q-icon name="text_snippet" class="q-mr-sm" />
-            Texto Extraído del PDF
-          </div>
-
-          <q-card
-            class="q-mb-md"
-            :class="isDark ? 'bg-grey-9' : 'bg-grey-1'"
-            flat
-            bordered
-          >
+        <q-card-section v-if="extractedText" class="extracted-section">
+          <div class="extracted-card modern-card">
             <q-card-section>
-              <div class="text-subtitle2 text-weight-medium q-mb-sm">
-                <q-icon name="description" class="q-mr-sm" />
-                Contenido del Documento
+              <div class="section-header">
+                <q-icon name="text_snippet" size="24px" class="section-icon q-mr-sm" />
+                <h3 class="section-title">TEXTO EXTRAÍDO DEL PDF</h3>
               </div>
-              <div class="extracted-text-container">
-                <pre class="extracted-text">{{ extractedText }}</pre>
+
+              <div class="text-content-card modern-card">
+                <q-card-section>
+                  <div class="content-header">
+                    <q-icon name="description" class="content-icon q-mr-sm" />
+                    <span class="content-title">CONTENIDO DEL DOCUMENTO</span>
+                  </div>
+                  <div class="extracted-text-container">
+                    <pre class="extracted-text">{{ extractedText }}</pre>
+                  </div>
+                </q-card-section>
+              </div>
+
+              <!-- Analyze Contract Button -->
+              <div class="analyze-button-container">
+                <q-btn
+                  color="primary"
+                  icon="analytics"
+                  label="ANALIZAR CONTRATO CON IA"
+                  @click="analyzeContract(extractedText)"
+                  :loading="loading"
+                  :disable="!extractedText.trim()"
+                  class="analyze-button"
+                  size="lg"
+                  unelevated
+                  rounded
+                >
+                  <q-tooltip>Realizar análisis inteligente del contrato</q-tooltip>
+                </q-btn>
               </div>
             </q-card-section>
-          </q-card>
-
-          <!-- Analyze Contract Button -->
-          <div class="text-center q-mb-md">
-            <q-btn
-              color="primary"
-              icon="analytics"
-              label="Analizar Contrato"
-              @click="analyzeContract(extractedText)"
-              :loading="loading"
-              :disable="!extractedText.trim()"
-              size="lg"
-              unelevated
-            />
           </div>
-        </div>
+        </q-card-section>
 
         <!-- Results Section -->
-        <div v-if="analysisResult" class="analysis-results">
-          <q-separator class="q-mb-md" />
+        <q-card-section v-if="analysisResult" class="results-section">
+          <div class="results-card modern-card">
+            <q-card-section>
+              <div class="section-header">
+                <q-icon name="analytics" size="24px" class="section-icon q-mr-sm" />
+                <h3 class="section-title">RESULTADOS DEL ANÁLISIS</h3>
+              </div>
 
-          <div class="text-h6 q-mb-md">
-            <q-icon name="analytics" class="q-mr-sm" />
-            Resultados del Análisis
+              <!-- Summary -->
+              <div class="result-item-card modern-card">
+                <q-card-section>
+                  <div class="result-header">
+                    <q-icon name="summarize" class="result-icon q-mr-sm" />
+                    <h4 class="result-title">RESUMEN DEL CONTRATO</h4>
+                  </div>
+                  <div class="formatted-content result-content" v-html="formatText(analysisResult.summary)"></div>
+                </q-card-section>
+              </div>
+
+              <!-- Main Clauses -->
+              <div class="result-item-card modern-card">
+                <q-card-section>
+                  <div class="result-header">
+                    <q-icon name="list" class="result-icon q-mr-sm" />
+                    <h4 class="result-title">CLÁUSULAS PRINCIPALES</h4>
+                  </div>
+                  <q-list class="clauses-list">
+                    <q-item
+                      v-for="(clause, index) in analysisResult.mainClauses"
+                      :key="index"
+                      class="clause-item"
+                    >
+                      <q-item-section avatar>
+                        <q-icon name="article" color="primary" class="clause-icon" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label class="clause-number">
+                          CLÁUSULA {{ index + 1 }}
+                        </q-item-label>
+                        <q-item-label caption class="formatted-content clause-content">
+                          {{ clause }}
+                        </q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-card-section>
+              </div>
+
+              <!-- Risks and Ambiguities -->
+              <div v-if="analysisResult.risks.length > 0" class="result-item-card risk-card modern-card">
+                <q-card-section>
+                  <div class="result-header risk-header">
+                    <q-icon name="warning" class="result-icon q-mr-sm" />
+                    <h4 class="result-title">RIESGOS Y AMBIGÜEDADES DETECTADAS</h4>
+                  </div>
+                  <q-list class="risks-list">
+                    <q-item
+                      v-for="(risk, index) in analysisResult.risks"
+                      :key="index"
+                      class="risk-item"
+                    >
+                      <q-item-section avatar>
+                        <q-icon name="error_outline" color="negative" class="risk-icon" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label class="risk-number">
+                          RIESGO {{ index + 1 }}
+                        </q-item-label>
+                        <q-item-label caption class="risk-content">
+                          {{ risk }}
+                        </q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-card-section>
+              </div>
+
+              <!-- File Info -->
+              <div class="result-item-card modern-card">
+                <q-card-section>
+                  <div class="result-header">
+                    <q-icon name="info" class="result-icon q-mr-sm" />
+                    <h4 class="result-title">INFORMACIÓN DEL ARCHIVO</h4>
+                  </div>
+                  <div class="file-info-chips">
+                    <q-chip
+                      icon="picture_as_pdf"
+                      color="primary"
+                      text-color="white"
+                      class="info-chip"
+                      size="sm"
+                    >
+                      {{ fileName }}
+                    </q-chip>
+                    <q-chip
+                      icon="data_usage"
+                      color="secondary"
+                      text-color="white"
+                      class="info-chip"
+                      size="sm"
+                    >
+                      {{ (fileSize / 1024).toFixed(1) }} KB
+                    </q-chip>
+                    <q-chip
+                      icon="text_snippet"
+                      color="positive"
+                      text-color="white"
+                      class="info-chip"
+                      size="sm"
+                    >
+                      {{ extractedText.length }} caracteres
+                    </q-chip>
+                  </div>
+                </q-card-section>
+              </div>
+            </q-card-section>
           </div>
-
-          <!-- Summary -->
-          <q-card
-            class="q-mb-md"
-            :class="isDark ? 'bg-grey-9' : 'bg-grey-1'"
-            flat
-            bordered
-          >
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-medium q-mb-sm">
-                <q-icon name="summarize" class="q-mr-sm" />
-                Resumen del Contrato
-              </div>
-              <div class="formatted-content" v-html="formatText(analysisResult.summary)"></div>
-            </q-card-section>
-          </q-card>
-
-          <!-- Main Clauses -->
-          <q-card
-            class="q-mb-md"
-            :class="isDark ? 'bg-grey-9' : 'bg-grey-1'"
-            flat
-            bordered
-          >
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-medium q-mb-sm">
-                <q-icon name="list" class="q-mr-sm" />
-                Cláusulas Principales
-              </div>
-              <q-list>
-                <q-item
-                  v-for="(clause, index) in analysisResult.mainClauses"
-                  :key="index"
-                  class="q-py-sm"
-                >
-                  <q-item-section avatar>
-                    <q-icon name="article" color="primary" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label class="text-weight-medium">
-                      Cláusula {{ index + 1 }}
-                    </q-item-label>
-                    <q-item-label caption class="formatted-content">
-                      {{ clause }}
-                    </q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-card-section>
-          </q-card>
-
-          <!-- Risks and Ambiguities -->
-          <q-card
-            v-if="analysisResult.risks.length > 0"
-            class="q-mb-md"
-            :class="isDark ? 'bg-orange-9' : 'bg-orange-1'"
-            flat
-            bordered
-          >
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-medium q-mb-sm text-negative">
-                <q-icon name="warning" class="q-mr-sm" />
-                Riesgos y Ambigüedades Detectadas
-              </div>
-              <q-list>
-                <q-item
-                  v-for="(risk, index) in analysisResult.risks"
-                  :key="index"
-                  class="q-py-sm"
-                >
-                  <q-item-section avatar>
-                    <q-icon name="error_outline" color="negative" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label class="text-weight-medium">
-                      Riesgo {{ index + 1 }}
-                    </q-item-label>
-                    <q-item-label caption>
-                      {{ risk }}
-                    </q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-card-section>
-          </q-card>
-
-          <!-- File Info -->
-          <q-card
-            class="q-mb-md"
-            :class="isDark ? 'bg-grey-9' : 'bg-grey-1'"
-            flat
-            bordered
-          >
-            <q-card-section>
-              <div class="text-subtitle2 text-weight-medium q-mb-sm">
-                <q-icon name="info" class="q-mr-sm" />
-                Información del Archivo
-              </div>
-              <div class="row q-gutter-sm">
-                <q-chip
-                  icon="picture_as_pdf"
-                  color="primary"
-                  text-color="white"
-                  size="sm"
-                >
-                  {{ fileName }}
-                </q-chip>
-                <q-chip
-                  icon="data_usage"
-                  color="secondary"
-                  text-color="white"
-                  size="sm"
-                >
-                  {{ (fileSize / 1024).toFixed(1) }} KB
-                </q-chip>
-                <q-chip
-                  icon="text_snippet"
-                  color="positive"
-                  text-color="white"
-                  size="sm"
-                >
-                  {{ extractedText.length }} caracteres extraídos
-                </q-chip>
-              </div>
-            </q-card-section>
-          </q-card>
-        </div>
-      </q-card-section>
-    </q-card>
+        </q-card-section>
+      </q-card>
+    </div>
   </div>
 </template>
 
@@ -293,9 +301,6 @@ const $q = useQuasar();
 if (!$q) {
   console.error('Quasar $q is not available');
 }
-
-// Create reactive dark mode variable
-const isDark = ref($q?.dark?.isActive || false);
 
 // Fallback notification function
 interface NotificationOptions {
@@ -556,7 +561,7 @@ const extractTextFromPDF = async (file: File): Promise<string> => {
 const analyzeContract = async (text: string) => {
   try {
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash-lite",
       generationConfig: {
         temperature: 0.3,
         topK: 40,
@@ -762,7 +767,7 @@ const probarAPIKey = async () => {
     error.value = '';
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash-lite",
       generationConfig: {
         temperature: 0.1,
         topK: 1,
@@ -864,21 +869,459 @@ const probarWorkerPDF = async () => {
 </script>
 
 <style scoped>
-.pdf-analyzer {
-  max-width: 800px;
+.pdf-analyzer-container {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.analyzer-card-wrapper {
+  width: 100%;
+}
+
+.analyzer-main-card {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+:deep(.q-dark) .analyzer-main-card {
+  background: rgba(18, 18, 18, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Header Section */
+.card-header-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 32px;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.title-section {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.title-icon {
+  color: #ffffff;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.main-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.subtitle-text {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  font-weight: 400;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.action-button {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  padding: 8px 16px;
+  border-radius: 25px;
+  transition: all 0.3s ease;
+}
+
+.action-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Modern Cards */
+.modern-card {
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.modern-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+:deep(.q-dark) .modern-card {
+  background: rgba(30, 30, 30, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Upload Section */
+.upload-card {
+  margin-bottom: 24px;
+}
+
+.upload-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.upload-icon {
+  color: #667eea;
+}
+
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.upload-description {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+}
+
+:deep(.q-dark) .upload-description {
+  color: #ccc;
+}
+
+.modern-uploader {
+  border-radius: 12px;
+  border: 2px dashed rgba(102, 126, 234, 0.3);
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.uploader-header-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+}
+
+.uploader-icon {
+  color: #667eea;
+}
+
+.uploader-text {
+  flex: 1;
+}
+
+.uploader-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 2px;
+}
+
+.uploader-subtitle {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+:deep(.q-dark) .uploader-subtitle {
+  color: #ccc;
+}
+
+.upload-btn {
+  transition: all 0.3s ease;
+}
+
+.upload-btn:hover {
+  transform: scale(1.05);
+}
+
+/* Loading Section */
+.loading-card {
+  text-align: center;
+  padding: 32px;
+}
+
+.loading-icon {
+  color: #667eea;
+  animation: pulse 2s infinite;
+}
+
+.loading-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 16px 0 8px 0;
+  letter-spacing: 0.5px;
+}
+
+.loading-message {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+}
+
+:deep(.q-dark) .loading-message {
+  color: #ccc;
+}
+
+.loading-progress {
+  max-width: 300px;
   margin: 0 auto;
 }
 
+/* Error Section */
+.error-banner {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+  color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(255, 107, 107, 0.3);
+}
+
+.error-content {
+  flex: 1;
+}
+
+.error-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  letter-spacing: 0.5px;
+}
+
+.error-message {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  line-height: 1.4;
+}
+
+.error-close-btn {
+  color: white;
+  opacity: 0.8;
+}
+
+.error-close-btn:hover {
+  opacity: 1;
+}
+
+/* Extracted Text Section */
+.extracted-card {
+  margin-bottom: 24px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-icon {
+  color: #667eea;
+}
+
+.text-content-card {
+  margin-bottom: 20px;
+}
+
+.content-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.content-icon {
+  color: #764ba2;
+}
+
+.content-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.extracted-text-container {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 8px;
+  padding: 16px;
+  background: rgba(102, 126, 234, 0.02);
+}
+
+.extracted-text {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0;
+  color: #2c3e50;
+}
+
+:deep(.q-dark) .extracted-text {
+  color: #ecf0f1;
+}
+
+:deep(.q-dark) .extracted-text-container {
+  border-color: rgba(102, 126, 234, 0.3);
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.analyze-button-container {
+  text-align: center;
+}
+
+.analyze-button {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+  padding: 12px 32px;
+  border-radius: 25px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+}
+
+.analyze-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+}
+
+/* Results Section */
+.results-card {
+  margin-top: 24px;
+}
+
+.result-item-card {
+  margin-bottom: 20px;
+}
+
+.result-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.result-icon {
+  color: #667eea;
+}
+
+.result-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.result-content {
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+/* Risk Card */
+.risk-card {
+  border-left: 4px solid #ff6b6b;
+}
+
+.risk-header .result-icon {
+  color: #ff6b6b;
+}
+
+.risk-header .result-title {
+  color: #ff6b6b;
+}
+
+/* Clauses and Risks Lists */
+.clauses-list,
+.risks-list {
+  padding: 0;
+  background: transparent;
+}
+
+.clause-item,
+.risk-item {
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: rgba(102, 126, 234, 0.05);
+  border: 1px solid rgba(102, 126, 234, 0.1);
+  transition: all 0.3s ease;
+}
+
+.clause-item:hover,
+.risk-item:hover {
+  background: rgba(102, 126, 234, 0.08);
+  transform: translateX(4px);
+}
+
+.clause-icon,
+.risk-icon {
+  background: rgba(102, 126, 234, 0.1);
+  border-radius: 50%;
+  padding: 8px;
+}
+
+.risk-icon {
+  background: rgba(255, 107, 107, 0.1);
+}
+
+.clause-number,
+.risk-number {
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.clause-content,
+.risk-content {
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+/* File Info */
+.file-info-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.info-chip {
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+/* Formatted Content */
 .formatted-content {
   line-height: 1.6;
+  font-size: 0.95rem;
 }
 
 .formatted-content :deep(strong) {
-  font-weight: 600;
+  font-weight: 700;
+  color: #667eea;
 }
 
 .formatted-content :deep(em) {
   font-style: italic;
+  color: #764ba2;
 }
 
 .formatted-content :deep(br) {
@@ -890,39 +1333,80 @@ const probarWorkerPDF = async () => {
 }
 
 :deep(.q-dark) .formatted-content strong {
-  color: #ffffff;
+  color: #90caf9;
 }
 
 :deep(.q-dark) .formatted-content em {
-  color: #b0b0b0;
+  color: #ce93d8;
 }
 
-/* Estilos para el texto extraído */
-.extracted-text-container {
-  max-height: 400px;
-  overflow-y: auto;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 8px;
-  background-color: #f9f9f9;
+/* Animations */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
-:deep(.q-dark) .extracted-text-container {
-  border-color: #555;
-  background-color: #2a2a2a;
+/* Responsive Design */
+@media (max-width: 768px) {
+  .pdf-analyzer-container {
+    padding: 0 8px;
+  }
+
+  .card-header-section {
+    padding: 24px 16px;
+  }
+
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .main-title {
+    font-size: 1.5rem;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .uploader-header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .file-info-chips {
+    justify-content: center;
+  }
+
+  .analyze-button {
+    width: 100%;
+    max-width: 300px;
+  }
 }
 
-.extracted-text {
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-  line-height: 1.4;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  margin: 0;
-  color: #333;
-}
+@media (max-width: 480px) {
+  .main-title {
+    font-size: 1.3rem;
+  }
 
-:deep(.q-dark) .extracted-text {
-  color: #e0e0e0;
+  .section-title {
+    font-size: 1rem;
+  }
+
+  .result-title {
+    font-size: 0.9rem;
+  }
+
+  .action-button {
+    font-size: 0.7rem;
+    padding: 6px 12px;
+  }
 }
 </style>
