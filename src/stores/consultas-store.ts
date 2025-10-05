@@ -108,7 +108,7 @@ export const useConsultasStore = defineStore('consultas', {
 
       try {
         const model = genAI.getGenerativeModel({
-          model: "gemini-1.5-flash",
+          model: "gemini-2.5-flash-lite",
           generationConfig: {
             temperature: 0.7,
             topK: 40,
@@ -240,7 +240,7 @@ export const useConsultasStore = defineStore('consultas', {
         console.log('Base64 generado, longitud:', base64Data.length);
 
         const model = genAI.getGenerativeModel({
-          model: "gemini-1.5-flash",
+          model: "gemini-2.5-flash-lite",
           generationConfig: {
             temperature: 0.3,
             topK: 40,
@@ -456,7 +456,7 @@ Has alcanzado el límite de uso de la API para análisis de PDFs.
 
       try {
         const model = genAI.getGenerativeModel({
-          model: "gemini-1.5-flash",
+          model: "gemini-2.5-flash-lite",
           generationConfig: {
             temperature: 0.1,
             topK: 1,
