@@ -83,7 +83,7 @@
       <q-card>
         <q-card-section class="row items-center">
           <q-avatar icon="error" color="negative" text-color="white" />
-          <span class="q-ml-sm">{{ error }}</span>
+          <span class="q-ml-sm">Debe rellenar los campos antes</span>
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Cerrar" color="primary" v-close-popup />
@@ -100,13 +100,21 @@ import ContractEditor from 'src/components/ContractEditor.vue';
 
 const store = useContratosStore();
 const exporting = ref(false);
-const showError = computed(() => !!store.error);
+const showError = computed<boolean>({
+  get: () => !!store.error,
+  set: (val: boolean) => {
+    if (!val) {
+      // clear the error in the store so the dialog can close
+      store.error = null;
+    }
+  }
+});
 
 // Computed properties
 const templates = computed(() => store.templates);
 const currentTemplate = computed(() => store.currentTemplate);
 const isLoading = computed(() => store.isLoading);
-const error = computed(() => store.error);
+// error computed removed: dialog now shows a fixed message and store.error is cleared when closing
 const getModifiedContract = store.getModifiedContract;
 
 onMounted(async () => {

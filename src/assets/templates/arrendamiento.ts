@@ -5,93 +5,68 @@ export const arrendamientoTemplate: ContractTemplate = {
   name: 'Contrato de Arrendamiento',
   type: 'arrendamiento',
   content: `
-    <div class="contract-content">
+  <div class="page"><div class="contract-content">
       <div class="header">
-        <h1>CONTRATO DE ARRENDAMIENTO DE BIEN INMUEBLE</h1>
+        <h1>CONTRATO DE ARRENDAMIENTO</h1>
       </div>
 
       <div class="contract-body">
-        <p class="intro-text">Conste por el presente documento, el Contrato de Arrendamiento que celebran de una parte:</p>
+  <p>Conste por el presente contrato de arrendamiento, que suscribe de una parte {{nombreArrendador}}, identificada con D.N.I. N° {{dniArrendador}}, con domicilio en {{domicilioArrendador}}, Distrito de {{ciudadFirma}}, Provincia y Departamento de {{ciudadFirma}}, a quien en adelante se le denominara “EL ARRENDADOR” y de la otra parte {{nombreArrendatario}}, identificado con D.N.I. N° {{dniArrendatario}} domiciliado en {{domicilioArrendatario}}, Distrito de {{ciudadFirma}}, Provincia y Departamento de {{ciudadFirma}} a quienes se les denominará “LOS ARRENDATARIOS”, en los términos y condiciones siguientes:</p>
 
-        <p class="party-info"><strong>EL ARRENDADOR:</strong> {{nombreArrendador}}, identificado con DNI N° {{dniArrendador}}, con domicilio en {{domicilioArrendador}}, a quien en adelante se le denominará EL ARRENDADOR; y de la otra parte,</p>
+        <h2>CLÁUSULA PRIMERA.- OBJETO DEL CONTRATO</h2>
+  <p>EL ARRENDADOR da en alquiler a EL ARRENDATARIO el inmueble de su propiedad, situado en {{direccionInmueble}}.</p>
 
-        <p class="party-info"><strong>EL ARRENDATARIO:</strong> {{nombreArrendatario}}, identificado con DNI N° {{dniArrendatario}}, con domicilio en {{domicilioArrendatario}}, a quien en adelante se le denominará EL ARRENDATARIO.</p>
+        <h2>CLÁUSULA SEGUNDA.- DURACIÓN DEL CONTRATO</h2>
+  <p>El plazo de duración del arrendamiento será por {{plazoContrato}} forzoso, y comenzará a partir del {{fechaInicio}} y terminará el {{fechaFin}} sin necesidad de aviso previo.</p>
+  <p>El Contrato podrá renovarse a su vencimiento, si ambas partes están de acuerdo, para lo cual EL ARRENDATARIO deberán informar a EL ARRENDADOR de su deseo de renovar el contrato, por escrito con una anticipación no menor de {{renewalNoticeDays}} días calendarios a la fecha prevista para la renovación, debiendo constar ésta de documento escrito.</p>
+        <p>Queda prohibido el subarrendamiento, cesión o traspaso del inmueble.</p>
 
-        <p class="clause-intro">En los términos y condiciones siguientes:</p>
+        <h2>CLÁUSULA TERCERA.- RENTA MENSUAL</h2>
+  <p>La renta mensual se fija en la suma de {{montoRenta}} ({{montoRentaLetras}}) que será pagada por “EL ARRENDATARIO” en forma adelantada, sin necesidad de requerimiento ni cobranza previa.</p>
 
-        <div class="clause">
-          <h2>PRIMERA: DEL INMUEBLE</h2>
-          <p>EL ARRENDADOR es propietario del inmueble ubicado en {{direccionInmueble}}, el mismo que se encuentra inscrito en la Partida Registral N° {{partidaRegistral}} del Registro de Predios de {{registroPredios}}.</p>
-        </div>
+        <h2>CLÁUSULA CUARTA.- FALTA DE PAGO</h2>
+  <p>La falta de pago oportuna de la renta estipulada después de {{diasPago}} días es causal de resolución del presente contrato conforme lo establece el artículo 1697 del código civil peruano vigente, y autoriza a EL ARRENDADOR a entablar las acciones ejecutivas de desalojo respectivo. Asimismo, la falta de pago generará intereses compensatorios y moratorios en las tasas permitidas por ley.</p>
 
-        <div class="clause">
-          <h2>SEGUNDA: OBJETO DEL CONTRATO</h2>
-          <p>Por el presente contrato, EL ARRENDADOR da en arrendamiento a EL ARRENDATARIO el inmueble descrito en la cláusula primera, para destinarlo única y exclusivamente para {{usoInmueble}}.</p>
-        </div>
+        <h2>CLÁUSULA QUINTA.- USO DEL INMUEBLE</h2>
+  <p>“EL ARRENDATARIO” se obligan a destinar el inmueble bajo este contrato exclusivamente {{usoInmueble}} (a casa – habitación o local comercial).</p>
 
-        <div class="clause">
-          <h2>TERCERA: RENTA Y FORMA DE PAGO</h2>
-          <p>Las partes acuerdan que el monto de la renta mensual será de S/. {{montoRenta}} ({{montoRentaLetras}}), que será pagada en forma mensual y por adelantado, dentro de los {{diasPago}} primeros días de cada mes, en el domicilio del ARRENDADOR o mediante depósito en cuenta bancaria que éste designe.</p>
-        </div>
+        <h2>CLÁUSULA SEXTA.- PAGO DE IMPUESTOS Y SERVICIOS</h2>
+  <p>Será de cuenta obligatoria de “EL ARRENDATARIO” pagar puntualmente los recibos y gastos que se generen a partir de la fecha del inicio del arrendamiento del inmueble materia del presente contrato, comprometiéndose al pago de {{responsableServicios}} (los Arbitrios Municipales, así como al consumo de energía eléctrica, agua, desagüe, teléfono, gas, televisión por cable, Internet).</p>
+        <p>Será de cuenta de LOS ARRENDATARIOS el pago del Impuesto Predial, y cualquier otro impuesto, tributo creado o por crearse, que graven directamente la propiedad inmueble.</p>
 
-        <div class="clause">
-          <h2>CUARTA: PLAZO DEL CONTRATO</h2>
-          <p>El plazo de duración del presente contrato es de {{plazoContrato}}, el mismo que se computa a partir del {{fechaInicio}} y vencerá indefectiblemente el {{fechaFin}}, fecha en la que EL ARRENDATARIO deberá devolver el inmueble sin más aviso.</p>
-        </div>
+        <h2>CLÁUSULA SÉPTIMA.- SOBRE LA ENTREGA Y CUIDADO DEL INMUEBLE</h2>
+        <p>EL ARRENDATARIO se obliga a entregar el inmueble el XX de XXXXXXXX de XXXX. El ARRENDADOR se obliga a entregar el inmueble en buenas condiciones de conservación y funcionamiento. EL ARRENDATARIO se compromete a mantener y conservar el inmueble en las mismas condiciones en que los recibe, salvo el normal desgaste de uso cuidadoso.</p>
+        <p>En caso que se produzcan, durante la vigencia del presente contrato, daños o deterioros en el inmueble generados por causas que sean imputables a EL ARRENDATARIO la reparación de los mismos será de cargo y cuenta de EL ARRENDATARIO, a satisfacción del ARRENDADOR.</p>
 
-        <div class="clause">
-          <h2>QUINTA: OBLIGACIONES DEL ARRENDADOR</h2>
-          <p>Son obligaciones de EL ARRENDADOR:</p>
-          <ol class="clause-list">
-            <li>Entregar el inmueble arrendado en la fecha pactada, en buen estado de conservación, habitabilidad e higiene.</li>
-            <li>Mantener al ARRENDATARIO en el uso del inmueble durante todo el plazo del contrato.</li>
-            <li>Realizar todas las reparaciones necesarias durante el arrendamiento.</li>
-          </ol>
-        </div>
+        <h2>CLÁUSULA OCTAVA.- DESOCUPACIÓN DEL INMUEBLE</h2>
+        <p>Al término del presente contrato, EL ARRENDATARIO se obliga a desocupar el inmueble y hacer entrega del mismo a EL ARRENDADOR en las mismas condiciones en que lo recibió, salvo el desgaste normal de uso cuidadoso, y bajo inspección de éste último a quien deberá devolver las llaves que hubiere recibido al inicio del contrato.</p>
 
-        <div class="clause">
-          <h2>SEXTA: OBLIGACIONES DEL ARRENDATARIO</h2>
-          <p>Son obligaciones de EL ARRENDATARIO:</p>
-          <ol class="clause-list">
-            <li>Pagar puntualmente el monto de la renta en la forma y oportunidad convenidas.</li>
-            <li>Destinar el inmueble al uso convenido en el contrato.</li>
-            <li>Permitir las visitas de inspección por parte del ARRENDADOR previo aviso.</li>
-            <li>No subarrendar el inmueble materia del presente contrato.</li>
-            <li>Devolver el inmueble al vencimiento del contrato sin más deterioro que el de su uso ordinario.</li>
-          </ol>
-        </div>
+        <h2>CLÁUSULA NOVENA.- SOBRE MODIFICACIONES AL INMUEBLE</h2>
+        <p>“LOS ARRENDATARIOS” no podrán modificar o alterar los bienes arrendados, ni afectar la estructura o los acabados. Cualquier mejora o cambio que desee realizar deberá tener la autorización escrita de “EL ARRENDADOR”, quedando, de ser realizada, como parte del bien, sin desembolso posterior de “EL ARRENDADOR”.</p>
 
-        <div class="clause">
-          <h2>SÉPTIMA: SERVICIOS Y TRIBUTOS</h2>
-          <p>Los servicios de agua potable, energía eléctrica, gas y otros servicios públicos serán asumidos por {{responsableServicios}}. El pago del impuesto predial y arbitrios municipales corresponden al ARRENDADOR.</p>
-        </div>
+        <h2>CLÁUSULA DÉCIMA.- PAGO DE LA GARANTÍA</h2>
+  <p>En garantía del fiel cumplimiento de todas y cada una de las obligaciones materia de este contrato, “LOS ARRENDATARIOS” entregan a “EL ARRENDADOR”, a la firma del presente contrato, la suma equivalente a {{montoGarantia}} ({{montoGarantiaLetras}}), por concepto de garantía y adelantos correspondientes.</p>
+  <p>Dicha suma no podrá ser imputada al pago de la renta y/o penalidades, mientras “EL ARRENDATARIO” se encuentren en uso de los bienes arrendados, y será devuelta sin intereses al vencimiento del plazo del contrato.</p>
 
-        <div class="clause">
-          <h2>OCTAVA: GARANTÍA</h2>
-          <p>Al momento de la suscripción del presente contrato, EL ARRENDATARIO entrega a EL ARRENDADOR la suma de S/. {{montoGarantia}} ({{montoGarantiaLetras}}) por concepto de garantía, la misma que será devuelta al término del contrato previa verificación del buen estado del inmueble.</p>
-        </div>
+        <p>Una vez que “LOS ARRENDATARIOS” hayan acreditado el pago de todas sus obligaciones y dejado el inmueble y muebles arrendados, y “EL ARRENDADOR” haya comprobado el estado de éstos, los cuales deberán encontrarse en las mismas condiciones en las que les fueron entregados, salvo el deterioro del uso normal y cuidadoso. La garantía servirá para cubrir total o parcialmente el pago de las obligaciones incumplidas por “LOS ARRENDATARIOS”.</p>
 
-        <div class="clause">
-          <h2>NOVENA: RESOLUCIÓN DEL CONTRATO</h2>
-          <p>El incumplimiento de cualquiera de las obligaciones asumidas por EL ARRENDATARIO en el presente contrato constituirá causal de resolución del mismo, al amparo del artículo 1697° del Código Civil.</p>
-        </div>
+  <h2>CLÁUSULA DÉCIMA PRIMERA.- ALLANAMIENTO FUTURO</h2>
+  <p>De conformidad al art. 5º de la Ley Nº 30201 que modifica el art. 594º del Código Procesal Civil, LOS ARRENDATARIOS se allanan desde ya a la demanda judicial para desocupar el inmueble por las causales de vencimiento de contrato de arrendamiento o por incumplimiento del pago de la renta de {{montoRenta}}. De acuerdo a lo establecido en el art. 330º y siguientes del Código Procesal Civil.</p>
 
         <div class="signatures">
-          <p class="signing-text">Ambas partes declaran su conformidad con todas y cada una de las cláusulas del presente contrato, firmándolo en dos ejemplares igualmente válidos, en la ciudad de {{ciudadFirma}} a los {{fechaFirma}}.</p>
+          <p class="signing-text">Ambas partes declaran su conformidad con todas y cada una de las cláusulas del presente contrato, firmándolo en dos ejemplares igualmente válidos.</p>
 
           <div class="signature-section">
             <div class="signature-block">
               <div class="signature-line">____________________________</div>
-              <p class="signer-title">EL ARRENDADOR</p>
+              <p class="signer-title">ARRENDADOR</p>
               <p class="signer-name">{{nombreArrendador}}</p>
-              <p class="signer-dni">DNI: {{dniArrendador}}</p>
             </div>
 
             <div class="signature-block">
               <div class="signature-line">____________________________</div>
-              <p class="signer-title">EL ARRENDATARIO</p>
+              <p class="signer-title">ARRENDATARIO</p>
               <p class="signer-name">{{nombreArrendatario}}</p>
-              <p class="signer-dni">DNI: {{dniArrendatario}}</p>
             </div>
           </div>
         </div>
@@ -99,134 +74,65 @@ export const arrendamientoTemplate: ContractTemplate = {
     </div>
 
     <style>
-      .contract-content {
-        /* Configuración básica del documento */
-        font-family: 'Times New Roman', Times, serif;
-        font-size: 12pt;
-        line-height: 1.5;
-        color: #000;
-
-        /* Tamaño A4 y márgenes */
+      /* Página A4 visual */
+      .page {
         width: 21cm;
         min-height: 29.7cm;
-        margin: 0 auto;
-        padding: 2.54cm; /* 1 pulgada = 2.54cm, margen estándar */
-        box-sizing: border-box;
-        background: white;
-
-        /* Configuración de página */
-        page-break-after: always;
+        margin: 0 auto; /* centrar la página */
+        background: #fff; /* mostrar la hoja en blanco */
+        position: relative;
+        box-shadow: 0 0 0 rgba(0,0,0,0);
+        display: inline-block; /* permite centrar sin overflow */
+        max-width: 100%; /* no exceder el contenedor */
+        overflow: visible; /* permitir que bloque de firmas absolutos se vean en preview */
+        vertical-align: top;
       }
 
-      /* Título principal */
+      /* Contenido del contrato con márgenes de 1 pulgada */
+      .contract-content {
+        font-family: 'Times New Roman', Times, serif;
+        font-size: 12pt;
+        line-height: 1.6; /* mayor legibilidad */
+        color: #000;
+        width: 21cm; /* ancho fijo igual a A4 */
+        max-width: 100%;
+        min-height: calc(29.7cm - 2 * 2.54cm); /* altura util de la hoja */
+        box-sizing: border-box; /* padding incluido en el ancho */
+        padding: 2.54cm; /* márgenes interiores */
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Header */
+      .header { text-align: center; }
+
       .header h1 {
         font-size: 14pt;
         font-weight: bold;
-        text-align: center;
         text-transform: uppercase;
-        margin: 0 0 4cm 0; /* Espacio significativo después del título */
-        line-height: 1.3;
+        margin: 0.4em 0 0.8em 0; /* ajuste fino: menos espacio encima, más debajo */
       }
 
-      /* Cuerpo del contrato */
-      .contract-body {
-        text-align: justify;
-      }
+      /* Body */
+  .contract-body { text-align: justify; margin-bottom: 1.2cm; }
 
-      /* Párrafos */
-      .intro-text,
-      .party-info,
-      .clause-intro {
-        margin-bottom: 1.5em;
-        text-align: justify;
-        line-height: 2;
-      }
+      .contract-content p { margin: 0.5em 0; text-indent: 1.5em; }
 
-      /* Cláusulas */
-      .clause {
-        margin-bottom: 2em;
-        page-break-inside: avoid;
-      }
+      .signature-section { display: flex; justify-content: space-between; gap: 1.5cm; }
 
-      .clause h2 {
-        font-size: 12pt;
-        font-weight: bold;
-        text-transform: uppercase;
-        margin: 2em 0 1em;
-      }
+      .signature-block { width: calc(50% - 0.75cm); text-align: center; }
 
-      /* Listas */
-      .clause-list {
-        margin: 1em 0 1em 3cm; /* Sangría de 3cm para listas */
-        padding: 0;
-      }
+      .signature-line { border-top: 1px solid #000; width: 80%; margin: 0 auto 0.35em auto; }
 
-      .clause-list li {
-        margin-bottom: 1em;
-        text-align: justify;
-        line-height: 1.5;
-        page-break-inside: avoid;
-      }
-
-      /* Firmas */
-      .signatures {
-        margin-top: 4cm;
-        page-break-inside: avoid;
-      }
-
-      .signing-text {
-        margin-bottom: 3cm;
-        text-align: justify;
-      }
-
-      .signature-section {
-        display: flex;
-        justify-content: space-between;
-        margin: 4cm 3cm 0; /* Márgenes laterales para las firmas */
-      }
-
-      .signature-block {
-        width: 7cm; /* Ancho fijo para el bloque de firma */
-        text-align: center;
-      }
-
-      .signature-line {
-        border-top: 1px solid #000;
-        margin-bottom: 0.5cm;
-      }
-
-      .signer-title {
-        font-weight: bold;
-        margin: 0.5cm 0;
-        text-transform: uppercase;
-      }
-
-      .signer-name,
-      .signer-dni {
-        margin: 0.3cm 0;
-      }
-
-      /* Ajustes para impresión */
+      /* Impresión / Export PDF: asegurar A4 y márgenes */
       @media print {
-        .contract-content {
-          margin: 0;
-          padding: 2.54cm;
-          width: 21cm;
-          height: 29.7cm;
-          page-break-after: always;
-        }
-
-        /* Evitar saltos de página en elementos importantes */
-        h1, h2, .clause, .signatures {
-          page-break-inside: avoid;
-        }
-
-        /* Forzar salto de página cuando sea necesario */
-        .page-break {
-          page-break-before: always;
-        }
+        .page, .contract-content { width: 21cm; height: 29.7cm; }
+        body, html { background: #fff; }
+        h1, h2, .clause, .signatures, .signature-section { page-break-inside: avoid; }
       }
     </style>
+  </div></div>
   `,
   variables: [
     {
@@ -312,6 +218,12 @@ export const arrendamientoTemplate: ContractTemplate = {
       label: 'Plazo del Contrato',
       type: 'text',
       required: true,
+    },
+    {
+      key: 'renewalNoticeDays',
+      label: 'Días de aviso para renovación',
+      type: 'number',
+      required: false,
     },
     {
       key: 'fechaInicio',

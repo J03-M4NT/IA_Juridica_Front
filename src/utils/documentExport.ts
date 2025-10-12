@@ -15,26 +15,57 @@ interface ParagraphOptions {
 
 export const exportToWord = async (content: string, documentName: string): Promise<Blob> => {
   try {
+    /* eslint-disable @typescript-eslint/no-explicit-any */
     console.log('Iniciando exportación a Word');
 
-    // Crear un elemento temporal para procesar el HTML
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = content;
+  // Crear un elemento temporal para procesar el HTML
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = content;
+
+  // Eliminar estilos y scripts del HTML para evitar que su contenido se trate como texto
+  tempDiv.querySelectorAll('style, script').forEach(el => el.remove());
 
     // Procesar el contenido por secciones
     const children: Paragraph[] = [];
 
     // Función para crear un párrafo con formato
     const createParagraph = (text: string, options: ParagraphOptions = {}) => {
-      return new Paragraph({
-        children: [new TextRun({ ...options, text })],
+      // Build TextRun props explicitly to avoid passing unsupported options
+  const runProps: Record<string, unknown> = { text };
+      if (options.size) runProps.size = options.size;
+      if (options.bold) runProps.bold = options.bold;
+
+
+      type LocalParagraphProps = {
+        children: any[];
+        spacing: { line: number; before: number; after: number };
+        alignment?: typeof AlignmentType[keyof typeof AlignmentType];
+        indent?: { left?: number; right?: number };
+      };
+
+      const paragraphProps: LocalParagraphProps = {
+        children: [new TextRun(runProps)],
         spacing: { line: 360, before: 200, after: 200 },
         alignment: options.alignment || AlignmentType.JUSTIFIED,
-      });
-    };
+      };
+
+      if (options.indent) {
+        paragraphProps.indent = {};
+        if (options.indent.left) paragraphProps.indent.left = options.indent.left;
+        if (options.indent.right) paragraphProps.indent.right = options.indent.right;
+      }
+
+      return new Paragraph(paragraphProps as any);
+  };
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 
     // Función recursiva para procesar nodos
     const processNode = (node: Node) => {
+      // Ignore style and script elements entirely
+      if (node instanceof Element && ['style', 'script'].includes(node.tagName.toLowerCase())) {
+        return;
+      }
+
       if (node.nodeType === Node.TEXT_NODE) {
         const text = node.textContent?.trim() || '';
         if (text) {
@@ -69,7 +100,7 @@ export const exportToWord = async (content: string, documentName: string): Promi
               const listText = li.textContent?.trim() || '';
               if (listText) {
                 children.push(createParagraph(`${index + 1}. ${listText}`, {
-                  indent: { left: 720 } // 0.5 pulgadas
+                  indent: { left: 720 } // 0.5 pulgadas (twip)
                 }));
               }
             });
@@ -134,47 +165,37 @@ export const exportToPDF = async (content: string, documentName: string): Promis
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = content;
 
-    // Aplicar estilos base
+    // Aplicar estilos base al contenedor temporal (mejor incluir en head para que html2pdf los vea correctamente)
     tempDiv.style.padding = '40px';
     tempDiv.style.fontSize = '12pt';
     tempDiv.style.lineHeight = '1.5';
     tempDiv.style.textAlign = 'justify';
 
-    // Aplicar estilos específicos
+    // Aplicar estilos específicos globales temporales para la generación
     const styles = document.createElement('style');
+    styles.setAttribute('data-temp-pdf-style', 'true');
     styles.textContent = `
-      h1 {
-        text-align: center;
-        font-size: 14pt;
-        margin: 1em 0;
-      }
-      h2 {
-        font-size: 12pt;
-        margin: 1em 0;
-      }
-      p {
-        text-align: justify;
-        margin: 1em 0;
-      }
-      ol, ul {
-        margin-left: 2em;
-      }
-      li {
-        text-align: justify;
-        margin: 0.5em 0;
-      }
+      .page { background: #fff; }
+      .page, .contract-content { width: 21cm; box-sizing: border-box; }
+      h1 { text-align: center; font-size: 14pt; margin: 1em 0; }
+      h2 { font-size: 12pt; margin: 1em 0; }
+      p { text-align: justify; margin: 1em 0; }
+      ol, ul { margin-left: 2em; }
+      li { text-align: justify; margin: 0.5em 0; }
     `;
-    tempDiv.appendChild(styles);
+
+    // Añadir estilos al head temporalmente
+    document.head.appendChild(styles);
     document.body.appendChild(tempDiv);
 
     try {
       // Opciones para la generación del PDF
       const opt = {
-        margin: [25, 20, 25, 20] as [number, number, number, number], // [top, right, bottom, left] en mm
+        margin: [25.4, 25.4, 25.4, 25.4] as [number, number, number, number], // 1 inch = 25.4 mm
         filename: `${documentName}.pdf`,
         image: { type: 'jpeg' as const, quality: 1 },
         html2canvas: {
-          scale: 2,
+          scale: 2.5,
           useCORS: true,
           logging: false
         },
@@ -188,11 +209,50 @@ export const exportToPDF = async (content: string, documentName: string): Promis
       };
 
       // Generar el PDF y obtener el blob
-      const pdf = await html2pdf().from(tempDiv).set(opt).outputPdf('blob');
-      return new Blob([pdf], { type: 'application/pdf' });
+      const worker = html2pdf().from(tempDiv).set(opt);
+      // html2pdf.js no tiene siempre .outputPdf('blob') en todas las builds,
+      // así que pedimos la salida en arraybuffer y la convertimos a Blob.
+      const result = await worker.outputPdf('arraybuffer');
+
+      let pdfBlob: Blob;
+      if (result instanceof ArrayBuffer) {
+        pdfBlob = new Blob([result], { type: 'application/pdf' });
+      } else if (result instanceof Blob) {
+        pdfBlob = result;
+      } else if (typeof result === 'string' && result.startsWith('data:application/pdf')) {
+        // data URI fallback
+        const base64 = result.split(',')[1] || '';
+        let byteArray: Uint8Array;
+        if (typeof atob === 'function') {
+          const byteChars = atob(base64);
+          const byteNumbers = new Array(byteChars.length);
+          for (let i = 0; i < byteChars.length; i++) {
+            byteNumbers[i] = byteChars.charCodeAt(i);
+          }
+          byteArray = new Uint8Array(byteNumbers);
+        } else if (typeof Buffer !== 'undefined') {
+          const buf = Buffer.from(base64, 'base64');
+          byteArray = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+        } else {
+          throw new Error('No hay método disponible para decodificar base64');
+        }
+
+  // Ensure we pass an ArrayBuffer (not a SharedArrayBuffer) to Blob
+  // Make a copy into a plain ArrayBuffer so Blob typing is satisfied
+  const copied = new Uint8Array(byteArray.length);
+  copied.set(byteArray);
+  const ab = copied.buffer;
+  pdfBlob = new Blob([ab], { type: 'application/pdf' });
+      } else {
+        throw new Error('No se pudo generar el PDF: formato de salida inesperado');
+      }
+
+      return pdfBlob;
     } finally {
-      // Limpiar el contenedor temporal
-      document.body.removeChild(tempDiv);
+      // Limpiar el contenedor temporal y estilos
+      if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv);
+      const existingStyle = document.head.querySelector('style[data-temp-pdf-style]');
+      if (existingStyle) existingStyle.remove();
     }
   } catch (error) {
     console.error('Error al exportar a PDF:', error);

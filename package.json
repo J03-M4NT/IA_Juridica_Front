@@ -12,6 +12,7 @@
     "test": "echo \"No test specified\" && exit 0",
     "dev": "quasar dev",
     "build": "quasar build",
+    "extract-pdf-text": "node ./scripts/extract-pdf-text.mjs",
     "postinstall": "quasar prepare"
   },
   "dependencies": {
@@ -21,6 +22,7 @@
     "docx": "^9.5.1",
     "html-docx-js": "^0.3.1",
     "html2pdf.js": "^0.12.1",
+    "pdf-parse": "^2.2.11",
     "pdfjs-dist": "^3.11.174",
     "pinia": "^3.0.1",
     "quasar": "^2.18.5",
