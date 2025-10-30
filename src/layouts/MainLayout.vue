@@ -8,7 +8,7 @@
       <q-toolbar class="navbar-toolbar q-px-lg">
         <!-- Logo/Brand -->
         <div class="brand-section q-mr-lg">
-          <q-icon name="gavel" size="28px" class="brand-icon q-mr-sm" />
+          <q-img src="/icons/LogoIA.jpeg" width="28px" height="28px" class="brand-icon q-mr-sm" />
           <span class="brand-text text-h6 text-weight-bold">LEXIT AI</span>
         </div>
 

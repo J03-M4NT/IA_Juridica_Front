@@ -176,11 +176,14 @@ export const useConsultasStore = defineStore('consultas', {
           errorMessage = error.message;
         }
 
+        // Crear mensaje de error para mostrar en el chat
+        let mensajeError = `❌ **Error al consultar la IA jurídica**\n\n${errorMessage}`;
+
         // Manejo específico de errores de API key
         if (errorMessage.includes('API Key not found') || errorMessage.includes('API_KEY_INVALID')) {
-          this.error = `❌ Error de API Key: La clave API no es válida para Google Generative AI.
+          mensajeError = `❌ **Error de API Key**\n\nLa clave API no es válida para Google Generative AI.
 
-🔧 Soluciones:
+🔧 **Soluciones:**
 1. Verifica que tienes habilitada la API de Generative Language en Google Cloud Console
 2. Asegúrate de que la API key tenga permisos para usar Gemini
 3. Si usas una API key de Google Maps, necesitas una específica para AI
@@ -192,16 +195,26 @@ export const useConsultasStore = defineStore('consultas', {
 - Crea una nueva API key
 - Asegúrate de que tenga habilitada la facturación (necesario para usar Gemini)`;
         } else if (errorMessage.includes('QUOTA_EXCEEDED') || errorMessage.includes('RATE_LIMIT_EXCEEDED')) {
-          this.error = `⚠️ Límite de cuota excedido: Has alcanzado el límite de uso de la API.
+          mensajeError = `⚠️ **Límite de cuota excedido**\n\nHas alcanzado el límite de uso de la API.
 
-🔧 Soluciones:
+🔧 **Soluciones:**
 1. Espera unos minutos antes de intentar nuevamente
 2. Verifica tu plan de facturación en Google Cloud Console
 3. Considera actualizar tu plan si necesitas más uso`;
-        } else {
-          this.error = `❌ Error al consultar la IA jurídica: ${errorMessage}`;
         }
 
+        // Agregar mensaje de error al chat
+        this.mensajes.push({
+          contenido: mensajeError,
+          esIA: true,
+          timestamp: new Date(),
+          referencias: []
+        });
+
+        // Force reactivity update for mensajes array
+        this.mensajes = [...this.mensajes];
+
+        this.error = `Error al consultar la IA jurídica: ${errorMessage}`;
         console.error('Error detallado:', error);
       } finally {
         this.loading = false;

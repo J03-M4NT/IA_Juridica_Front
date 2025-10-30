@@ -1,121 +1,49 @@
 <template>
-  <q-page class="consultas-page flex flex-center column" :class="$q.dark.isActive ? 'bg-dark' : 'bg-light'">
-    <!-- Background gradient -->
-    <div class="page-background"></div>
-
-    <!-- Centered Content -->
-    <div class="content-wrapper flex flex-center column q-pa-lg">
-      <!-- Title Section -->
-      <div class="title-section text-center q-mb-xl">
-        <h1 class="main-title text-h4 text-weight-bold q-mb-md">CONSULTAS JURÍDICAS</h1>
-        <p class="subtitle text-body1 text-grey-7">Haz preguntas sobre leyes y contratos</p>
+  <q-page class="chat-page">
+    <div class="chat-container">
+      <div class="chat-header">
+        <q-icon name="gavel" size="28px" class="header-icon" />
+        <h1 class="chat-title">Asistente Jurídico Virtual</h1>
       </div>
-
-      <!-- Action Buttons Card -->
-      <q-card class="actions-card modern-card q-pa-xl" style="position: relative;">
-        <q-btn
-          color="grey-6"
-          icon="help"
-          label="CENTRO DE AYUDA"
-          @click="showHelp = true"
-          class="action-button help-button"
-          unelevated
-          rounded
-          size="md"
-          style="position: absolute; top: 16px; right: 16px; min-width: 140px;"
-        >
-          <q-tooltip>Centro de ayuda</q-tooltip>
-        </q-btn>
-      </q-card>
-
-      <!-- Chat Section -->
-      <div class="chat-section q-mt-xl">
-        <q-card class="chat-card modern-card">
-          <q-card-section class="chat-header">
-            <h3 class="chat-title text-h6 text-weight-medium">Chat de Consultas</h3>
-          </q-card-section>
-
-          <!-- Messages Box -->
-          <q-card-section class="messages-container">
-            <div class="messages-box">
-              <div v-for="(mensaje, index) in mensajes" :key="index" class="message-wrapper q-mb-lg">
-                <!-- AI Message -->
-                <div v-if="mensaje.esIA" class="ai-message">
-                  <div class="message-bubble ai-bubble">
-                    <div class="message-content formatted-message" v-html="formatMessage(mensaje.contenido)"></div>
-                    <div v-if="mensaje.referencias?.length" class="references text-caption text-grey-6 q-mt-sm">
-                      <strong>Referencias:</strong>
-                      <div v-for="(ref, idx) in mensaje.referencias" :key="idx" class="q-mt-xs">{{ ref }}</div>
-                    </div>
-                  </div>
-                </div>
-                <!-- User Message -->
-                <div v-else class="user-message">
-                  <div class="message-bubble user-bubble">
-                    <div class="message-content">{{ mensaje.contenido }}</div>
-                  </div>
-                </div>
-              </div>
+      <q-scroll-area class="messages-area" ref="scrollArea">
+        <div class="messages-wrapper">
+          <div v-if="mensajes.length === 0" class="welcome-message">
+            <p>Bienvenido al Asistente Jurídico. Haz tus consultas legales aquí.</p>
+          </div>
+          <div v-for="(mensaje, index) in mensajes" :key="index" class="message-row" :class="{ 'ai-row': mensaje.esIA, 'user-row': !mensaje.esIA }">
+            <div class="avatar" :class="{ 'ai-avatar': mensaje.esIA, 'user-avatar': !mensaje.esIA }">
+              <q-icon :name="mensaje.esIA ? 'smart_toy' : 'person'" size="24px" />
             </div>
-          </q-card-section>
-
-          <!-- Input Area -->
-          <q-card-section class="input-section">
-            <q-form @submit.prevent="enviarConsulta" class="input-form">
-              <q-input
-                v-model="pregunta"
-                placeholder="Escribe tu consulta legal aquí..."
-                type="textarea"
-                autogrow
-                outlined
-                :disable="store.loading"
-                :max-height="120"
-                class="chat-input"
-                hide-bottom-space
-              >
-                <template v-slot:append>
-                  <q-btn
-                    round
-                    flat
-                    icon="send"
-                    type="submit"
-                    :loading="store.loading"
-                    color="primary"
-                    size="md"
-                    @click="enviarConsulta"
-                  />
-                </template>
-              </q-input>
-            </q-form>
-            <div v-if="store.error" class="error-message q-mt-md text-center">
-              <q-icon name="error" color="negative" class="q-mr-xs" />
-              <span class="text-negative text-body2">{{ store.error }}</span>
+            <div class="message-content-wrapper">
+              <q-card flat bordered class="message-card" :class="{ 'ai-card': mensaje.esIA, 'user-card': !mensaje.esIA }">
+                <q-card-section>
+                  <div class="message-content" v-html="mensaje.esIA ? formatMessage(mensaje.contenido) : mensaje.contenido"></div>
+                </q-card-section>
+              </q-card>
             </div>
-          </q-card-section>
-        </q-card>
+          </div>
+        </div>
+      </q-scroll-area>
+      <div class="input-area">
+        <q-form @submit.prevent="enviarConsulta" class="input-form">
+          <q-input
+            v-model="pregunta"
+            placeholder="Escribe tu consulta legal aquí..."
+            type="textarea"
+            autogrow
+            outlined
+            :disable="store.loading"
+            class="input-textarea"
+            hide-bottom-space
+            no-error-icon
+          >
+            <template v-slot:append>
+              <q-btn round icon="send" color="primary" size="md" class="send-btn" @click="enviarConsulta" :loading="store.loading" />
+            </template>
+          </q-input>
+        </q-form>
       </div>
     </div>
-
-
-
-    <!-- Help Dialog -->
-    <q-dialog v-model="showHelp">
-      <q-card style="min-width: 400px">
-        <q-card-section>
-          <div class="text-h6">Centro de Ayuda</div>
-        </q-card-section>
-        <q-card-section class="q-pt-none">
-          <div class="text-body2">
-            <p><strong>💬 Consultas:</strong> Haz preguntas sobre leyes, contratos y temas jurídicos.</p>
-            <p><strong>📄 Análisis de Contratos:</strong> Usa el botón "Analizar Contrato PDF" para subir y analizar contratos en formato PDF.</p>
-            <p><strong>⚖️ Asesoramiento:</strong> Recuerda que esta herramienta es informativa y no sustituye el consejo de un abogado profesional.</p>
-          </div>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Entendido" color="primary" v-close-popup />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
   </q-page>
 </template>
 
@@ -123,379 +51,443 @@
 import { ref, onMounted, nextTick } from 'vue';
 import { useConsultasStore } from '../stores/consultas-store';
 import { storeToRefs } from 'pinia';
-import { useQuasar } from 'quasar';
-
-const $q = useQuasar();
 
 const store = useConsultasStore();
 const pregunta = ref('');
-const showHelp = ref(false);
 
 const { mensajes } = storeToRefs(store);
 
-function formatMessage(text: string): string {
-  // Simple markdown-like formatting to HTML
-  const formatted = text
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') // bold
-    .replace(/\*(.+?)\*/g, '<em>$1</em>') // italic
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>') // h3
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>') // h2
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>') // h1
-    .replace(/:\)/g, '😊') // emoji smile
-    .replace(/:\(/g, '😞') // emoji sad
-    .replace(/\n/g, '<br>'); // new lines to <br>
-  return formatted;
-}
-
 async function enviarConsulta() {
-  console.log('Enviando consulta:', pregunta.value); // Debug log
-  if (pregunta.value.trim()) {
-    try {
-      await store.enviarConsulta(pregunta.value);
-      pregunta.value = '';
-
-      // Scroll al final
-      await nextTick();
-    } catch (error) {
-      console.error('Error al enviar consulta:', error);
-    }
+  if (!pregunta.value.trim()) return;
+  try {
+    await store.enviarConsulta(pregunta.value);
+    pregunta.value = '';
+    await nextTick();
+  } catch (error) {
+    console.error('Error al enviar consulta:', error);
   }
 }
 
-// Limpiar mensajes al montar el componente
-onMounted(() => {
+onMounted(async () => {
   store.limpiar();
+  // Probar la API key al cargar la página
+  await store.probarAPIKey();
 });
+
+const formatMessage = (text: string) => {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+    .replace(/\n/g, '<br>');
+};
 </script>
 
 <style scoped>
-.consultas-page {
-  min-height: 100vh;
-  position: relative;
-  overflow-x: hidden;
+.chat-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-.page-background {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  z-index: -1;
-}
-
-.content-wrapper {
-  width: 100%;
+.chat-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   max-width: 1200px;
-  min-height: 100vh;
-  padding: 2rem;
-}
-
-/* Title Section */
-.title-section {
-  margin-bottom: 3rem;
-}
-
-.main-title {
-  font-size: 2.5rem;
-  font-weight: 700;
-  letter-spacing: 1px;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  color: white;
-  margin-bottom: 0.5rem;
-}
-
-.subtitle {
-  font-size: 1.1rem;
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: 400;
-}
-
-/* Action Buttons Card */
-.actions-card {
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  max-width: 800px;
+  margin: 0 auto;
   width: 100%;
-}
-
-.buttons-container {
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.action-button {
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  font-size: 0.9rem;
-  padding: 12px 24px;
-  min-width: 200px;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-}
-
-.action-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-}
-
-/* Chat Section */
-.chat-section {
-  width: 100%;
-  max-width: 800px;
-}
-
-.chat-card {
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  overflow: hidden;
+  padding: 0 1rem;
 }
 
 .chat-header {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  padding: 1rem 1.5rem;
+  background: #ffffff !important;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 1.5rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.header-icon {
+  color: #1e40af !important;
+  margin-right: 0.75rem;
 }
 
 .chat-title {
+  font-size: 1.75rem !important;
+  font-weight: 700 !important;
+  color: #1e40af !important;
   margin: 0;
-  font-weight: 600;
-  letter-spacing: 0.5px;
+  letter-spacing: -0.025em;
 }
 
-.messages-container {
-  padding: 0;
-  max-height: 400px;
+.messages-area {
+  flex: 1;
+  padding: 1.5rem 0;
   overflow-y: auto;
 }
 
-.messages-box {
-  padding: 1rem 1.5rem;
-  min-height: 200px;
+.messages-wrapper {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 1rem;
 }
 
-.message-wrapper {
+.message-row {
   display: flex;
-  flex-direction: column;
-  margin-bottom: 1rem;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  align-items: flex-start;
 }
 
-.ai-message {
-  display: flex;
+.ai-row {
   justify-content: flex-start;
-  margin-right: 20%;
 }
 
-.user-message {
-  display: flex;
+.user-row {
   justify-content: flex-end;
-  margin-left: 20%;
 }
 
-.message-bubble {
-  max-width: 100%;
-  padding: 12px 16px;
-  border-radius: 18px;
-  position: relative;
-  word-wrap: break-word;
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 0.25rem;
+  font-size: 1.25rem;
 }
 
-.ai-bubble {
-  background: rgba(255, 255, 255, 0.9);
-  color: #333;
-  border: 1px solid rgba(102, 126, 234, 0.2);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+.ai-avatar {
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+  color: #1e40af;
 }
 
-.user-bubble {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+.user-avatar {
+  background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);
   color: white;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.message-content-wrapper {
+  max-width: calc(100% - 3.5rem);
+  min-width: 250px;
+}
+
+.message-card {
+  border-radius: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.2s ease;
+  max-width: 100%;
+}
+
+.message-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.ai-card {
+  background: transparent !important;
+  border: none !important;
+}
+
+.user-card {
+  background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);
+  border: none;
+}
+
+.q-card-section {
+  padding: 1rem 1.25rem !important;
+}
+
+.ai-card .message-content {
+  line-height: 1.6;
+  font-size: 1rem;
+  color: #000000 !important;
+  font-weight: 500;
+  min-height: 20px;
+  background: #ffffff !important;
+  padding: 1rem !important;
+  border-radius: 0.75rem !important;
+  margin: 0.5rem 0 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  border: 2px solid #1e40af !important;
+  display: block !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+:deep(.ai-card .q-card) {
+  background: #ffffff !important;
+  border: none !important;
+}
+
+:deep(.ai-card .q-card-section) {
+  background: transparent !important;
+  padding: 0 !important;
+  color: #000000 !important;
+}
+
+:deep(.ai-card .message-content) {
+  color: #000000 !important;
+  background: #f9fafb !important;
+}
+
+:deep(.message-content *) {
+  color: #000000 !important;
 }
 
 .message-content {
-  line-height: 1.5;
-  font-size: 15px;
-}
-
-.formatted-message {
   line-height: 1.6;
+  font-size: 1rem;
+  color: #0f172a !important;
+  font-weight: 400;
+  min-height: 20px;
 }
 
-.references {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(102, 126, 234, 0.2);
-  color: #666;
+.user-card .message-content {
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-.input-section {
-  border-top: 1px solid rgba(102, 126, 234, 0.2);
-  padding: 1rem 1.5rem;
+.user-card .message-content a {
+  color: #bfdbfe;
+}
+
+.welcome-message {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6b7280;
+  background: #ffffff;
+  border-radius: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.welcome-message p {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.input-area {
+  background: #ffffff;
+  border-top: 1px solid #e5e7eb;
+  padding: 1.5rem;
+  box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .input-form {
-  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
 }
 
-.chat-input {
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(102, 126, 234, 0.2);
+:deep(.input-textarea .q-field__control) {
+  border-radius: 1rem !important;
+  background: #ffffff !important;
+  border: 2px solid #e5e7eb !important;
+  transition: all 0.2s ease !important;
 }
 
-.chat-input :deep(.q-field__control) {
-  border-radius: 12px;
+:deep(.input-textarea .q-field__control:focus) {
+  border-color: #1e40af !important;
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1) !important;
 }
 
-.error-message {
-  margin-top: 1rem;
+:deep(.input-textarea .q-field__native) {
+  color: #0f172a !important;
+  font-size: 1rem !important;
 }
 
-/* Dark mode adjustments */
+:deep(.input-textarea .q-field__label) {
+  color: #475569 !important;
+}
+
+:deep(.send-btn) {
+  background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%) !important;
+  color: white !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 50% !important;
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3) !important;
+  transition: all 0.2s ease !important;
+  margin-left: 8px !important;
+}
+
+:deep(.send-btn:hover) {
+  transform: scale(1.05) !important;
+  box-shadow: 0 6px 16px rgba(30, 64, 175, 0.4) !important;
+}
+
+:deep(.send-btn .q-icon) {
+  font-size: 20px !important;
+}
+
+/* Dark mode */
 :deep(.q-dark) {
-  .actions-card,
-  .chat-card {
-    background: rgba(30, 30, 30, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+  .chat-page {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
   }
 
-  .ai-bubble {
-    background: rgba(45, 45, 45, 0.9);
-    color: #e0e0e0;
-    border-color: rgba(102, 126, 234, 0.3);
+  .chat-header {
+    background: #1e293b;
+    border-color: #475569;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
   }
 
-  .chat-input {
-    background: rgba(45, 45, 45, 0.9);
-    border-color: rgba(102, 126, 234, 0.3);
+  .chat-title {
+    color: #ffffff !important;
   }
 
-  .references {
-    border-color: rgba(102, 126, 234, 0.3);
-    color: #ccc;
+  .ai-card .message-content {
+    color: #ffffff !important;
+    background: #374151 !important;
   }
 
-  .input-section {
-    border-color: rgba(102, 126, 234, 0.3);
+  .ai-card {
+    background: transparent !important;
+    border: none !important;
+  }
+
+  :deep(.q-dark .ai-card .q-card) {
+    background: #1f2937 !important;
+    border: none !important;
+  }
+
+  :deep(.q-dark .ai-card .q-card-section) {
+    background: transparent !important;
+    padding: 0 !important;
+    color: #ffffff !important;
+  }
+
+  :deep(.q-dark .ai-card .message-content) {
+    color: #ffffff !important;
+    background: #374151 !important;
+  }
+
+  :deep(.q-dark .message-content *) {
+    color: #ffffff !important;
+  }
+
+  :deep(.ai-card) {
+    color: #ffffff !important;
+  }
+
+  .ai-card .message-content {
+    color: #f9fafb !important;
+    background: #374151 !important;
+    border: 1px solid #4b5563 !important;
+  }
+
+  .message-content {
+    color: #f8fafc !important;
+  }
+
+  .welcome-message {
+    background: #334155;
+    color: #cbd5e1;
+  }
+
+  .input-area {
+    background: #1e293b;
+    border-color: #475569;
+    box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.3);
+  }
+
+  :deep(.input-textarea .q-field__control) {
+    background: #475569 !important;
+    border-color: #64748b !important;
+    color: #f8fafc !important;
+  }
+
+  :deep(.input-textarea .q-field__control:focus) {
+    border-color: #60a5fa !important;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2) !important;
+  }
+
+  :deep(.input-textarea .q-field__native) {
+    color: #f8fafc !important;
+  }
+
+  :deep(.send-btn) {
+    background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%) !important;
   }
 }
 
-/* Responsive Design */
-@media (max-width: 1024px) {
-  .content-wrapper {
-    padding: 1.5rem;
-  }
-
-  .main-title {
-    font-size: 2rem;
-  }
-
-  .buttons-container {
-    justify-content: center;
-  }
-
-  .action-button {
-    min-width: 180px;
-  }
-}
-
+/* Responsive */
 @media (max-width: 768px) {
-  .content-wrapper {
-    padding: 1rem;
+  .chat-container {
+    padding: 0 0.5rem;
   }
 
-  .main-title {
-    font-size: 1.8rem;
+  .messages-wrapper {
+    padding: 0 0.5rem;
   }
 
-  .subtitle {
+  .message-row {
+    gap: 0.75rem;
+  }
+
+  .avatar {
+    width: 36px;
+    height: 36px;
     font-size: 1rem;
   }
 
-  .buttons-container {
-    flex-direction: column;
-    align-items: stretch;
+  .message-content-wrapper {
+    max-width: calc(100% - 3rem);
   }
 
-  .action-button {
-    min-width: auto;
-    width: 100%;
-    max-width: 300px;
-    margin: 0 auto;
+  .q-card-section {
+    padding: 0.875rem 1rem !important;
   }
 
-  .chat-section {
-    margin-top: 2rem;
+  .message-content {
+    font-size: 0.95rem;
   }
 
-  .messages-box {
-    padding: 1rem;
+  .input-area {
+    padding: 1rem 0.5rem;
   }
 
-  .input-section {
-    padding: 1rem;
+  .input-form {
+    gap: 0.5rem;
+  }
+
+  :deep(.send-btn) {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  .chat-title {
+    font-size: 1.5rem;
+  }
+
+  .welcome-message {
+    padding: 2rem 0.5rem;
   }
 }
 
 @media (max-width: 480px) {
-  .main-title {
-    font-size: 1.5rem;
+  .message-row {
+    gap: 0.5rem;
   }
 
-  .actions-card,
-  .chat-card {
-    margin: 0 0.5rem;
+  .message-content-wrapper {
+    max-width: calc(100% - 2.5rem);
   }
 
-  .action-button {
-    font-size: 0.8rem;
-    padding: 10px 20px;
-  }
-}
-
-/* Animations */
-.action-button {
-  animation: fadeInUp 0.6s ease-out;
-}
-
-.action-button:nth-child(1) { animation-delay: 0.1s; }
-.action-button:nth-child(2) { animation-delay: 0.2s; }
-.action-button:nth-child(3) { animation-delay: 0.3s; }
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.chat-card {
-  animation: slideInUp 0.8s ease-out 0.4s both;
-}
-
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(40px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  .chat-header {
+    padding: 1rem 0;
   }
 }
 </style>
