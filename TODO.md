@@ -1,14 +1,11 @@
-# TODO - Reemplazar Modelo Gemini
+# TODO: Fix Legal Assistant Response Display Issue
 
-## Completado ✅
-- [x] Reemplazar "gemini-pro" con "gemini-2.5-flash" en PdfAnalyzer.vue (2 instancias)
-- [x] Reemplazar "gemini-pro" con "gemini-2.5-flash" en consultas-store.ts (3 instancias)
-- [x] Corregir errores de Vue/TypeScript global types
-- [x] Actualizar ruta por defecto '/' para cargar PDF analyzer
-- [x] Ejecutar npm audit fix --force para resolver vulnerabilidades
-- [x] Corregir imports de pdfjs-dist después de actualización/downgrade
-- [x] Resolver errores de tipos en q-uploader
+## Current Problem
+- Legal assistant responses are not showing up in the chat
+- Errors are set in store but not displayed in UI
+- No API key validation on app start
 
-## Próximos Pasos
-- [ ] Probar la aplicación para verificar que el nuevo modelo funciona correctamente
-- [ ] Verificar que las consultas y análisis de PDF siguen funcionando con "gemini-2.5-flash"
+## Tasks
+- [x] Update consultas-store.ts to add error messages to mensajes array in enviarConsulta catch block
+- [x] Add API key validation on ConsultasPage.vue mount
+- [ ] Test the fixes by running the app and checking responses
