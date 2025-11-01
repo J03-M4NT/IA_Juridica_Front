@@ -187,6 +187,6 @@ const exportToPDF = async () => {
 
 <style scoped>
 .text-primary {
-  color: #4d46e3 !important;
+  color: #ffffff !important;
 }
 </style>

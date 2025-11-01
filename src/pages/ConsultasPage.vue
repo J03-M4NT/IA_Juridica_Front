@@ -1,5 +1,5 @@
 <template>
-  <q-page class="consultas-page flex flex-center column" :class="$q.dark.isActive ? 'bg-dark' : 'bg-light'">
+  <q-page class="consultas-page flex flex-center column">
     <!-- Background gradient -->
     <div class="page-background"></div>
 
@@ -8,24 +8,26 @@
       <!-- Title Section -->
       <div class="title-section text-center q-mb-xl">
         <h1 class="main-title text-h4 text-weight-bold q-mb-md">CONSULTAS JURÍDICAS</h1>
-        <p class="subtitle text-body1 text-grey-7">Haz preguntas sobre leyes y contratos</p>
+        <p class="subtitle text-body1 text-black-7">Haz preguntas sobre leyes y contratos</p>
       </div>
 
-      <!-- Action Buttons Card -->
-      <q-card class="actions-card modern-card q-pa-xl" style="position: relative;">
-        <q-btn
-          color="grey-6"
-          icon="help"
-          label="CENTRO DE AYUDA"
-          @click="showHelp = true"
-          class="action-button help-button"
-          unelevated
-          rounded
-          size="md"
-          style="position: absolute; top: 16px; right: 16px; min-width: 140px;"
-        >
-          <q-tooltip>Centro de ayuda</q-tooltip>
-        </q-btn>
+      <!-- Action Buttons Card (compact, transparent; button aligned to right of chat) -->
+      <q-card class="actions-card modern-card q-pa-sm">
+        <div class="actions-inner">
+          <q-btn
+            color="grey-8"
+            icon="help"
+            label="CENTRO DE AYUDA"
+            @click="showHelp = true"
+            class="action-button help-button"
+            unelevated
+            rounded
+            size="md"
+            style="min-width: 140px;"
+          >
+            <q-tooltip>Centro de ayuda</q-tooltip>
+          </q-btn>
+        </div>
       </q-card>
 
       <!-- Chat Section -->
@@ -36,28 +38,61 @@
           </q-card-section>
 
           <!-- Messages Box -->
-          <q-card-section class="messages-container">
-            <div class="messages-box">
-              <div v-for="(mensaje, index) in mensajes" :key="index" class="message-wrapper q-mb-lg">
-                <!-- AI Message -->
-                <div v-if="mensaje.esIA" class="ai-message">
-                  <div class="message-bubble ai-bubble">
-                    <div class="message-content formatted-message" v-html="formatMessage(mensaje.contenido)"></div>
-                    <div v-if="mensaje.referencias?.length" class="references text-caption text-grey-6 q-mt-sm">
-                      <strong>Referencias:</strong>
-                      <div v-for="(ref, idx) in mensaje.referencias" :key="idx" class="q-mt-xs">{{ ref }}</div>
+                  <q-card-section class="messages-container">
+                    <div class="messages-box" ref="messagesBox">
+                      <div v-for="(mensaje, index) in mensajes" :key="index" class="message-wrapper q-mb-lg">
+                        <!-- AI Message -->
+                        <div v-if="mensaje.esIA" class="ai-message">
+                          <div class="avatar ai-avatar">
+                            <q-icon name="smart_toy" size="20px" />
+                          </div>
+                          <div class="message-bubble ai-bubble">
+                            <div class="message-meta">
+                              <span class="sender">LEXIT AI</span>
+                              <small class="timestamp">{{ formatTimestamp(mensaje.timestamp) }}</small>
+                            </div>
+                            <div class="message-content formatted-message" v-html="formatMessage(mensaje.contenido)"></div>
+                            <div v-if="mensaje.referencias?.length" class="references text-caption text-black-6 q-mt-sm">
+                              <strong>Referencias:</strong>
+                              <div v-for="(ref, idx) in mensaje.referencias" :key="idx" class="q-mt-xs">{{ ref }}</div>
+                            </div>
+                          </div>
+                        </div>
+                        <!-- User Message -->
+                        <div v-else class="user-message">
+                          <div class="message-bubble user-bubble">
+                            <div class="message-meta">
+                              <small class="timestamp">{{ formatTimestamp(mensaje.timestamp) }}</small>
+                            </div>
+                            <div class="message-content">{{ mensaje.contenido }}</div>
+                          </div>
+                          <div class="avatar user-avatar">
+                            <q-icon name="person" size="20px" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Typing indicator when loading -->
+                      <div v-if="store.loading" class="message-wrapper q-mb-lg typing-row">
+                        <div class="ai-message">
+                          <div class="avatar ai-avatar">
+                            <q-icon name="smart_toy" size="20px" />
+                          </div>
+                          <div class="message-bubble ai-bubble typing-bubble">
+                            <div class="typing-dots">
+                              <span></span><span></span><span></span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                <!-- User Message -->
-                <div v-else class="user-message">
-                  <div class="message-bubble user-bubble">
-                    <div class="message-content">{{ mensaje.contenido }}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </q-card-section>
+
+                    <!-- Quick suggestions -->
+                    <div class="quick-suggestions q-mt-sm">
+                      <span class="hint">Sugerencias rápidas:</span>
+                      <q-chip v-for="(s, i) in suggestions" :key="i" class="q-ml-sm" clickable @click="useSuggestion(s)">{{ s }}</q-chip>
+                    </div>
+                  </q-card-section>
 
           <!-- Input Area -->
           <q-card-section class="input-section">
@@ -123,15 +158,34 @@
 import { ref, onMounted, nextTick } from 'vue';
 import { useConsultasStore } from '../stores/consultas-store';
 import { storeToRefs } from 'pinia';
-import { useQuasar } from 'quasar';
-
-const $q = useQuasar();
 
 const store = useConsultasStore();
 const pregunta = ref('');
 const showHelp = ref(false);
 
 const { mensajes } = storeToRefs(store);
+const messagesBox = ref<HTMLElement | null>(null);
+
+// Quick suggestion chips
+const suggestions = [
+  '¿Cuáles son mis obligaciones en este contrato?',
+  '¿Qué cláusulas representan mayor riesgo?',
+  '¿Cómo puedo terminar este contrato anticipadamente?'
+];
+
+function useSuggestion(s: string) {
+  pregunta.value = s;
+  void enviarConsulta();
+}
+
+function formatTimestamp(ts: Date | string): string {
+  try {
+    const d = new Date(ts);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '';
+  }
+}
 
 function formatMessage(text: string): string {
   // Simple markdown-like formatting to HTML
@@ -156,6 +210,10 @@ async function enviarConsulta() {
 
       // Scroll al final
       await nextTick();
+      // scroll bottom
+      if (messagesBox.value) {
+        messagesBox.value.scrollTop = messagesBox.value.scrollHeight;
+      }
     } catch (error) {
       console.error('Error al enviar consulta:', error);
     }
@@ -165,7 +223,18 @@ async function enviarConsulta() {
 // Limpiar mensajes al montar el componente
 onMounted(() => {
   store.limpiar();
+  // ensure scroll to bottom on mount
+  void nextTick().then(() => {
+    if (messagesBox.value) messagesBox.value.scrollTop = messagesBox.value.scrollHeight;
+  });
 });
+
+// watch mensajes to auto scroll when new messages arrive
+import { watch } from 'vue';
+watch(mensajes, async () => {
+  await nextTick();
+  if (messagesBox.value) messagesBox.value.scrollTop = messagesBox.value.scrollHeight;
+}, { deep: true });
 </script>
 
 <style scoped>
@@ -173,6 +242,14 @@ onMounted(() => {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
+  /* ensure the q-page default dark background doesn't show through */
+  background: transparent !important;
+}
+
+/* selection styling: highlighted text should show black letters */
+.consultas-page ::selection {
+  background: rgba(255, 235, 255, 0.6);
+  color: #000;
 }
 
 .page-background {
@@ -181,7 +258,7 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #6b5fe6 0%, #7b3fc1 100%);
   z-index: -1;
 }
 
@@ -213,16 +290,32 @@ onMounted(() => {
 }
 
 /* Action Buttons Card */
-.actions-card {
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  max-width: 800px;
-  width: 100%;
-}
+  .actions-card {
+    border-radius: 12px;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    /* transparente para integrar con el header; el botón controla el visual */
+    background: transparent;
+    border: none;
+    width: auto;
+    padding: 0.25rem 0.5rem;
+    display: block;
+    margin: 0 0 12px 0; /* space below the actions area */
+    text-align: left;
+    position: static;
+    z-index: 999;
+  }
+
+  .help-button { z-index: 1000; }
+
+  .actions-inner {
+    max-width: 800px; /* match chat-card max-width */
+    margin: 0 auto;
+    display: flex;
+    justify-content: flex-end; /* align the button to the right edge of the chat */
+    align-items: center;
+  }
 
 .buttons-container {
   flex-wrap: wrap;
@@ -253,17 +346,21 @@ onMounted(() => {
 
 .chat-card {
   border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 14px 48px rgba(68, 36, 120, 0.08);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(247, 242, 255, 0.98);
+  border: 1px solid rgba(110, 60, 150, 0.12);
   overflow: hidden;
+  position: relative;
+  z-index: 1;
+  margin-top: 0.5rem; /* ensure space between button and chat card */
 }
 
 .chat-header {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
+  /* reforzar el contraste del header con un morado más intenso */
+  background: linear-gradient(135deg, #6b5fe6 0%, #7b3fc1 100%);
+  color: #fff;
   padding: 1rem 1.5rem;
 }
 
@@ -290,16 +387,31 @@ onMounted(() => {
   margin-bottom: 1rem;
 }
 
-.ai-message {
-  display: flex;
-  justify-content: flex-start;
-  margin-right: 20%;
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.9);
+  border: 1px solid rgba(0,0,0,0.06);
 }
 
+.ai-avatar { margin-right: 12px; }
+.user-avatar { margin-left: 12px; }
+
+.ai-message {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  margin-right: 18%;
+}
 .user-message {
   display: flex;
+  align-items: flex-end;
   justify-content: flex-end;
-  margin-left: 20%;
+  margin-left: 18%;
 }
 
 .message-bubble {
@@ -311,17 +423,33 @@ onMounted(() => {
 }
 
 .ai-bubble {
-  background: rgba(255, 255, 255, 0.9);
-  color: #333;
-  border: 1px solid rgba(102, 126, 234, 0.2);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: rgba(250, 247, 255, 0.98);
+  color: #262626;
+  border: 1px solid rgba(150, 110, 210, 0.14);
+  box-shadow: 0 8px 18px rgba(100, 70, 170, 0.06);
 }
 
-.user-bubble {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+.message-meta {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:6px;
 }
+.sender{ font-weight:600; font-size:0.85rem; color:#555; }
+.timestamp{ color:#9aa0a6; font-size:0.72rem; }
+
+.user-bubble {
+  background: linear-gradient(135deg, #7b5ff8 0%, #6b3fd1 100%);
+  color: white;
+  box-shadow: 0 6px 18px rgba(95, 65, 170, 0.18);
+}
+
+.typing-bubble{ padding:10px 14px; }
+.typing-dots{ display:inline-flex; gap:6px; }
+.typing-dots span{ width:8px; height:8px; background:#b8c1ff; border-radius:50%; display:inline-block; opacity:0.6; animation: blink 1s infinite; }
+.typing-dots span:nth-child(2){ animation-delay: 0.15s; }
+.typing-dots span:nth-child(3){ animation-delay: 0.3s; }
+@keyframes blink{ 0%{ opacity:0.2; transform:translateY(0);} 50%{ opacity:1; transform:translateY(-3px);} 100%{ opacity:0.2; transform:translateY(0);} }
 
 .message-content {
   line-height: 1.5;
@@ -343,6 +471,11 @@ onMounted(() => {
   border-top: 1px solid rgba(102, 126, 234, 0.2);
   padding: 1rem 1.5rem;
 }
+
+.quick-suggestions{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.quick-suggestions .hint{ color:#6b5f7f; font-size:0.9rem; font-weight:500; }
+.quick-suggestions q-chip{ background: rgba(123,80,200,0.12); border: 1px solid rgba(123,80,200,0.22); color: #2b104b; }
+
 
 .input-form {
   width: 100%;
@@ -366,28 +499,33 @@ onMounted(() => {
 :deep(.q-dark) {
   .actions-card,
   .chat-card {
-    background: rgba(30, 30, 30, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    /* glass morado en modo oscuro para integrarse con el fondo púrpura */
+    background: linear-gradient(180deg, rgba(90,55,140,0.08), rgba(60,30,90,0.08));
+    border: 1px solid rgba(118, 75, 162, 0.18);
+    box-shadow: 0 10px 34px rgba(8,6,20,0.5);
   }
 
+  .chat-header{ background: linear-gradient(135deg, rgba(96,71,230,0.9), rgba(111,77,184,0.9)); }
+
   .ai-bubble {
-    background: rgba(45, 45, 45, 0.9);
-    color: #e0e0e0;
-    border-color: rgba(102, 126, 234, 0.3);
+    background: rgba(48, 40, 60, 0.94);
+    color: #e9e7ff;
+    border-color: rgba(118,75,162,0.22);
+    box-shadow: 0 6px 18px rgba(32,20,70,0.45);
   }
 
   .chat-input {
-    background: rgba(45, 45, 45, 0.9);
-    border-color: rgba(102, 126, 234, 0.3);
+    background: rgba(28, 20, 40, 0.86);
+    border-color: rgba(118,75,162,0.18);
   }
 
   .references {
-    border-color: rgba(102, 126, 234, 0.3);
-    color: #ccc;
+    border-color: rgba(118,75,162,0.18);
+    color: #cfc6ee;
   }
 
   .input-section {
-    border-color: rgba(102, 126, 234, 0.3);
+    border-color: rgba(118,75,162,0.18);
   }
 }
 

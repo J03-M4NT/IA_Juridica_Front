@@ -115,9 +115,15 @@ export const arrendamientoTemplate: ContractTemplate = {
       }
 
       /* Body */
-  .contract-body { text-align: justify; margin-bottom: 1.2cm; }
+  .contract-body {
+        text-align: justify;
+        margin-bottom: 0.8cm; /* Reducido de 1.2cm */
+      }
 
-      .contract-content p { margin: 0.5em 0; text-indent: 1.5em; }
+      .contract-content p {
+        margin: 0.3em 0; /* Reducido de 0.5em */
+        text-indent: 1.5em;
+      }
 
       .signature-section { display: flex; justify-content: space-between; gap: 1.5cm; }
 

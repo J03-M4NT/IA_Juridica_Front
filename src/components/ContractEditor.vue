@@ -67,13 +67,10 @@
 
           <q-card-section class="preview-card-section">
             <div class="preview-wrapper" ref="previewWrapper">
-              <!-- previewStage actúa como contenedor de layout que recibe el tamaño escalado -->
               <div class="preview-stage" ref="previewStage">
-                <!-- previewInner recibe el HTML con .page; se escala para encajar visualmente -->
                 <div
                   class="preview-inner"
                   ref="previewInner"
-                  :style="{ transform: `scale(${scale})`, transformOrigin: 'top left' }"
                   v-html="contractContent"
                 />
               </div>
@@ -204,7 +201,44 @@ const previewInner = ref<HTMLElement | null>(null);
 const scale = ref(1);
 let ro: ResizeObserver | null = null;
 
-// Initialize form data and content
+// Función para calcular la escala y aplicar transform al preview-stage
+const compute = () => {
+  if (!previewWrapper.value || !previewStage.value) return;
+
+  const wrapperRect = previewWrapper.value.getBoundingClientRect();
+
+  // Tamaño A4 en píxeles (base sin escalar)
+  const pageWidth = 595;
+  const pageHeight = 842;
+
+  // Calcular espacio disponible teniendo en cuenta padding (1rem cada lado)
+  const horizontalPadding = 32; // 1rem * 2
+  const verticalPadding = 32;
+  const availableWidth = wrapperRect.width - horizontalPadding;
+  const availableHeight = wrapperRect.height - verticalPadding;
+
+  // Calcular escalas para ancho y alto
+  const scaleX = availableWidth / pageWidth;
+  const scaleY = availableHeight / pageHeight;
+
+  // Escala final (no mayor que 1)
+  const newScale = Math.min(scaleX, scaleY, 1);
+  // Limitar la escala mínima para que no sea demasiado pequeña
+  scale.value = Math.max(newScale, 0.6);
+
+  // Mantener el preview-stage con tamaño A4 (sin cambiar sus width/height en px)
+  previewStage.value.style.width = `${pageWidth}px`;
+  previewStage.value.style.height = `${pageHeight}px`;
+  previewStage.value.style.margin = '0 auto';
+  previewStage.value.style.display = 'block';
+
+  // Aplicar transform para escalar visualmente
+  if (scale.value >= 0.999) {
+    previewStage.value.style.transform = 'none';
+  } else {
+    previewStage.value.style.transform = `scale(${scale.value})`;
+  }
+};// Initialize form data and content
 onMounted(async () => {
   if (props.modifiedContract) {
     formData.value = { ...props.modifiedContract.variables };
@@ -233,37 +267,6 @@ onMounted(async () => {
 
   // Setup ResizeObserver to compute scale after DOM update
   await nextTick();
-  // compute function (scale by width only so vertical scroll can show full document)
-  const compute = () => {
-    if (!previewWrapper.value || !previewInner.value) return;
-    const wrapperRect = previewWrapper.value.getBoundingClientRect();
-    const innerRect = previewInner.value.getBoundingClientRect();
-    // compute scale to fit width only. Allow scaling up to fill empty space (preview only)
-    const sx = (wrapperRect.width) / innerRect.width;
-    const maxScale = 1.25; // maximum upscale in preview
-    const s = Math.max(Math.min(sx, maxScale), 0.5); // clamp between 0.5 and maxScale
-    scale.value = s;
-    // Set the staged container size to the scaled dimensions so scrollbars match visual area
-    if (previewStage.value) {
-      previewStage.value.style.width = `${innerRect.width * s}px`;
-      previewStage.value.style.height = `${innerRect.height * s}px`;
-    }
-    // After sizing, decide whether to anchor signatures to bottom when content fits one page
-    try {
-      const pageEl = previewInner.value.querySelector('.page');
-      if (pageEl) {
-        // unscaled page height (pageEl.clientHeight is in px and reflects CSS cm height)
-        const fitsOnePage = pageEl.scrollHeight <= pageEl.clientHeight + 1;
-        const sig = pageEl.querySelector('.signatures');
-        if (sig) {
-          if (fitsOnePage) sig.classList.add('signature-anchored');
-          else sig.classList.remove('signature-anchored');
-        }
-      }
-    } catch {
-      // non-fatal: ignore measurement errors
-    }
-  };
 
   if (previewWrapper.value && previewInner.value) {
     ro = new ResizeObserver(compute);
@@ -331,19 +334,7 @@ watch(formData, (newData) => {
 // Recompute scale when contractContent changes (after DOM updates)
 watch(contractContent, async () => {
   await nextTick();
-  if (previewWrapper.value && previewInner.value) {
-    const wrapperRect = previewWrapper.value.getBoundingClientRect();
-    const innerRect = previewInner.value.getBoundingClientRect();
-    const sx = (wrapperRect.width) / innerRect.width;
-    const maxScale = 1.25;
-    const s = Math.max(Math.min(sx, maxScale), 0.5);
-    scale.value = s;
-    // update staged size
-    if (previewStage.value) {
-      previewStage.value.style.width = `${innerRect.width * s}px`;
-      previewStage.value.style.height = `${innerRect.height * s}px`;
-    }
-  }
+  compute();
 });
 </script>
 
@@ -360,52 +351,68 @@ watch(contractContent, async () => {
 }
 
 .contract-preview {
-  min-height: 800px;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: transparent;
 }
 
 .preview-card-section {
   padding: 0;
+  height: 100%;
+  background: #f0f0f0;
 }
 
 .preview-wrapper {
   width: 100%;
-  height: 720px; /* espacio disponible para preview */
-  display: block;
-  align-items: flex-start;
-  justify-content: flex-start;
-  overflow-x: auto; /* allow horizontal scroll */
-  overflow-y: auto; /* enable vertical scroll */
-  background: #111; /* dark background to mimic earlier UI */
-  padding: 8px; /* reduce padding to use more space */
+  height: calc(100vh - 180px);
+  min-height: 500px;
+  background: #f5f5f5;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start; /* Mostrar la parte superior de la página para que el encabezado sea visible */
+  padding: 0.5rem 1rem; /* menos espacio superior */
 }
 
 .preview-stage {
-  /* este contenedor tiene el tamaño visual (scaled) de la página; los scrollbars se aplican sobre él */
+  margin: 0;
+  padding: 0;
   display: inline-block;
-  position: relative;
+  transform-origin: top center;
+  background: white;
+  width: 595px; /* A4 px */
+  height: 842px; /* A4 px */
+}
+
+.preview-stage {
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  border: 1px solid #e9e9e9;
+  margin-top: 8px; /* pequeño espacio desde el encabezado del card */
 }
 
 .preview-inner {
-  display: inline-block;
-  transform-origin: top left;
-  background: #fff; /* ensure page background */
-  overflow: visible; /* importante: no recortar firmas o elementos absolutos */
+  background: white;
+  width: 100%;
+  height: 100%;
+  margin: 0 auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  position: relative;
+  overflow: visible;
 }
 
 .contract-content {
+  padding: 2.54cm;
   font-family: 'Times New Roman', Times, serif;
   font-size: 12pt;
   line-height: 1.5;
-  color: #000000;
-  /* remove aggressive padding here: the template defines its own A4 padding/margins
-     keeping a small margin so the preview shows the white sheet nicely */
-  padding: 16px;
-  max-width: 210mm; /* Tamaño A4 */
-  margin: 0 auto;
-  background-color: white;
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
-  min-height: 297mm; /* Altura mínima A4 */
-  position: relative;
+  color: #000;
+  text-align: justify;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100%;
+  background: white;
+  margin: 0;
 }
 
 .contract-content h1 {
@@ -520,15 +527,16 @@ watch(contractContent, async () => {
   text-align: center;
 }
 
-.contract-content .signature-name {
+.contract-content .signature-block {
   font-weight: bold;
-  margin: 0.5em 0;
+  margin: 1em 0;
+  padding-bottom: 0;
 }
 
 .contract-content .signature-title {
   text-transform: uppercase;
   font-size: 10pt;
-  margin-bottom: 0.5em;
+  margin-bottom: 0.25em;
 }
 
 .contract-content .signature-dni {
@@ -561,14 +569,6 @@ watch(contractContent, async () => {
 
   .contract-content h1 {
     margin: 0 0 2em 0;
-  }
-}
-
-/* Estilos para impresión */
-@media print {
-  .contract-content {
-    padding: 0;
-    box-shadow: none;
   }
 }
 </style>

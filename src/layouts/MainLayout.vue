@@ -8,7 +8,7 @@
       <q-toolbar class="navbar-toolbar q-px-lg">
         <!-- Logo/Brand -->
         <div class="brand-section q-mr-lg">
-          <q-icon name="gavel" size="28px" class="brand-icon q-mr-sm" />
+          <img src="../assets/logo.svg" alt="LEXIT AI" class="brand-logo q-mr-sm" />
           <span class="brand-text text-h6 text-weight-bold">LEXIT AI</span>
         </div>
 
@@ -44,7 +44,7 @@
             :class="{ 'nav-btn-active': $route.path === '/contratos' }"
             to="/contratos"
             class="nav-btn q-mx-md"
-            icon="description"
+            icon="gavel"
             label="CONTRATOS"
           >
             <q-tooltip>Gestión de contratos</q-tooltip>
@@ -106,6 +106,8 @@
   align-items: center;
   transition: all 0.3s ease;
 }
+
+.brand-logo { display:inline-block; width:36px; height:36px; margin-right:8px; }
 
 .brand-icon {
   color: #667eea;
