@@ -10,9 +10,13 @@ interface Mensaje {
 }
 
 // Debug log para verificar la API key
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyD29u6VTcZz93zuALe5k1Ri7u4l__5eUHI';
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 console.log('API Key presente:', !!API_KEY);
-console.log('API Key (primeros 10 caracteres):', API_KEY.substring(0, 10) + '...');
+console.log('API Key (primeros 10 caracteres):', API_KEY ? API_KEY.substring(0, 10) + '...' : 'No definida');
+
+if (!API_KEY) {
+  console.error('❌ VITE_GEMINI_API_KEY no está definida en las variables de entorno');
+}
 
 // Inicializar Gemini con la configuración correcta
 const genAI = new GoogleGenerativeAI(API_KEY);
