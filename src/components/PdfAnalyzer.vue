@@ -979,6 +979,7 @@ const probarWorkerPDF = async () => {
 /* Upload Section */
 .upload-card {
   margin-bottom: 24px;
+  padding: 12px 16px;
 }
 
 .upload-header {
@@ -1157,7 +1158,7 @@ const probarWorkerPDF = async () => {
 }
 
 .extracted-text-container {
-  max-height: 400px;
+  max-height: 500px;
   overflow-y: auto;
   border: 1px solid rgba(102, 126, 234, 0.2);
   border-radius: 8px;

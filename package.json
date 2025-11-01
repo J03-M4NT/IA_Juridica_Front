@@ -17,6 +17,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@quasar/extras": "^1.16.4",
+    "@types/html2pdf.js": "^0.10.0",
     "axios": "^1.2.1",
     "docx": "^9.5.1",
     "docxtemplater": "^3.66.5",
