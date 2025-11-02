@@ -101,6 +101,7 @@ export default defineConfig((/* ctx */) => {
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#devserver
     devServer: {
       // https: true,
+      port: 9001,
       open: true // opens browser window automatically
     },
 
@@ -136,7 +137,7 @@ export default defineConfig((/* ctx */) => {
     //   rootComponent: 'src/App.vue',
     //   router: 'src/router/index',
     //   store: 'src/store/index',
-    //   pwaRegisterServiceWorker: 'src-pwa/register-service-worker',
+    // pwaRegisterServiceWorker: 'src-pwa/register-service-worker',
     //   pwaServiceWorker: 'src-pwa/custom-service-worker',
     //   pwaManifestFile: 'src-pwa/manifest.json',
     //   electronMain: 'src-electron/electron-main',
@@ -158,11 +159,11 @@ export default defineConfig((/* ctx */) => {
 
       // manualStoreSerialization: true,
       // manualStoreSsrContextInjection: true,
-      // manualStoreHydration: true,
+      // manualPostHydrationTrigger: true,
       // manualPostHydrationTrigger: true,
 
       pwa: false
-      // pwaOfflineHtmlFilename: 'offline.html', // do NOT use index.html as name!
+      // pwaOfflineHtmlFilename: 'offline.html', // do NOT use index.html as name!/
 
       // pwaExtendGenerateSWOptions (cfg) {},
       // pwaExtendInjectManifestOptions (cfg) {}
@@ -234,8 +235,6 @@ export default defineConfig((/* ctx */) => {
       /**
        * The list of extra scripts (js/ts) not in your bex manifest that you want to
        * compile and use in your browser extension. Maybe dynamic use them?
-       *
-       * Each entry in the list should be a relative filename to /src-bex/
        *
        * @example [ 'my-script.ts', 'sub-folder/my-other-script.js' ]
        */

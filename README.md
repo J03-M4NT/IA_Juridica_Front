@@ -7,6 +7,10 @@ A Quasar Project
 yarn
 # or
 npm install
+# Segundo (Backend):
+npm install firebase
+# Firebase CLI (Cliente de conexion al Backend):
+npm install -g firebase-tools
 ```
 
 ### Start the app in development mode (hot-code reloading, error reporting, etc.)
@@ -38,10 +42,3 @@ quasar build
 
 ### Customize the configuration
 See [Configuring quasar.config.js](https://v2.quasar.dev/quasar-cli-vite/quasar-config-js).
-
-
-### Dependencias instaladas para exportar documentos:
-npm install mammoth docxtemplater docx: Dependencia para exportación de documentos word
-pizzip file-saver pdfmake:  Dependencia para exportación de documentos pdf
-
-

@@ -354,7 +354,7 @@ const analysisResult = ref<{
 } | null>(null);
 
 // Initialize Gemini AI with proper error handling
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyD29u6VTcZz93zuALe5k1Ri7u4l__5eUHI';
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 console.log('PdfAnalyzer - API Key presente:', !!apiKey);
 console.log('PdfAnalyzer - API Key (primeros 10 caracteres):', apiKey.substring(0, 10) + '...');
 
@@ -979,6 +979,7 @@ const probarWorkerPDF = async () => {
 /* Upload Section */
 .upload-card {
   margin-bottom: 24px;
+  padding: 12px 16px;
 }
 
 .upload-header {
@@ -1157,7 +1158,7 @@ const probarWorkerPDF = async () => {
 }
 
 .extracted-text-container {
-  max-height: 400px;
+  max-height: 500px;
   overflow-y: auto;
   border: 1px solid rgba(102, 126, 234, 0.2);
   border-radius: 8px;
