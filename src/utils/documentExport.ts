@@ -11,6 +11,12 @@ interface ParagraphOptions {
   };
 }
 
+interface TextRunProps {
+  text: string;
+  size?: number;
+  bold?: boolean;
+}
+
 
 
 export const exportToWord = async (content: string, documentName: string): Promise<Blob> => {
@@ -31,7 +37,7 @@ export const exportToWord = async (content: string, documentName: string): Promi
     // Función para crear un párrafo con formato
     const createParagraph = (text: string, options: ParagraphOptions = {}) => {
       // Build TextRun props explicitly to avoid passing unsupported options
-  const runProps: Record<string, unknown> = { text };
+      const runProps: TextRunProps = { text };
       if (options.size) runProps.size = options.size;
       if (options.bold) runProps.bold = options.bold;
 
