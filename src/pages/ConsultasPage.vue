@@ -44,7 +44,7 @@
                         <!-- AI Message -->
                         <div v-if="mensaje.esIA" class="ai-message">
                           <div class="avatar ai-avatar">
-                            <q-icon name="smart_toy" size="20px" />
+                            <img :src="aiLogo" alt="LEXIT AI" class="ai-logo" />
                           </div>
                           <div class="message-bubble ai-bubble">
                             <div class="message-meta">
@@ -76,7 +76,7 @@
                       <div v-if="store.loading" class="message-wrapper q-mb-lg typing-row">
                         <div class="ai-message">
                           <div class="avatar ai-avatar">
-                            <q-icon name="smart_toy" size="20px" />
+                            <img :src="aiLogo" alt="LEXIT AI" class="ai-logo" />
                           </div>
                           <div class="message-bubble ai-bubble typing-bubble">
                             <div class="typing-dots">
@@ -126,9 +126,9 @@
               <q-icon name="error" color="negative" class="q-mr-xs" />
               <span class="text-negative text-body2">{{ store.error }}</span>
             </div>
-          </div>
-        </div>
-      </q-scroll-area>
+          </q-card-section>
+        </q-card>
+      </div>
       <div class="input-area">
         <q-form @submit.prevent="enviarConsulta" class="input-form">
           <q-input
@@ -159,6 +159,10 @@ import { storeToRefs } from 'pinia';
 
 const store = useConsultasStore();
 const pregunta = ref('');
+const showHelp = ref(false);
+
+// usa el logo SVG que está en src/assets/templates/logo.svg
+const aiLogo: string = new URL('../assets/templates/logo.svg', import.meta.url).href;
 
 const { mensajes } = storeToRefs(store);
 const messagesBox = ref<HTMLElement | null>(null);
@@ -184,6 +188,17 @@ function formatTimestamp(ts: Date | string): string {
   }
 }
 
+function formatMessage(content: string): string {
+  // Simple markdown-like formatting
+  return content
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+    .replace(/\n/g, '<br>');
+}
+
 async function enviarConsulta() {
   console.log('Enviando consulta:', pregunta.value); // Debug log
   if (pregunta.value.trim()) {
@@ -203,7 +218,7 @@ async function enviarConsulta() {
   }
 }
 
-onMounted(async () => {
+onMounted(() => {
   store.limpiar();
   // ensure scroll to bottom on mount
   void nextTick().then(() => {
@@ -386,6 +401,14 @@ watch(mensajes, async () => {
 .ai-avatar { margin-right: 12px; }
 .user-avatar { margin-left: 12px; }
 
+.ai-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
 .ai-message {
   display: flex;
   align-items: flex-start;
@@ -486,6 +509,9 @@ watch(mensajes, async () => {
 }
 
 .input-area {
+  /* Oculta la segunda instancia del input (duplicado) sin tocar la lógica JS.
+     Se mantiene el input dentro del chat-card (input-section) visible. */
+  display: none !important;
   background: #ffffff;
   border-top: 1px solid #e5e7eb;
   padding: 1.5rem;
