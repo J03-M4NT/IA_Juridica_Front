@@ -79,7 +79,7 @@ export default defineConfig((/* ctx */) => {
       ],
 
       extendViteConf(viteConf) {
-        // Configurar PDF.js worker
+        // Configurar PDF.js worker y alias
         viteConf.optimizeDeps = {
           ...viteConf.optimizeDeps,
           include: ['pdfjs-dist']
@@ -87,6 +87,13 @@ export default defineConfig((/* ctx */) => {
         viteConf.define = {
           ...viteConf.define,
           global: 'globalThis'
+        };
+        viteConf.resolve = {
+          ...viteConf.resolve,
+          alias: {
+            ...viteConf.resolve?.alias,
+            '@': '/src'
+          }
         };
       }
     },
