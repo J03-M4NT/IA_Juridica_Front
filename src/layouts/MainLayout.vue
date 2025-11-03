@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="hHh Lpr fFf" class="modern-layout">
+  <q-layout view="hHh Lpr fFf">
     <!-- Modern Top Navbar -->
     <q-header
       class="modern-navbar navbar-light"
@@ -12,46 +12,52 @@
           <span class="brand-text text-h6 text-weight-bold">LEXIT AI</span>
         </div>
 
-        <!-- Navigation Buttons - Centered -->
-        <div class="nav-buttons flex justify-center items-center">
-          <q-btn
-            flat
-            no-caps
-            :class="{ 'nav-btn-active': $route.path === '/' }"
-            to="/"
-            class="nav-btn q-mx-md"
-            icon="analytics"
-            label="ANALIZAR PDF"
-          >
-            <q-tooltip>Analizar contrato PDF</q-tooltip>
-          </q-btn>
+        <!-- Navigation and Auth Buttons - Centered -->
+        <div class="nav-group q-ml-md">
+          <div class="nav-buttons">
+            <q-btn-group flat>
+              <q-btn
+                flat
+                no-caps
+                :class="{ 'nav-btn-active': $route.path === '/' }"
+                to="/"
+                class="nav-btn"
+                icon="analytics"
+                label="ANALIZAR PDF"
+              >
+                <q-tooltip>Analizar contrato PDF</q-tooltip>
+              </q-btn>
 
-          <q-btn
-            flat
-            no-caps
-            :class="{ 'nav-btn-active': $route.path === '/consultas' }"
-            to="/consultas"
-            class="nav-btn q-mx-md"
-            icon="chat"
-            label="CONSULTAS"
-          >
-            <q-tooltip>Consultas legales</q-tooltip>
-          </q-btn>
+              <q-btn
+                flat
+                no-caps
+                :class="{ 'nav-btn-active': $route.path === '/consultas' }"
+                to="/consultas"
+                class="nav-btn"
+                icon="chat"
+                label="CONSULTAS"
+              >
+                <q-tooltip>Consultas legales</q-tooltip>
+              </q-btn>
 
-          <q-btn
-            flat
-            no-caps
-            :class="{ 'nav-btn-active': $route.path === '/contratos' }"
-            to="/contratos"
-            class="nav-btn q-mx-md"
-            icon="gavel"
-            label="CONTRATOS"
-          >
-            <q-tooltip>Gestión de contratos</q-tooltip>
-          </q-btn>
+              <q-btn
+                flat
+                no-caps
+                :class="{ 'nav-btn-active': $route.path === '/contratos' }"
+                to="/contratos"
+                class="nav-btn"
+                icon="gavel"
+                label="CONTRATOS"
+              >
+                <q-tooltip>Gestión de contratos</q-tooltip>
+              </q-btn>
+            </q-btn-group>
+          </div>
         </div>
 
-
+        <!-- Auth Buttons - Right aligned -->
+        <q-space />
+        <auth-buttons />
       </q-toolbar>
     </q-header>
 
@@ -59,8 +65,14 @@
     <q-page-container class="main-container">
       <div class="page-wrapper">
         <router-view v-slot="{ Component }">
-          <transition name="fade" mode="out-in">
-            <component :is="Component" />
+          <transition 
+            name="fade" 
+            mode="out-in"
+            @before-leave="beforeLeave"
+            @enter="enter"
+            @after-enter="afterEnter"
+          >
+            <component :is="Component" class="q-page" />
           </transition>
         </router-view>
       </div>
@@ -69,21 +81,61 @@
 </template>
 
 <script setup lang="ts">
-// No functions needed for the simplified navbar
+import AuthButtons from '../components/Auth/AuthButtons.vue';
+
+// Métodos de transición
+const beforeLeave = (el: Element) => {
+  el.classList.add('transitioning');
+};
+
+const enter = (el: Element) => {
+  el.classList.remove('transitioning');
+};
+
+const afterEnter = (el: Element) => {
+  el.classList.remove('transitioning');
+};
 </script>
 
 <style scoped>
-.modern-layout {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.main-container {
+  flex: 1;
+  position: relative;
+  z-index: 1;
   min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.page-wrapper {
+  min-height: calc(100vh - 64px);
+  padding: 24px;
+  margin: 64px auto 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: transparent;
+  max-width: 1200px;
+  width: 100%;
+}
+
+.q-page {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+  min-height: calc(100vh - 112px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 /* Modern Navbar Styles */
 .modern-navbar {
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  z-index: 2000;
 }
 
 .navbar-dark {
@@ -94,6 +146,43 @@
 .navbar-light {
   background: rgba(255, 255, 255, 0.95);
   color: #1a1a1a;
+}
+
+.navbar-toolbar {
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.nav-buttons {
+  flex: 1;
+  justify-content: center;
+}
+
+.nav-btn {
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.nav-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.nav-btn-active {
+  background: rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+}
+
+.brand-logo {
+  height: 32px;
+  width: auto;
 }
 
 .navbar-toolbar {
@@ -122,52 +211,48 @@
   letter-spacing: 1px;
 }
 
+.nav-group {
+  display: flex;
+  align-items: center;
+}
+
 .nav-buttons {
   display: flex;
   align-items: center;
-  gap: 8px;
 }
 
 .nav-btn {
-  border-radius: 12px;
-  padding: 8px 16px;
+  margin: 0 2px;
+  padding: 8px 12px;
   font-weight: 600;
+  font-size: 0.9rem;
   letter-spacing: 0.5px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
+  transition: all 0.3s ease;
+  border-radius: 0;
+  height: 40px;
 }
 
-.nav-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s;
+.nav-btn:first-child {
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
 }
 
-.nav-btn:hover::before {
-  left: 100%;
+.nav-btn:last-child {
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
 }
 
 .nav-btn:hover {
   background: rgba(102, 126, 234, 0.1);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 .nav-btn-active {
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: white !important;
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
 }
 
 .nav-btn-active:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+  opacity: 0.9;
 }
 
 .action-buttons {
@@ -228,6 +313,21 @@
   .brand-section {
     margin-right: 16px;
   }
+}
+
+/* Transiciones */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.transitioning {
+  background: transparent !important;
 }
 
 @media (max-width: 480px) {
