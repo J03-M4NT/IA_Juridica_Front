@@ -278,4 +278,5 @@ const getErrorMessage = (errorCode: string): string => {
     font-size: 1.5rem;
   }
 }
+
 </style>
