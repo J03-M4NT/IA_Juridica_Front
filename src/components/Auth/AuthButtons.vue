@@ -140,9 +140,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { auth } from '../../boot/firebase';
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
   signOut
 } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
@@ -183,7 +183,7 @@ const handleLogin = async () => {
       position: 'top',
       color: 'positive'
     });
-  } catch (error) {
+  } catch (error: unknown) {
     const message = error instanceof FirebaseError ? error.message : 'Error desconocido';
     $q.notify({
       type: 'negative',
@@ -205,7 +205,7 @@ const handleRegister = async () => {
       position: 'top',
       color: 'positive'
     });
-  } catch (error) {
+  } catch (error: unknown) {
     const message = error instanceof FirebaseError ? error.message : 'Error desconocido';
     $q.notify({
       type: 'negative',
@@ -225,7 +225,7 @@ const handleLogout = async () => {
       position: 'top',
       color: 'info'
     });
-  } catch (error) {
+  } catch (error: unknown) {
     const message = error instanceof FirebaseError ? ': ' + error.message : '';
     $q.notify({
       type: 'negative',

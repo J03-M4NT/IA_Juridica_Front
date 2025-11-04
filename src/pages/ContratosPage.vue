@@ -4,7 +4,7 @@
       <div class="text-h5 text-weight-bold q-mb-sm header-gradient">
         <q-icon name="description" class="q-mr-sm" /> Contratos
       </div>
-      <p class="text-body2 text-grey-7">Genera contratos personalizados desde plantillas profesionales</p>
+      <p class="text-body2 text-black">Genera contratos personalizados desde plantillas profesionales</p>
     </div>
 
     <div class="row q-col-gutter-lg">
@@ -32,7 +32,7 @@
                 </q-item-section>
                 <q-item-section>
                   <q-item-label class="text-weight-medium">{{ template.name }}</q-item-label>
-                  <q-item-label caption class="text-grey-7">{{ template.type }}</q-item-label>
+                  <q-item-label caption class="text-black-7">{{ template.type }}</q-item-label>
                 </q-item-section>
                 <q-item-section side v-if="currentTemplate?.id === template.id">
                   <q-icon name="check_circle" color="positive" />
@@ -51,7 +51,7 @@
               <div class="row items-center justify-between">
                 <div>
                   <h6 class="text-h6 text-weight-medium q-mb-xs">{{ currentTemplate.name }}</h6>
-                  <p class="text-caption text-grey-7">{{ currentTemplate.type }}</p>
+                  <p class="text-caption text-black-7">{{ currentTemplate.type }}</p>
                 </div>
                 <q-badge color="primary" label="Activo" />
               </div>
@@ -123,7 +123,7 @@
     <q-dialog v-model="showError">
       <q-card class="error-dialog">
         <q-card-section class="row items-center">
-          <q-avatar icon="error" color="negative" text-color="white" />
+          <q-avatar icon="error" color="negative" text-color="black" />
           <span class="q-ml-sm text-weight-medium">Debe rellenar los campos antes de exportar</span>
         </q-card-section>
         <q-card-actions align="right">
@@ -233,10 +233,7 @@ const exportToPDF = async () => {
 }
 
 .header-gradient {
-  background: linear-gradient(135deg, var(--primary-color), var(--hover-color));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: black;
   display: inline-block;
 }
 
@@ -254,7 +251,7 @@ const exportToPDF = async () => {
 }
 
 .templates-header {
-  background: linear-gradient(135deg, #E3F2FD, var(--card-background));
+  background: linear-gradient(135deg, #a7019e, var(--card-background));
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
