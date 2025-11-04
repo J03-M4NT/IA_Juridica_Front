@@ -14,7 +14,9 @@ export default defineConfig((/* ctx */) => {
     boot: [
       'axios',
       'dark',
-      'firebase'
+      'firebase',
+      'notify',
+      'pinia'
     ],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
@@ -121,7 +123,7 @@ export default defineConfig((/* ctx */) => {
       // directives: [],
 
       // Quasar plugins
-      plugins: []
+      plugins: ['Notify']
     },
 
     // animations: 'all', // --- includes all animations
