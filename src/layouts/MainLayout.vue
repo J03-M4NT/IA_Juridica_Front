@@ -4,6 +4,7 @@
     <q-header
       class="modern-navbar navbar-light"
       height-hint="64"
+      :class="{ 'navbar-scrolled': scrolled }"
     >
       <q-toolbar class="navbar-toolbar q-px-lg">
         <!-- Logo/Brand -->
@@ -65,8 +66,8 @@
     <q-page-container class="main-container">
       <div class="page-wrapper">
         <router-view v-slot="{ Component }">
-          <transition 
-            name="fade" 
+          <transition
+            name="fade"
             mode="out-in"
             @before-leave="beforeLeave"
             @enter="enter"
@@ -81,7 +82,11 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue';
 import AuthButtons from '../components/Auth/AuthButtons.vue';
+
+// Estado para el scroll
+const scrolled = ref(false);
 
 // Métodos de transición
 const beforeLeave = (el: Element) => {
@@ -95,6 +100,19 @@ const enter = (el: Element) => {
 const afterEnter = (el: Element) => {
   el.classList.remove('transitioning');
 };
+
+// Función para manejar el scroll
+const handleScroll = () => {
+  scrolled.value = window.scrollY > 10;
+};
+
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll);
+});
 </script>
 
 <style scoped>
@@ -103,7 +121,7 @@ const afterEnter = (el: Element) => {
   position: relative;
   z-index: 1;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--background-color);
 }
 
 .page-wrapper {
@@ -119,13 +137,19 @@ const afterEnter = (el: Element) => {
 }
 
 .q-page {
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background: var(--card-background);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-light);
   padding: 24px;
   min-height: calc(100vh - 112px);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.q-page:hover {
+  box-shadow: var(--shadow-medium);
 }
 
 /* Modern Navbar Styles */
@@ -133,19 +157,20 @@ const afterEnter = (el: Element) => {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: var(--shadow-light);
   z-index: 2000;
+  transition: all 0.3s ease;
 }
 
-.navbar-dark {
-  background: rgba(18, 18, 18, 0.85);
-  color: #ffffff;
+.modern-navbar.navbar-scrolled {
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: var(--shadow-medium);
 }
 
 .navbar-light {
   background: rgba(255, 255, 255, 0.95);
-  color: #1a1a1a;
+  color: var(--text-color);
 }
 
 .navbar-toolbar {
@@ -162,17 +187,24 @@ const afterEnter = (el: Element) => {
 .nav-btn {
   font-weight: 500;
   padding: 8px 16px;
-  border-radius: 8px;
+  border-radius: var(--border-radius-small);
   transition: all 0.3s ease;
+  color: var(--text-color);
 }
 
 .nav-btn:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(0, 123, 255, 0.1);
+  color: var(--primary-color);
 }
 
 .nav-btn-active {
-  background: rgba(0, 0, 0, 0.1);
+  background: var(--primary-color);
+  color: white !important;
   font-weight: 600;
+}
+
+.nav-btn-active:hover {
+  background: var(--hover-color);
 }
 
 .brand-section {
@@ -190,100 +222,30 @@ const afterEnter = (el: Element) => {
   padding: 0 24px;
 }
 
-.brand-section {
-  display: flex;
-  align-items: center;
-  transition: all 0.3s ease;
-}
-
-.brand-logo { display:inline-block; width:36px; height:36px; margin-right:8px; }
-
-.brand-icon {
-  color: #667eea;
-  transition: all 0.3s ease;
-}
-
 .brand-text {
-  background: linear-gradient(45deg, #667eea, #764ba2);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--primary-color);
+  font-weight: 600;
   letter-spacing: 1px;
 }
 
-.nav-group {
-  display: flex;
-  align-items: center;
+/* Transiciones */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.4s ease, transform 0.4s ease;
 }
 
-.nav-buttons {
-  display: flex;
-  align-items: center;
+.fade-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
 }
 
-.nav-btn {
-  margin: 0 2px;
-  padding: 8px 12px;
-  font-weight: 600;
-  font-size: 0.9rem;
-  letter-spacing: 0.5px;
-  transition: all 0.3s ease;
-  border-radius: 0;
-  height: 40px;
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(-20px);
 }
 
-.nav-btn:first-child {
-  border-top-left-radius: 8px;
-  border-bottom-left-radius: 8px;
-}
-
-.nav-btn:last-child {
-  border-top-right-radius: 8px;
-  border-bottom-right-radius: 8px;
-}
-
-.nav-btn:hover {
-  background: rgba(102, 126, 234, 0.1);
-}
-
-.nav-btn-active {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white !important;
-}
-
-.nav-btn-active:hover {
-  opacity: 0.9;
-}
-
-.action-buttons {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.action-btn {
-  border-radius: 50%;
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.action-btn:hover {
-  background: rgba(102, 126, 234, 0.1);
-  transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-/* Main Container */
-.main-container {
-  background: transparent;
-}
-
-.page-wrapper {
-  min-height: calc(100vh - 64px);
-  padding: 24px;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
+.transitioning {
+  background: transparent !important;
 }
 
 /* Responsive Design */
@@ -306,28 +268,9 @@ const afterEnter = (el: Element) => {
     padding: 16px;
   }
 
-  .action-buttons {
-    gap: 4px;
-  }
-
   .brand-section {
     margin-right: 16px;
   }
-}
-
-/* Transiciones */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-.transitioning {
-  background: transparent !important;
 }
 
 @media (max-width: 480px) {
@@ -343,30 +286,5 @@ const afterEnter = (el: Element) => {
   .page-wrapper {
     padding: 12px;
   }
-
-  .action-btn {
-    width: 40px;
-    height: 40px;
-  }
-}
-
-/* Dark mode adjustments */
-.navbar-dark .nav-btn:hover {
-  background: rgba(102, 126, 234, 0.2);
-}
-
-.navbar-dark .action-btn:hover {
-  background: rgba(102, 126, 234, 0.2);
-}
-
-/* Animations */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
 }
 </style>

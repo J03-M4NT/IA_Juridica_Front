@@ -1,19 +1,23 @@
 <template>
-  <q-page class="q-pa-md">
-    <div class="text-h5 text-primary q-mb-md">
-      <q-icon name="description" class="q-mr-sm" /> Contratos
+  <q-page class="contratos-page q-pa-md fade-in">
+    <div class="page-header q-mb-lg">
+      <div class="text-h5 text-weight-bold q-mb-sm header-gradient">
+        <q-icon name="description" class="q-mr-sm" /> Contratos
+      </div>
+      <p class="text-body2 text-grey-7">Genera contratos personalizados desde plantillas profesionales</p>
     </div>
 
-    <div class="row q-col-gutter-md">
+    <div class="row q-col-gutter-lg">
       <!-- Template Selection Section -->
-      <div class="col-12 col-md-3">
-        <q-card>
-          <q-card-section>
-            <div class="text-h6">Plantillas de Contratos</div>
+      <div class="col-12 col-md-4">
+        <q-card class="templates-card">
+          <q-card-section class="templates-header">
+            <div class="text-h6 text-weight-medium">Plantillas de Contratos</div>
+            <q-icon name="library_books" size="sm" color="primary" />
           </q-card-section>
 
-          <q-card-section>
-            <q-list separator>
+          <q-card-section class="templates-list">
+            <q-list separator class="rounded-borders">
               <q-item
                 v-for="template in templates"
                 :key="template.id"
@@ -21,10 +25,17 @@
                 :active="currentTemplate?.id === template.id"
                 @click="selectTemplate(template)"
                 v-ripple
+                class="template-item"
               >
+                <q-item-section avatar>
+                  <q-icon name="article" color="primary" />
+                </q-item-section>
                 <q-item-section>
-                  <q-item-label>{{ template.name }}</q-item-label>
-                  <q-item-label caption>{{ template.type }}</q-item-label>
+                  <q-item-label class="text-weight-medium">{{ template.name }}</q-item-label>
+                  <q-item-label caption class="text-grey-7">{{ template.type }}</q-item-label>
+                </q-item-section>
+                <q-item-section side v-if="currentTemplate?.id === template.id">
+                  <q-icon name="check_circle" color="positive" />
                 </q-item-section>
               </q-item>
             </q-list>
@@ -33,42 +44,72 @@
       </div>
 
       <!-- Contract Editor Section -->
-      <div class="col-12 col-md-9">
+      <div class="col-12 col-md-8">
         <template v-if="currentTemplate">
-          <contract-editor
-            :template="currentTemplate"
-            :modified-contract="getModifiedContract(currentTemplate.id)"
-            @update:contract="updateContract"
-          />
+          <q-card class="editor-card">
+            <q-card-section class="editor-header">
+              <div class="row items-center justify-between">
+                <div>
+                  <h6 class="text-h6 text-weight-medium q-mb-xs">{{ currentTemplate.name }}</h6>
+                  <p class="text-caption text-grey-7">{{ currentTemplate.type }}</p>
+                </div>
+                <q-badge color="primary" label="Activo" />
+              </div>
+            </q-card-section>
+
+            <q-card-section class="editor-content">
+              <contract-editor
+                :template="currentTemplate"
+                :modified-contract="getModifiedContract(currentTemplate.id)"
+                @update:contract="updateContract"
+              />
+            </q-card-section>
+          </q-card>
 
           <!-- Export Actions -->
-          <div class="q-mt-md row q-col-gutter-sm justify-end">
-            <div class="col-auto">
-              <q-btn
-                color="primary"
-                icon="file_download"
-                label="Exportar como Word"
-                @click="exportToWord"
-                :loading="exporting"
-              />
-            </div>
-            <div class="col-auto">
-              <q-btn
-                color="secondary"
-                icon="picture_as_pdf"
-                label="Exportar como PDF"
-                @click="exportToPDF"
-                :loading="exporting"
-              />
-            </div>
-          </div>
+          <q-card class="export-card q-mt-md">
+            <q-card-section>
+              <div class="text-subtitle2 text-weight-medium q-mb-md">Exportar Contrato</div>
+              <div class="row q-col-gutter-md justify-center">
+                <div class="col-auto">
+                  <q-btn
+                    color="primary"
+                    icon="file_download"
+                    label="Exportar como Word"
+                    @click="exportToWord"
+                    :loading="exporting"
+                    class="export-btn"
+                    unelevated
+                  >
+                    <q-tooltip>Descargar en formato Word (.docx)</q-tooltip>
+                  </q-btn>
+                </div>
+                <div class="col-auto">
+                  <q-btn
+                    color="secondary"
+                    icon="picture_as_pdf"
+                    label="Exportar como PDF"
+                    @click="exportToPDF"
+                    :loading="exporting"
+                    class="export-btn"
+                    unelevated
+                  >
+                    <q-tooltip>Descargar en formato PDF</q-tooltip>
+                  </q-btn>
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
         </template>
 
-        <div v-else class="text-center q-pa-xl">
-          <q-icon name="description" size="4rem" color="grey-5" />
-          <div class="text-h6 text-grey-7 q-mt-md">
-            Seleccione una plantilla para comenzar
+        <div v-else class="empty-state text-center q-pa-xl">
+          <q-icon name="description" size="4rem" color="grey-5" class="q-mb-md" />
+          <div class="text-h6 text-grey-7 q-mb-sm">
+            Selecciona una plantilla para comenzar
           </div>
+          <p class="text-body2 text-grey-6">
+            Elige una plantilla de contrato de la lista para empezar a personalizar tu documento
+          </p>
         </div>
       </div>
     </div>
@@ -80,10 +121,10 @@
 
     <!-- Error Handling -->
     <q-dialog v-model="showError">
-      <q-card>
+      <q-card class="error-dialog">
         <q-card-section class="row items-center">
           <q-avatar icon="error" color="negative" text-color="white" />
-          <span class="q-ml-sm">Debe rellenar los campos antes</span>
+          <span class="q-ml-sm text-weight-medium">Debe rellenar los campos antes de exportar</span>
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Cerrar" color="primary" v-close-popup />
@@ -104,7 +145,6 @@ const showError = computed<boolean>({
   get: () => !!store.error,
   set: (val: boolean) => {
     if (!val) {
-      // clear the error in the store so the dialog can close
       store.error = null;
     }
   }
@@ -114,7 +154,6 @@ const showError = computed<boolean>({
 const templates = computed(() => store.templates);
 const currentTemplate = computed(() => store.currentTemplate);
 const isLoading = computed(() => store.isLoading);
-// error computed removed: dialog now shows a fixed message and store.error is cleared when closing
 const getModifiedContract = store.getModifiedContract;
 
 onMounted(async () => {
@@ -155,7 +194,6 @@ const exportToWord = async () => {
     a.click();
     window.URL.revokeObjectURL(url);
   } catch (err: unknown) {
-    // Handle error
     console.error('Error exporting to Word:', err);
     store.error = err instanceof Error ? err.message : 'Error al exportar a Word';
   } finally {
@@ -176,7 +214,6 @@ const exportToPDF = async () => {
     a.click();
     window.URL.revokeObjectURL(url);
   } catch (err: unknown) {
-    // Handle error
     console.error('Error exporting to PDF:', err);
     store.error = err instanceof Error ? err.message : 'Error al exportar a PDF';
   } finally {
@@ -186,7 +223,144 @@ const exportToPDF = async () => {
 </script>
 
 <style scoped>
-.text-primary {
-  color: #ffffff !important;
+.contratos-page {
+  background: var(--background-color);
+}
+
+.page-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.header-gradient {
+  background: linear-gradient(135deg, var(--primary-color), var(--hover-color));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: inline-block;
+}
+
+.templates-card {
+  height: fit-content;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-light);
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.templates-card:hover {
+  box-shadow: var(--shadow-medium);
+  transform: translateY(-2px);
+}
+
+.templates-header {
+  background: linear-gradient(135deg, #E3F2FD, var(--card-background));
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.templates-list {
+  padding: 0;
+}
+
+.template-item {
+  border-radius: var(--border-radius-small);
+  margin: 4px 8px;
+  transition: all 0.3s ease;
+}
+
+.template-item:hover {
+  background: rgba(0, 123, 255, 0.05);
+}
+
+.template-item--active {
+  background: rgba(0, 123, 255, 0.1);
+  border-left: 3px solid var(--primary-color);
+}
+
+.editor-card {
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-light);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.editor-card:hover {
+  box-shadow: var(--shadow-medium);
+}
+
+.editor-header {
+  background: var(--card-background);
+  border-bottom: 1px solid var(--border-color);
+  padding: 1.5rem;
+}
+
+.editor-content {
+  padding: 0;
+  min-height: 400px;
+}
+
+.export-card {
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-light);
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.export-card:hover {
+  box-shadow: var(--shadow-medium);
+}
+
+.export-btn {
+  border-radius: var(--border-radius-small);
+  padding: 12px 24px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  min-width: 160px;
+}
+
+.export-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-medium);
+}
+
+.empty-state {
+  background: var(--card-background);
+  border-radius: var(--border-radius);
+  border: 2px dashed var(--border-color);
+  margin: 2rem 0;
+}
+
+.error-dialog {
+  border-radius: var(--border-radius);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .contratos-page {
+    padding: 1rem;
+  }
+
+  .row {
+    margin: 0;
+  }
+
+  .col-12 {
+    padding: 0;
+  }
+
+  .templates-card,
+  .editor-card,
+  .export-card {
+    margin-bottom: 1rem;
+  }
+
+  .export-btn {
+    min-width: 140px;
+    padding: 10px 20px;
+  }
 }
 </style>
