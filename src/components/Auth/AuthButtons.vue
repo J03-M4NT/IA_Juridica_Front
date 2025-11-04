@@ -22,24 +22,31 @@
 
     <!-- Si está autenticado, mostrar perfil -->
     <template v-else>
-      <q-btn-dropdown flat no-caps color="primary" class="user-profile-btn">
-        <template v-slot:label>
-          <div class="row items-center no-wrap">
-            <q-avatar size="28px" color="primary" text-color="white">
-              <q-icon name="person" />
-            </q-avatar>
-            <div class="q-ml-sm text-primary">{{ userEmail }}</div>
-          </div>
-        </template>
+      <div class="row items-center">
+        <q-btn-dropdown flat no-caps color="primary" class="user-profile-btn">
+          <template v-slot:label>
+            <div class="row items-center no-wrap">
+              <q-avatar size="28px" color="primary" text-color="white">
+                <q-icon name="person" />
+              </q-avatar>
+              <div class="q-ml-sm text-primary">{{ userName || 'Usuario' }}</div>
+            </div>
+          </template>
 
-        <q-list>
-          <q-item clickable v-close-popup @click="handleLogout">
-            <q-item-section>
-              <q-item-label>Cerrar Sesión</q-item-label>
-            </q-item-section>
-          </q-item>
-        </q-list>
-      </q-btn-dropdown>
+          <q-list>
+            <q-item clickable v-close-popup @click="showProfileDialog = true">
+              <q-item-section>
+                <q-item-label>Mi Perfil</q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-item clickable v-close-popup @click="handleLogout">
+              <q-item-section>
+                <q-item-label>Cerrar Sesión</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-btn-dropdown>
+      </div>
     </template>
 
     <!-- Diálogo de Login -->
@@ -138,21 +145,37 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, onMounted } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useAuthStore } from '../../stores/auth';
 import { auth } from '../../boot/firebase';
+import { useRouter } from 'vue-router';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
-  signOut
+  signOut,
+  onAuthStateChanged
 } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
 import { useQuasar } from 'quasar';
 
 const $q = useQuasar();
+const router = useRouter();
+const authStore = useAuthStore();
 
-// Estado de autenticación
-const isAuthenticated = computed(() => !!auth.currentUser);
-const userEmail = computed(() => auth.currentUser?.email || '');
+// Usar el estado de autenticación del store con storeToRefs para mantener la reactividad
+const { isAuthenticated, userName } = storeToRefs(authStore);
+
+// Configurar observador de estado de autenticación
+onMounted(() => {
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      console.log('Usuario autenticado:', user.email);
+    } else {
+      console.log('Usuario no autenticado');
+    }
+  });
+});
 
 // Control de diálogos
 const showLoginDialog = ref(false);
@@ -171,23 +194,45 @@ const registerForm = ref({
   password: ''
 });
 
+const showProfileDialog = ref(false);
+
 // Manejadores de autenticación
 const handleLogin = async () => {
   try {
     const { email, password } = loginForm.value;
     await signInWithEmailAndPassword(auth, email, password);
     showLoginDialog.value = false;
+    loginForm.value = { email: '', password: '' };
     $q.notify({
       type: 'positive',
       message: '¡Inicio de sesión exitoso!',
       position: 'top',
       color: 'positive'
     });
+    // Usar replace en lugar de go(0) para una actualización más suave
+    await router.replace(router.currentRoute.value.path);
   } catch (error) {
-    const message = error instanceof FirebaseError ? error.message : 'Error desconocido';
+    let errorMessage = 'Error al iniciar sesión';
+    
+    if (error instanceof FirebaseError) {
+      switch (error.code) {
+        case 'auth/network-request-failed':
+          errorMessage = 'Error de conexión. Por favor, verifica tu conexión a internet.';
+          break;
+        case 'auth/wrong-password':
+          errorMessage = 'Contraseña incorrecta';
+          break;
+        case 'auth/user-not-found':
+          errorMessage = 'No existe una cuenta con este email';
+          break;
+        default:
+          errorMessage = `Error: ${error.message}`;
+      }
+    }
+
     $q.notify({
       type: 'negative',
-      message: 'Error al iniciar sesión: ' + message,
+      message: errorMessage,
       position: 'top',
       color: 'negative'
     });
@@ -199,17 +244,40 @@ const handleRegister = async () => {
     const { email, password } = registerForm.value;
     await createUserWithEmailAndPassword(auth, email, password);
     showRegisterDialog.value = false;
+    registerForm.value = { email: '', password: '' };
     $q.notify({
       type: 'positive',
       message: '¡Registro exitoso!',
       position: 'top',
       color: 'positive'
     });
+    // Forzar actualización de la ruta
+    router.go(0);
   } catch (error) {
-    const message = error instanceof FirebaseError ? error.message : 'Error desconocido';
+    let errorMessage = 'Error al registrarse';
+
+    if (error instanceof FirebaseError) {
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          errorMessage = 'Este email ya está registrado';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Email inválido';
+          break;
+        case 'auth/operation-not-allowed':
+          errorMessage = 'Operación no permitida';
+          break;
+        case 'auth/weak-password':
+          errorMessage = 'La contraseña es demasiado débil';
+          break;
+        default:
+          errorMessage = `Error: ${error.message}`;
+      }
+    }
+
     $q.notify({
       type: 'negative',
-      message: 'Error al registrarse: ' + message,
+      message: errorMessage,
       position: 'top',
       color: 'negative'
     });
@@ -219,12 +287,17 @@ const handleRegister = async () => {
 const handleLogout = async () => {
   try {
     await signOut(auth);
+    // Limpiar formularios
+    loginForm.value = { email: '', password: '' };
+    registerForm.value = { email: '', password: '' };
     $q.notify({
       type: 'info',
       message: 'Has cerrado sesión',
       position: 'top',
       color: 'info'
     });
+    // Usar replace en lugar de go(0) para una actualización más suave
+    await router.replace('/');
   } catch (error) {
     const message = error instanceof FirebaseError ? ': ' + error.message : '';
     $q.notify({
