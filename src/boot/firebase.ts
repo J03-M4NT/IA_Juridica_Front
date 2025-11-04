@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getAnalytics } from 'firebase/analytics';
+import { getFirestore } from 'firebase/firestore';
 
 // Configuración de Firebase
 const firebaseConfig = {
@@ -17,8 +18,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Inicializar servicios
-export const auth = getAuth(app);
-export const analytics = getAnalytics(app);
+const auth = getAuth(app);
+auth.useDeviceLanguage(); // Usar el idioma del dispositivo
+const analytics = getAnalytics(app);
+const db = getFirestore(app);
+
+// Exportar servicios
+export { auth, analytics, db };
 
 // Exportar la instancia de la app
 export default app;

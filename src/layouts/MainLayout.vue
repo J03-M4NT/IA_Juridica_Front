@@ -7,7 +7,7 @@
     >
       <q-toolbar class="navbar-toolbar q-px-lg">
         <!-- Logo/Brand -->
-        <div class="brand-section q-mr-lg">
+        <div class="brand-section q-mr-lg" @click="$router.push('/')" style="cursor: pointer">
           <img src="../assets/logo.svg" alt="LEXIT AI" class="brand-logo q-mr-sm" />
           <span class="brand-text text-h6 text-weight-bold">LEXIT AI</span>
         </div>
