@@ -150,9 +150,9 @@ import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../../stores/auth';
 import { auth } from '../../boot/firebase';
 import { useRouter } from 'vue-router';
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged
 } from 'firebase/auth';
@@ -209,11 +209,11 @@ const handleLogin = async () => {
       position: 'top',
       color: 'positive'
     });
-    // Usar replace en lugar de go(0) para una actualización más suave
-    await router.replace(router.currentRoute.value.path);
+    // Redirigir al analizador después del login exitoso
+    await router.replace('/app/analizador');
   } catch (error) {
     let errorMessage = 'Error al iniciar sesión';
-    
+
     if (error instanceof FirebaseError) {
       switch (error.code) {
         case 'auth/network-request-failed':
@@ -251,8 +251,8 @@ const handleRegister = async () => {
       position: 'top',
       color: 'positive'
     });
-    // Forzar actualización de la ruta
-    router.go(0);
+    // Redirigir al analizador después del registro exitoso
+    await router.replace('/app/analizador');
   } catch (error) {
     let errorMessage = 'Error al registrarse';
 
