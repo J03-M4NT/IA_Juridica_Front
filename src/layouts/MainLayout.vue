@@ -13,15 +13,15 @@
           <span class="brand-text text-h6 text-weight-bold">LEXIT AI</span>
         </div>
 
-        <!-- Navigation and Auth Buttons - Centered -->
+        <!-- Navigation Buttons - Centered -->
         <div class="nav-group q-ml-md">
           <div class="nav-buttons">
             <q-btn-group flat>
               <q-btn
                 flat
                 no-caps
-                :class="{ 'nav-btn-active': $route.path === '/' }"
-                to="/"
+                :class="{ 'nav-btn-active': $route.path === '/app/analizador' }"
+                to="/app/analizador"
                 class="nav-btn"
                 icon="analytics"
                 label="ANALIZAR PDF"
@@ -32,8 +32,8 @@
               <q-btn
                 flat
                 no-caps
-                :class="{ 'nav-btn-active': $route.path === '/consultas' }"
-                to="/consultas"
+                :class="{ 'nav-btn-active': $route.path === '/app/consultas' }"
+                to="/app/consultas"
                 class="nav-btn"
                 icon="chat"
                 label="CONSULTAS"
@@ -44,8 +44,8 @@
               <q-btn
                 flat
                 no-caps
-                :class="{ 'nav-btn-active': $route.path === '/contratos' }"
-                to="/contratos"
+                :class="{ 'nav-btn-active': $route.path === '/app/contratos' }"
+                to="/app/contratos"
                 class="nav-btn"
                 icon="gavel"
                 label="CONTRATOS"
