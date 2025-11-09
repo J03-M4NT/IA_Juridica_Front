@@ -1,4 +1,4 @@
-<![CDATA[<template>
+6<template>
   <div class="home-container">
     <div class="welcome-section">
       <div class="logo-section">
@@ -7,7 +7,7 @@
         <p class="subtitle">Tu Asistente Legal Inteligente</p>
       </div>
     </div>
-    
+
     <div class="features-section">
       <q-btn
         class="feature-btn"
@@ -29,80 +29,26 @@
       />
     </div>
 
-    <!-- Diálogo de autenticación requerida -->
-    <q-dialog v-model="showAuthDialog">
-      <q-card class="auth-dialog">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Autenticación Requerida</div>
-          <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
-        </q-card-section>
 
-        <q-card-section>
-          <p>Para acceder a esta característica, necesitas iniciar sesión o registrarte.</p>
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn flat label="Iniciar Sesión" color="primary" @click="handleLoginClick" />
-          <q-btn flat label="Registrarse" color="primary" @click="handleRegisterClick" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, defineExpose } from 'vue';
+import { defineExpose } from 'vue';
 import { useRouter } from 'vue-router';
-import { auth } from '../boot/firebase';
-import { useQuasar } from 'quasar';
-import type { QNotifyCreateOptions } from 'quasar';
 
 const router = useRouter();
-const $q = useQuasar();
-const showAuthDialog = ref(false);
-
-const showNotification = (opts: QNotifyCreateOptions) => {
-  $q.notify({
-    position: 'top',
-    ...opts
-  });
-};
-
-const handleLoginClick = () => {
-  showAuthDialog.value = false;
-  showNotification({
-    message: 'Por favor, inicia sesión para continuar',
-    color: 'info'
-  });
-};
-
-const handleRegisterClick = () => {
-  showAuthDialog.value = false;
-  showNotification({
-    message: 'Por favor, regístrate para continuar',
-    color: 'info'
-  });
-};
 
 const checkAuth = async (route: string) => {
-  if (!auth.currentUser) {
-    showAuthDialog.value = true;
-  } else {
-    try {
-      await router.push(route);
-    } catch {
-      showNotification({
-        message: 'Error al navegar a la página',
-        color: 'negative'
-      });
-    }
+  // El navigation guard se encargará de redirigir si no está autenticado
+  try {
+    await router.push(route);
+  } catch (error) {
+    console.error('Error al navegar:', error);
   }
 };
 
 defineExpose({
-  handleLoginClick,
-  handleRegisterClick,
   checkAuth
 });
 </script>
@@ -169,22 +115,20 @@ defineExpose({
   font-weight: 500;
 }
 
-.auth-dialog {
-  min-width: 300px;
-}
+
 
 @media (max-width: 600px) {
   .features-section {
     flex-direction: column;
   }
-  
+
   .main-logo {
     width: 100px;
     height: 100px;
   }
-  
+
   .logo-text {
     font-size: 2rem;
   }
 }
-</style>]]>
+</style>
