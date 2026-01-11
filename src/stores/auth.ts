@@ -18,10 +18,35 @@ export const useAuthStore = defineStore('auth', () => {
   });
 
   // Inicializar el observer de auth
-  const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+  const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
     console.log('Auth state changed:', firebaseUser?.email);
     user.value = firebaseUser;
     loading.value = false;
+
+    // Sincronizar con userProfileStore
+    if (firebaseUser) {
+      // Usuario autenticado - cargar o crear perfil
+      const { useUserProfileStore } = await import('./userProfile');
+      const profileStore = useUserProfileStore();
+
+      // Intentar cargar perfil existente
+      await profileStore.loadProfile(firebaseUser.uid);
+
+      // Si no existe perfil, crear uno nuevo
+      if (!profileStore.profile) {
+        await profileStore.initializeProfile(
+          firebaseUser.uid,
+          firebaseUser.email || '',
+          firebaseUser.displayName || undefined,
+          firebaseUser.photoURL || undefined
+        );
+      }
+    } else {
+      // Usuario desautenticado - limpiar perfil
+      const { useUserProfileStore } = await import('./userProfile');
+      const profileStore = useUserProfileStore();
+      profileStore.clearProfile();
+    }
   });
 
   // Cleanup on store destruction

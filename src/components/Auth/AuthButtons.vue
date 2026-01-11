@@ -26,20 +26,35 @@
         <q-btn-dropdown flat no-caps color="primary" class="user-profile-btn">
           <template v-slot:label>
             <div class="row items-center no-wrap">
-              <q-avatar size="28px" color="primary" text-color="white">
-                <q-icon name="person" />
+              <!-- Avatar con foto real del usuario -->
+              <q-avatar size="32px" color="primary" text-color="white">
+                <img 
+                  v-if="profileStore.photoURL" 
+                  :src="profileStore.photoURL" 
+                  alt="Foto de perfil"
+                  style="width: 100%; height: 100%; object-fit: cover;"
+                />
+                <q-icon v-else name="person" />
               </q-avatar>
-              <div class="q-ml-sm text-primary">{{ userName || 'Usuario' }}</div>
+              <!-- Nombre real del usuario -->
+              <div class="q-ml-sm text-primary">{{ profileStore.displayName }}</div>
             </div>
           </template>
 
           <q-list>
             <q-item clickable v-close-popup @click="showProfileDialog = true">
+              <q-item-section avatar>
+                <q-icon name="account_circle" color="primary" />
+              </q-item-section>
               <q-item-section>
                 <q-item-label>Mi Perfil</q-item-label>
               </q-item-section>
             </q-item>
+            <q-separator />
             <q-item clickable v-close-popup @click="handleLogout">
+              <q-item-section avatar>
+                <q-icon name="logout" color="negative" />
+              </q-item-section>
               <q-item-section>
                 <q-item-label>Cerrar Sesión</q-item-label>
               </q-item-section>
@@ -48,6 +63,9 @@
         </q-btn-dropdown>
       </div>
     </template>
+
+    <!-- Diálogo de Perfil -->
+    <profile-dialog v-model="showProfileDialog" />
 
     <!-- Diálogo de Login -->
     <q-dialog v-model="showLoginDialog">
@@ -148,6 +166,7 @@
 import { ref, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../../stores/auth';
+import { useUserProfileStore } from '../../stores/userProfile';
 import { auth } from '../../boot/firebase';
 import { useRouter } from 'vue-router';
 import {
@@ -158,10 +177,12 @@ import {
 } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
 import { useQuasar } from 'quasar';
+import ProfileDialog from '../Profile/ProfileDialog.vue';
 
 const $q = useQuasar();
 const router = useRouter();
 const authStore = useAuthStore();
+const profileStore = useUserProfileStore();
 
 // Usar el estado de autenticación del store con storeToRefs para mantener la reactividad
 const { isAuthenticated, userName } = storeToRefs(authStore);
