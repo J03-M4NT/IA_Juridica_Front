@@ -5,18 +5,20 @@
       <q-btn
         flat
         no-caps
-        color="primary"
+        color="white"
+        text-color="white"
         label="Iniciar Sesión"
         @click="showLoginDialog = true"
-        class="q-mr-sm auth-btn"
+        class="q-mr-sm auth-btn login-btn"
       />
       <q-btn
-        outline
+        unelevated
         no-caps
-        color="primary"
+        color="white"
+        text-color="primary"
         label="Registrarse"
         @click="showRegisterDialog = true"
-        class="auth-btn"
+        class="auth-btn register-btn"
       />
     </template>
 
@@ -84,17 +86,15 @@
               label="Email"
               type="email"
               class="auth-input"
-              bg-color="white"
-              :rules="[val => !!val || 'Email es requerido']"
+              :rules="[val => !!val || 'El Email es requerido']"
             />
             <q-input
               outlined
               v-model="loginForm.password"
               label="Contraseña"
               class="auth-input"
-              bg-color="white"
               :type="showPassword ? 'text' : 'password'"
-              :rules="[val => !!val || 'Contraseña es requerida']"
+              :rules="[val => !!val || 'La Contraseña es requerida']"
             >
               <template v-slot:append>
                 <q-icon
@@ -129,7 +129,6 @@
               label="Email"
               type="email"
               class="auth-input"
-              bg-color="white"
               :rules="[val => !!val || 'Email es requerido']"
             />
             <q-input
@@ -137,7 +136,6 @@
               v-model="registerForm.password"
               label="Contraseña"
               class="auth-input"
-              bg-color="white"
               :type="showPasswordReg ? 'text' : 'password'"
               :rules="[
                 val => !!val || 'Contraseña es requerida',
@@ -341,6 +339,29 @@ const handleLogout = async () => {
 
 .auth-btn {
   font-weight: 500;
+  font-size: 0.95rem;
+  padding: 8px 20px;
+  transition: all 0.3s ease;
+}
+
+.login-btn {
+  color: white !important;
+}
+
+.login-btn:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.register-btn {
+  background: white !important;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.register-btn:hover {
+  background: rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  transform: translateY(-1px);
 }
 
 .user-profile-btn {
@@ -359,8 +380,21 @@ const handleLogout = async () => {
   background: white;
 }
 
-:deep(.q-field) {
-  background: white !important;
+/* Estilos para los campos de entrada */
+:deep(.auth-input .q-field__control) {
+  background: transparent !important;
+}
+
+:deep(.auth-input .q-field__control::before) {
+  border-color: #bdbdbd !important; /* Borde gris medio */
+}
+
+:deep(.auth-input .q-field__control::after) {
+  border-color: var(--q-primary) !important; /* Borde azul cuando está enfocado */
+}
+
+:deep(.auth-input .q-field__control:hover::before) {
+  border-color: #757575 !important; /* Borde gris más oscuro en hover */
 }
 
 :deep(.q-field__native),
@@ -371,11 +405,11 @@ const handleLogout = async () => {
 }
 
 :deep(.q-field__label) {
-  color: #666 !important;
+  color: #757575 !important;
 }
 
 :deep(.auth-input) {
-  background: white;
+  background: transparent !important;
 }
 
 :deep(.q-btn) {

@@ -448,7 +448,7 @@ watch(currentTemplate, async (newTemplate) => {
   background: #f4f6f8;
 }
 .body--dark .contratos-page {
-  background: #121212;
+  background: #828282;
 }
 
 .page-header {
@@ -491,7 +491,7 @@ watch(currentTemplate, async (newTemplate) => {
   justify-content: space-between;
 }
 .body--dark .templates-header {
-  background-color: #1e1e1e;
+  background-color: #d3d3d3;
   border-bottom-color: #333;
 }
 
@@ -514,7 +514,7 @@ watch(currentTemplate, async (newTemplate) => {
   border-bottom: 1px solid #e0e0e0;
 }
 .body--dark .editor-header {
-  background-color: #1e1e1e;
+  background-color: #90d8ff;
   border-bottom-color: #333;
 }
 
@@ -570,7 +570,7 @@ watch(currentTemplate, async (newTemplate) => {
 .pdf-canvas {
   max-width: 100%;
   height: auto;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgb(186, 227, 255);
   background: white;
   border-radius: 4px;
 }
@@ -579,7 +579,7 @@ watch(currentTemplate, async (newTemplate) => {
   background: white;
   padding: 8px 16px;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(255, 255, 255, 0.632);
 }
 
 .pdf-loading,
@@ -590,6 +590,6 @@ watch(currentTemplate, async (newTemplate) => {
 }
 .body--dark .pdf-loading,
 .body--dark .pdf-error {
-  background: #1e1e1e;
+  background: #ffcaca;
 }
 </style>
