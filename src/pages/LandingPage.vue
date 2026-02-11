@@ -1,5 +1,18 @@
 <template>
   <div class="landing-page">
+    <!-- Header con botones de autenticación -->
+    <div class="landing-header">
+      <div class="header-content">
+        <div class="header-logo">
+          <img src="../assets/logo.svg" alt="LEXIT AI" class="header-logo-img" />
+          <span class="header-logo-text">LEXIT AI</span>
+        </div>
+        <div class="header-auth">
+          <auth-buttons />
+        </div>
+      </div>
+    </div>
+
     <!-- Hero Section -->
     <div class="hero-section">
       <div class="hero-content">
@@ -57,11 +70,6 @@
             </q-card>
           </div>
         </div>
-
-        <!-- Auth Buttons -->
-        <div class="auth-section">
-          <auth-buttons />
-        </div>
       </div>
     </div>
 
@@ -98,12 +106,56 @@ onMounted(() => {
   flex-direction: column;
 }
 
+/* Header */
+.landing-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  padding: 16px 32px;
+  z-index: 1000;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.header-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-logo-img {
+  height: 40px;
+  width: auto;
+}
+
+.header-logo-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.header-auth {
+  display: flex;
+  align-items: center;
+}
+
 .hero-section {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
+  padding: 100px 20px 40px 20px; /* Añadido padding-top para el header fijo */
 }
 
 .hero-content {
@@ -222,10 +274,6 @@ onMounted(() => {
   border-top: 4px solid #6a1b9a;
 }
 
-.auth-section {
-  margin-top: 40px;
-}
-
 .footer-section {
   padding: 20px;
   text-align: center;
@@ -255,8 +303,20 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
+  .landing-header {
+    padding: 12px 16px;
+  }
+
+  .header-logo-img {
+    height: 32px;
+  }
+
+  .header-logo-text {
+    font-size: 1.2rem;
+  }
+
   .hero-section {
-    padding: 20px 16px;
+    padding: 80px 16px 20px 16px;
   }
 
   .brand-title {
@@ -286,6 +346,14 @@ onMounted(() => {
 }
 
 @media (max-width: 480px) {
+  .header-logo-img {
+    height: 28px;
+  }
+
+  .header-logo-text {
+    font-size: 1rem;
+  }
+
   .brand-logo {
     height: 48px;
   }
