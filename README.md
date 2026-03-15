@@ -2,6 +2,12 @@
 
 A Quasar Project
 
+Update last changes:
+
+- git fetch (To see if there are recent changes)
+
+- it merge origin/main (grab that changes to your current branch)
+
 ## Install the dependencies
 ```bash
 yarn
@@ -11,6 +17,12 @@ npm install
 npm install firebase
 # Firebase CLI (Cliente de conexion al Backend):
 npm install -g firebase-tools
+# Supabase CLI ( Conexión de Base de datos)
+npm install @supabase/supabase-js
+# HTML para exportacion
+npm install html2pdf.js
+npm install html-to-docx
+
 ```
 
 ### Start the app in development mode (hot-code reloading, error reporting, etc.)

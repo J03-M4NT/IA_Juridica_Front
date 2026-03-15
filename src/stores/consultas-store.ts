@@ -9,6 +9,17 @@ interface Mensaje {
   referencias?: string[];
 }
 
+interface ConsultasState {
+  pregunta: string;
+  respuesta: string;
+  referencias: string[];
+  loading: boolean;
+  error: string;
+  mensajes: Mensaje[];
+  archivosPDF: ArchivoPDF[];
+  archivoActual: ArchivoPDF | null;
+}
+
 // Debug log para verificar la API key
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 console.log('API Key presente:', !!API_KEY);
@@ -21,80 +32,35 @@ if (!API_KEY) {
 // Inicializar Gemini con la configuración correcta
 const genAI = new GoogleGenerativeAI(API_KEY);
 
-// Prompt base para el asistente legal
-const PROMPT_BASE: string = [
+const PROMPT_BASE = [
   'Eres un asistente legal especializado en derecho contractual y civil.',
   'Tu objetivo es ayudar a interpretar y explicar conceptos legales de manera clara y precisa.',
   'Debes:',
-  '1. Analizar consultas legales relacionadas con contratos',
-  '2. Explicar términos jurídicos en lenguaje simple',
-  '3. Proporcionar referencias a leyes relevantes cuando sea apropiado',
-  '4. Mantener una postura neutral y objetiva',
-  '5. Aclarar cuando un tema requiera consulta con un abogado',
-  '6. Proporcionar ejemplos prácticos cuando sea posible',
-  '7. Citar artículos específicos del código civil cuando corresponda',
-  '',
-  'Importante:',
-  '- Tus respuestas deben ser informativas pero no constituyen asesoramiento legal formal',
-  '- Debes mantener un tono profesional pero accesible',
-  '- Si una consulta está fuera de tu alcance, indicarlo claramente',
-  '',
-  'Formato de respuesta:',
-  '- Usa **negrita** para resaltar términos importantes',
-  '- Usa *cursiva* para énfasis',
-  '- Usa encabezados como # Título, ## Subtítulo para estructurar la información',
-  '- Incluye emojis relevantes para hacer las respuestas más amigables (ej: 📋, ⚖️, 📖)',
-  '- Mantén las respuestas bien estructuradas y fáciles de leer'
+  '1. Analizar consultas legales relacionadas con contratos.',
+  '2. Responder de forma estructurada usando markdown (negritas, listas, etc.).',
+  '3. Mantener un tono profesional pero accesible.'
 ].join('\n');
 
-// Prompt específico para análisis de contratos
-const PROMPT_ANALISIS_CONTRATO: string = [
-  'Analiza el siguiente contrato PDF y proporciona un análisis detallado estructurado.',
-  '',
-  'INSTRUCCIONES IMPORTANTES:',
-  '- El PDF del contrato está incluido en esta solicitud',
-  '- Debes leer y analizar el contenido completo del PDF',
-  '- Proporciona un análisis exhaustivo del documento',
-  '',
-  'ESTRUCTURA REQUERIDA DEL ANÁLISIS:',
-  '',
-  '# Resumen ejecutivo',
-  'Una síntesis clara y concisa del contrato completo.',
-  '',
-  '## Tipo de contrato',
-  'Identifica qué tipo de contrato es (compraventa, arrendamiento, servicios, etc.).',
-  '',
-  '## Partes involucradas',
-  'Nombres completos de todas las partes contratantes.',
-  '',
-  '## Cláusulas principales',
-  'Lista numerada de las cláusulas más importantes del contrato.',
-  '',
-  '## Riesgos potenciales',
-  'Identifica cláusulas que puedan ser problemáticas o desfavorables.',
-  '',
-  '## Recomendaciones',
-  'Sugiere mejoras o puntos a negociar en el contrato.',
-  '',
-  'IMPORTANTE:',
-  '- Sé específico y detallado en tu análisis',
-  '- Usa **negrita** para términos importantes',
-  '- Incluye ⚠️ para riesgos identificados',
-  '- Estructura la respuesta con encabezados claros'
-].join('\n');
+const PROMPT_ANALISIS_CONTRATO = `
+Analiza el siguiente contrato en PDF y proporciona un resumen estructurado en formato markdown.
+El análisis debe incluir:
+# Resumen ejecutivo: Un resumen claro y conciso del propósito del contrato.
+## Tipo de contrato: Identifica el tipo de contrato (ej. arrendamiento, prestación de servicios, etc.).
+## Partes involucradas: Lista las partes mencionadas en el contrato.
+## Cláusulas principales: Detalla las cláusulas más importantes y su significado.
+`;
 
 export const useConsultasStore = defineStore('consultas', {
-  state: () => ({
+  state: (): ConsultasState => ({
     pregunta: '',
     respuesta: '',
     referencias: [],
     loading: false,
     error: '',
-    mensajes: [] as Mensaje[],
-    archivosPDF: [] as ArchivoPDF[],
-    archivoActual: null as ArchivoPDF | null,
+    mensajes: [],
+    archivosPDF: [],
+    archivoActual: null,
   }),
-
   actions: {
     async enviarConsulta(pregunta: string) {
       console.log('Método enviarConsulta llamado con:', pregunta);
@@ -112,7 +78,7 @@ export const useConsultasStore = defineStore('consultas', {
 
       try {
         const model = genAI.getGenerativeModel({
-          model: "gemini-2.5-flash-lite",
+          model: "gemini-1.5-flash",
           generationConfig: {
             temperature: 0.7,
             topK: 40,
@@ -257,7 +223,7 @@ export const useConsultasStore = defineStore('consultas', {
         console.log('Base64 generado, longitud:', base64Data.length);
 
         const model = genAI.getGenerativeModel({
-          model: "gemini-2.5-flash-lite",
+          model: "gemini-1.5-flash",
           generationConfig: {
             temperature: 0.3,
             topK: 40,
@@ -286,7 +252,7 @@ export const useConsultasStore = defineStore('consultas', {
 
         console.log('Enviando PDF para análisis...');
         console.log('Contenido del request:', {
-          model: 'gemini-pro',
+          model: 'gemini-1.5-flash',
           hasPDF: !!base64Data,
           pdfSize: base64Data.length,
           mimeType: 'application/pdf'
@@ -473,7 +439,7 @@ Has alcanzado el límite de uso de la API para análisis de PDFs.
 
       try {
         const model = genAI.getGenerativeModel({
-          model: "gemini-2.5-flash-lite",
+          model: "gemini-1.5-flash",
           generationConfig: {
             temperature: 0.1,
             topK: 1,

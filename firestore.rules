@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Regla para la colección de usuarios
+    match /users/{userId} {
+      // Permitir lectura a cualquier usuario autenticado
+      allow read: if request.auth != null;
+      
+      // Permitir escritura solo al propio usuario
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Agregar aquí otras reglas para otras colecciones según sea necesario
+  }
+}

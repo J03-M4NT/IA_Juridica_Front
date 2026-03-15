@@ -5,42 +5,54 @@
       <q-btn
         flat
         no-caps
-        color="primary"
+        color="white"
+        text-color="white"
         label="Iniciar Sesión"
         @click="showLoginDialog = true"
-        class="q-mr-sm auth-btn"
+        class="q-mr-sm auth-btn login-btn"
       />
       <q-btn
-        outline
+        unelevated
         no-caps
-        color="primary"
+        color="white"
+        text-color="primary"
         label="Registrarse"
         @click="showRegisterDialog = true"
-        class="auth-btn"
+        class="auth-btn register-btn"
       />
     </template>
 
     <!-- Si está autenticado, mostrar perfil -->
     <template v-else>
-      <q-btn-dropdown flat no-caps color="primary" class="user-profile-btn">
-        <template v-slot:label>
-          <div class="row items-center no-wrap">
-            <q-avatar size="28px" color="primary" text-color="white">
-              <q-icon name="person" />
-            </q-avatar>
-            <div class="q-ml-sm text-primary">{{ userEmail }}</div>
-          </div>
-        </template>
+      <div class="row items-center">
+        <q-btn-dropdown flat no-caps color="primary" class="user-profile-btn">
+          <template v-slot:label>
+            <div class="row items-center no-wrap">
+              <q-avatar size="28px" color="primary" text-color="white">
+                <q-icon name="person" />
+              </q-avatar>
+              <div class="q-ml-sm text-primary">{{ userName || 'Usuario' }}</div>
+            </div>
+          </template>
 
-        <q-list>
-          <q-item clickable v-close-popup @click="handleLogout">
-            <q-item-section>
-              <q-item-label>Cerrar Sesión</q-item-label>
-            </q-item-section>
-          </q-item>
-        </q-list>
-      </q-btn-dropdown>
+          <q-list>
+            <q-item clickable v-close-popup @click="showProfileDialog = true">
+              <q-item-section>
+                <q-item-label>Mi Perfil</q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-item clickable v-close-popup @click="handleLogout">
+              <q-item-section>
+                <q-item-label>Cerrar Sesión</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-btn-dropdown>
+      </div>
     </template>
+
+    <!-- Diálogo de Perfil -->
+    <profile-dialog v-model="showProfileDialog" />
 
     <!-- Diálogo de Login -->
     <q-dialog v-model="showLoginDialog">
@@ -59,17 +71,15 @@
               label="Email"
               type="email"
               class="auth-input"
-              bg-color="white"
-              :rules="[val => !!val || 'Email es requerido']"
+              :rules="[val => !!val || 'El Email es requerido']"
             />
             <q-input
               outlined
               v-model="loginForm.password"
               label="Contraseña"
               class="auth-input"
-              bg-color="white"
               :type="showPassword ? 'text' : 'password'"
-              :rules="[val => !!val || 'Contraseña es requerida']"
+              :rules="[val => !!val || 'La Contraseña es requerida']"
             >
               <template v-slot:append>
                 <q-icon
@@ -104,7 +114,6 @@
               label="Email"
               type="email"
               class="auth-input"
-              bg-color="white"
               :rules="[val => !!val || 'Email es requerido']"
             />
             <q-input
@@ -112,7 +121,6 @@
               v-model="registerForm.password"
               label="Contraseña"
               class="auth-input"
-              bg-color="white"
               :type="showPasswordReg ? 'text' : 'password'"
               :rules="[
                 val => !!val || 'Contraseña es requerida',
@@ -138,7 +146,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, onMounted } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useAuthStore } from '../../stores/auth';
 import { auth } from '../../boot/firebase';
 import {
   createUserWithEmailAndPassword,
@@ -147,8 +157,11 @@ import {
 } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
 import { useQuasar } from 'quasar';
+import ProfileDialog from '../Profile/ProfileDialog.vue';
 
 const $q = useQuasar();
+const router = useRouter();
+const authStore = useAuthStore();
 
 // Estado de autenticación
 const isAuthenticated = computed(() => !!auth.currentUser);
@@ -247,6 +260,29 @@ const handleLogout = async () => {
 
 .auth-btn {
   font-weight: 500;
+  font-size: 0.95rem;
+  padding: 8px 20px;
+  transition: all 0.3s ease;
+}
+
+.login-btn {
+  color: white !important;
+}
+
+.login-btn:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.register-btn {
+  background: white !important;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.register-btn:hover {
+  background: rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  transform: translateY(-1px);
 }
 
 .user-profile-btn {
@@ -265,8 +301,21 @@ const handleLogout = async () => {
   background: white;
 }
 
-:deep(.q-field) {
-  background: white !important;
+/* Estilos para los campos de entrada */
+:deep(.auth-input .q-field__control) {
+  background: transparent !important;
+}
+
+:deep(.auth-input .q-field__control::before) {
+  border-color: #bdbdbd !important; /* Borde gris medio */
+}
+
+:deep(.auth-input .q-field__control::after) {
+  border-color: var(--q-primary) !important; /* Borde azul cuando está enfocado */
+}
+
+:deep(.auth-input .q-field__control:hover::before) {
+  border-color: #757575 !important; /* Borde gris más oscuro en hover */
 }
 
 :deep(.q-field__native),
@@ -277,11 +326,11 @@ const handleLogout = async () => {
 }
 
 :deep(.q-field__label) {
-  color: #666 !important;
+  color: #757575 !important;
 }
 
 :deep(.auth-input) {
-  background: white;
+  background: transparent !important;
 }
 
 :deep(.q-btn) {
