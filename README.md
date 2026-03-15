@@ -3,9 +3,10 @@
 A Quasar Project
 
 Update last changes:
-git fetch (To see if there are recent changes)
 
-git merge origin/main (grab that changes to your current branch)
+- git fetch (To see if there are recent changes)
+
+- it merge origin/main (grab that changes to your current branch)
 
 ## Install the dependencies
 ```bash
