@@ -1,5 +1,8 @@
 <template>
   <q-layout view="hHh Lpr fFf">
+
+    <!-- --------------------------------------------- -->
+
     <!-- Modern Top Navbar -->
     <q-header
       class="modern-navbar navbar-light"
@@ -12,6 +15,17 @@
           <img src="../assets/logo.svg" alt="LEXIT AI" class="brand-logo q-mr-sm" />
           <span class="brand-text text-h6 text-weight-bold">LEXIT AI</span>
         </div>
+
+        <!-- Botón Hamburguesa - Para móvil/tablet -->
+        <q-btn
+          flat
+          dense
+          round
+          icon="menu"
+          class="lt-lg q-mr-sm"
+          @click="drawerOpen = !drawerOpen"
+          aria-label="Menú de navegación"
+        />
 
         <!-- Navigation Buttons - Centered -->
         <div class="nav-group q-ml-md">
@@ -61,6 +75,64 @@
         <auth-buttons />
       </q-toolbar>
     </q-header>
+    
+    <!-- --------------------------------------------- -->
+
+    <!-- Panel lateral de navegación móvil -->
+    <q-drawer
+      v-model="drawerOpen"
+      side="left"
+      overlay
+      behavior="mobile"
+      class="mobile-drawer"
+    >
+      <q-list padding>
+        <q-item-label header class="text-weight-bold q-pb-md">
+          Navegación
+        </q-item-label>
+
+        <q-item
+          clickable
+          v-ripple
+          to="/app/analizador"
+          @click="drawerOpen = false"
+          active-class="nav-drawer-active"
+        >
+          <q-item-section avatar>
+            <q-icon name="analytics" />
+          </q-item-section>
+          <q-item-section>Analizar PDF</q-item-section>
+        </q-item>
+
+        <q-item
+          clickable
+          v-ripple
+          to="/app/consultas"
+          @click="drawerOpen = false"
+          active-class="nav-drawer-active"
+        >
+          <q-item-section avatar>
+            <q-icon name="chat" />
+          </q-item-section>
+          <q-item-section>Consultas</q-item-section>
+        </q-item>
+
+        <q-item
+          clickable
+          v-ripple
+          to="/app/contratos"
+          @click="drawerOpen = false"
+          active-class="nav-drawer-active"
+        >
+          <q-item-section avatar>
+            <q-icon name="gavel" />
+          </q-item-section>
+          <q-item-section>Contratos</q-item-section>
+        </q-item>
+      </q-list>
+    </q-drawer>
+
+    <!-- --------------------------------------------- -->
 
     <!-- Main Content Area -->
     <q-page-container class="main-container">
@@ -78,6 +150,9 @@
         </router-view>
       </div>
     </q-page-container>
+
+    <!-- --------------------------------------------- -->
+
   </q-layout>
 </template>
 
@@ -87,6 +162,7 @@ import AuthButtons from '../components/Auth/AuthButtons.vue';
 
 // Estado para el scroll
 const scrolled = ref(false);
+const drawerOpen = ref(false);
 
 // Métodos de transición
 const beforeLeave = (el: Element) => {
@@ -287,4 +363,17 @@ onUnmounted(() => {
     padding: 12px;
   }
 }
+
+/* Drawer móvil */
+.mobile-drawer {
+  padding-top: 64px;
+}
+
+.nav-drawer-active {
+  color: var(--primary-color);
+  font-weight: 600;
+  background: rgba(0, 123, 255, 0.08);
+  border-radius: 8px;
+}
+
 </style>
