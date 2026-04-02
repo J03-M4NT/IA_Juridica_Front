@@ -29,6 +29,14 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/ContratosPage.vue'),
         meta: { requiresAuth: true },
       },
+
+      // ✅ NUEVA RUTA DE NORMAS (CORRECTA)
+      {
+        path: 'normas',
+        component: () => import('pages/BibliotecaLegal.vue'),
+        meta: { requiresAuth: true },
+      },
+
       {
         path: 'subir-contrato',
         component: () => import('pages/SubirContrato.vue'),
@@ -37,7 +45,7 @@ const routes: RouteRecordRaw[] = [
     ],
   },
 
-  // Redirección por defecto para rutas no encontradas
+  // Ruta no encontrada
   {
     path: '/:catchAll(.*)*',
     component: () => import('pages/ErrorNotFound.vue'),
