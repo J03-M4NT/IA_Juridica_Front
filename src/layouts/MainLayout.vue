@@ -109,6 +109,7 @@
       class="mobile-drawer"
     >
       <q-list padding>
+
         <q-item-label header class="text-weight-bold q-pb-md">
           Navegación
         </q-item-label>
@@ -151,6 +152,20 @@
           </q-item-section>
           <q-item-section>Contratos</q-item-section>
         </q-item>
+
+        <q-item
+          clickable
+          v-ripple
+          to="/app/normas"
+          @click="drawerOpen = false"
+          active-class="nav-drawer-active"
+        >
+          <q-item-section avatar>
+            <q-icon name="menu_book" />
+          </q-item-section>
+          <q-item-section>Normas</q-item-section>
+        </q-item>
+
       </q-list>
     </q-drawer>
 

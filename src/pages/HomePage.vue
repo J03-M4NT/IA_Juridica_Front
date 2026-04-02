@@ -27,6 +27,12 @@
         label="CONTRATOS"
         @click="() => checkAuth('/app/contratos')"
       />
+      <q-btn
+        class="feature-btn"
+        icon="menu_book"
+        label="NORMAS"
+        @click="() => checkAuth('/app/normas')"
+      />
     </div>
 
 
