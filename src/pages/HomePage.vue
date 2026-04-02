@@ -1,4 +1,4 @@
-6<template>
+<template>
   <div class="home-container">
     <div class="welcome-section">
       <div class="logo-section">
@@ -13,19 +13,19 @@
         class="feature-btn"
         icon="analytics"
         label="ANALIZAR PDF"
-        @click="() => checkAuth('/analizar')"
+        @click="() => checkAuth('/app/analizador')"
       />
       <q-btn
         class="feature-btn"
         icon="chat"
         label="CONSULTAS"
-        @click="() => checkAuth('/consultas')"
+        @click="() => checkAuth('/app/consultas')"
       />
       <q-btn
         class="feature-btn"
         icon="gavel"
         label="CONTRATOS"
-        @click="() => checkAuth('/contratos')"
+        @click="() => checkAuth('/app/contratos')"
       />
     </div>
 
@@ -34,7 +34,6 @@
 </template>
 
 <script setup lang="ts">
-import { defineExpose } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -48,9 +47,6 @@ const checkAuth = async (route: string) => {
   }
 };
 
-defineExpose({
-  checkAuth
-});
 </script>
 
 <style scoped>

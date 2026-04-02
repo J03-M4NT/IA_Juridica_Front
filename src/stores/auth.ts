@@ -19,7 +19,6 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Inicializar el observer de auth
   const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
-    console.log('Auth state changed:', firebaseUser?.email);
     user.value = firebaseUser;
     loading.value = false;
 
