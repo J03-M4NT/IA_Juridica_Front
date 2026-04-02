@@ -1,18 +1,18 @@
 <template>
   <q-page class="q-pa-md">
 
-    <div class="text-h5 q-mb-md">
+    <div class="text-h5 q-mb-md Title">
       Normas del Diario Oficial El Peruano
     </div>
 
     <div class="row justify-center q-mt-xl">
       <div class="col-12 col-sm-8 col-md-6">
         <q-card bordered class="q-pa-lg text-center">
-          <div class="text-subtitle1 q-mb-md">
+          <div class="text-subtitle1 q-mb-md Title2">
             Modo vista previa (haz click dentro del cuadro para ir al sitio)
           </div>
 
-          <div class="text-subtitle2 q-mb-md">
+          <div class="text-subtitle2 q-mb-md Title2">
             Vista previa de Normas (carga automática)
           </div>
 
@@ -58,4 +58,20 @@ function abrirEnPestaniaDirecta() {
 .q-card:hover {
   transform: scale(1.02);
 }
+
+.Title {
+  color: var(--primary-color);
+  font-weight: bold;
+}
+
+.Title2 {
+  color: var(--secondary-color);
+  font-weight: bold;
+}
+
+.Title3 {
+  color: var(--secondary-color);
+  font-weight: bold;
+}
+
 </style>
