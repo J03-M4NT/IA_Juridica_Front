@@ -447,14 +447,17 @@ watch(currentTemplate, async (newTemplate) => {
 .contratos-page {
   background: #f4f6f8;
 }
+
+/* Modo Oscuro */
 .body--dark .contratos-page {
-  background: #828282;
+  background: #121212;
 }
 
 .page-header {
   border-bottom: 1px solid #e0e0e0;
   padding-bottom: 1rem;
 }
+
 .body--dark .page-header {
   border-bottom-color: #333;
 }
@@ -490,9 +493,11 @@ watch(currentTemplate, async (newTemplate) => {
   align-items: center;
   justify-content: space-between;
 }
+
+/* Fixeando modo oscuro */
 .body--dark .templates-header {
-  background-color: #d3d3d3;
-  border-bottom-color: #333;
+  background-color: #2a2a2a;
+  border-bottom-color: #444;
 }
 
 .templates-list {
@@ -513,9 +518,11 @@ watch(currentTemplate, async (newTemplate) => {
   background-color: #fafafa;
   border-bottom: 1px solid #e0e0e0;
 }
+
+/* Fixeando modo oscuro pt 2 xd */
 .body--dark .editor-header {
-  background-color: #90d8ff;
-  border-bottom-color: #333;
+  background-color: #2a2a2a;
+  border-bottom-color: #444;
 }
 
 .editor-content {
@@ -588,8 +595,9 @@ watch(currentTemplate, async (newTemplate) => {
   background: #fafafa;
   border-radius: 8px;
 }
+/* Fixeandoo pt 3 */
 .body--dark .pdf-loading,
 .body--dark .pdf-error {
-  background: #ffcaca;
+  background: #2a2a2a;
 }
 </style>
