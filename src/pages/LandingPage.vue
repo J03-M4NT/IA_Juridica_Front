@@ -75,7 +75,7 @@
 
     <!-- Footer -->
     <div class="footer-section">
-      <p class="footer-text">© 2025 LEXIT AI. Todos los derechos reservados.</p>
+      <p class="footer-text">© 2026 LEXIT AI. Todos los derechos reservados.</p>
     </div>
   </div>
 </template>
