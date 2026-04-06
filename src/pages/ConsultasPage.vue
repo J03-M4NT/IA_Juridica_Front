@@ -143,8 +143,8 @@ const store = useConsultasStore();
 const pregunta = ref('');
 const showHelp = ref(false);
 
-// usa el logo SVG que está en src/assets/templates/logo.svg
-const aiLogo: string = new URL('../assets/templates/logo.svg', import.meta.url).href;
+// usa el logo SVG que está en src/assets/logo.svg
+const aiLogo: string = new URL('../assets/logo.svg', import.meta.url).href;
 
 const { mensajes } = storeToRefs(store);
 const messagesBox = ref<HTMLElement | null>(null);

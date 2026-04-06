@@ -217,8 +217,8 @@
 <script setup lang="ts">
 import { onMounted, ref, computed, watch } from 'vue'; // 'ref' se mantiene para 'exporting'
 import { storeToRefs } from 'pinia';
-import { useContratosStore, type ContractTemplate } from 'src/stores/contratos-store';
-import ContractEditor from 'src/components/ContractEditor.vue';
+import { useContratosStore, type ContractTemplate } from '../stores/contratos-store';
+import ContractEditor from '../components/ContractEditor.vue';
 
 // --- LÓGICA DEL COMPONENTE ---
 
