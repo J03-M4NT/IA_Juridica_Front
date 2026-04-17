@@ -1,6 +1,14 @@
 import { defineStore } from 'pinia';
 import { exportToWord, exportToPDF } from '../utils/documentExport'; // Mantenemos las funciones de exportación
 import { supabase } from '../lib/supabaseClient';
+import {
+  listenContratos,
+  getContratoDownloadURL,
+  downloadContrato,
+  type ContratoFirebase
+} from '../services/contratosService';
+import type { Unsubscribe } from 'firebase/firestore';
+
 
 /**
  * NUEVA INTERFAZ: Define la estructura de una plantilla de contrato que viene de Supabase.
@@ -28,11 +36,24 @@ interface ModifiedContract {
 
 export const useContratosStore = defineStore('contratos', {
   state: () => ({
+
+    // Nuevos estados para los contratos de Firebase:
+    firebaseContratos: [] as ContratoFirebase[],
+    selectedContrato: null as ContratoFirebase | null,
+    firebaseLoading: false,
+    firebaseError: null as string | null,
+    _unsubscribeContratos: null as Unsubscribe | null,
+
+    // -----------------------------
+    // Esto es de supabase:
+
     templates: [] as ContractTemplate[],
     currentTemplate: null as ContractTemplate | null,
     modifiedContracts: [] as ModifiedContract[],
     isLoading: false,
     error: null as string | null,
+
+
   }),
 
   getters: {
@@ -47,10 +68,8 @@ export const useContratosStore = defineStore('contratos', {
   },
 
   actions: {
-    /**
-     * FUNCIÓN ACTUALIZADA: Esta acción ahora se conecta a tu tabla 'contract_templates' de Supabase
-     * para obtener la lista de plantillas de texto disponibles.
-     */
+
+
     async fetchTemplates() {
       this.isLoading = true;
       this.error = null;
@@ -117,16 +136,7 @@ export const useContratosStore = defineStore('contratos', {
           throw new Error('No se encontró la plantilla del contrato');
         }
 
-        console.log('Exportando a Word:', {
-          templateName: template.name,
-          contentLength: contract.modifiedContent.length
-        });
-
         const blob = await exportToWord(contract.modifiedContent, template.name);
-        console.log('Exportación a Word completada:', {
-          size: blob.size,
-          type: blob.type
-        });
 
         return blob;
       } catch (error) {
@@ -150,16 +160,7 @@ export const useContratosStore = defineStore('contratos', {
           throw new Error('No se encontró la plantilla del contrato');
         }
 
-        console.log('Exportando a PDF:', {
-          templateName: template.name,
-          contentLength: contract.modifiedContent.length
-        });
-
         const blob = await exportToPDF(contract.modifiedContent, template.name);
-        console.log('Exportación a PDF completada:', {
-          size: blob.size,
-          type: blob.type
-        });
 
         return blob;
       } catch (error) {
@@ -188,9 +189,8 @@ export const useContratosStore = defineStore('contratos', {
       }
     },
 
-    /**
-     * Descarga el PDF original desde Supabase Storage
-     */
+
+    // Descarga el PDF original desde Supabase Storage
     async downloadOriginalPDF(templateId: string): Promise<Blob> {
       try {
         const template = this.templates.find(t => t.id === templateId);
@@ -202,8 +202,6 @@ export const useContratosStore = defineStore('contratos', {
           throw new Error('Este contrato no tiene un PDF almacenado');
         }
 
-        console.log('Descargando PDF desde:', template.storage_path);
-
         const { data, error } = await supabase.storage
           .from('contratos_archivos')
           .download(template.storage_path);
@@ -213,16 +211,76 @@ export const useContratosStore = defineStore('contratos', {
           throw new Error(`Error al descargar el PDF: ${error?.message || 'Desconocido'}`);
         }
 
-        console.log('PDF descargado exitosamente:', {
-          size: data.size,
-          type: data.type
-        });
-
         return data;
       } catch (error) {
         console.error('Error en downloadOriginalPDF:', error);
         throw error;
       }
     },
+
+
+    // -------------------------------------------------
+
+    // Seccion para Firebase:
+
+    startListeningFirebaseContratos() {
+      // Evitar múltiples suscripciones simultáneas
+      if (this._unsubscribeContratos) {
+        return; // Ya estamos escuchando
+      }
+
+      this.firebaseLoading = true;
+      this.firebaseError = null;
+
+      // listenContratos retorna una función para cancelar la escucha
+      this._unsubscribeContratos = listenContratos(
+        // Callback de éxito: se ejecuta cada vez que hay cambios
+        (contratos) => {
+          this.firebaseContratos = contratos;
+          this.firebaseLoading = false;
+        },
+        // Callback de error
+        (error) => {
+          this.firebaseError = error.message;
+          this.firebaseLoading = false;
+        }
+      );
+    },
+
+    // Nuevo: Detener la escucha en tiempo real.
+    /*
+    
+    ¿Por qué es importante?
+    - Cada onSnapshot mantiene una conexión WebSocket abierta con Firebase.
+    - Si no la cerramos cuando el componente se desmonta, seguirá
+   consumiendo recursos y podría causar memory leaks.
+    
+    */
+
+    stopListeningFirebaseContratos() {
+      if (this._unsubscribeContratos) {
+        this._unsubscribeContratos(); // Cancela la suscripción
+        this._unsubscribeContratos = null;
+      }
+    },
+
+
+    // Seleccionar contrato de Firebase para previsualizar:
+    selectFirebaseContrato(contrato: ContratoFirebase | null) {
+      this.selectedContrato = contrato;
+    },
+
+    // Obtener URL de descarga de un contrato:
+    async getFirebaseContratoURL(storagePath: string): Promise<string> {
+      return await getContratoDownloadURL(storagePath);
+    },
+
+    // Descargar el contrato como blob:
+    async downloadFirebaseContrato(storagePath: string): Promise<Blob> {
+      return await downloadContrato(storagePath);
+    },
+
   },
+
+
 });
