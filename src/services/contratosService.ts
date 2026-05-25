@@ -1,109 +1,106 @@
-import { db, storage } from '../firebase/firebaseConfig';
+import { db, storage } from '../firebase/firebaseConfig'
 import {
-    collection, onSnapshot,
-    query, orderBy,
-    type Unsubscribe
-} from 'firebase/firestore';
-import { ref, getDownloadURL, getBlob } from 'firebase/storage';
+  collection,
+  onSnapshot,
+  query,
+  orderBy,
+  type Unsubscribe
+} from 'firebase/firestore'
+import { ref, getDownloadURL, getBlob } from 'firebase/storage'
 
-/*
-
- La interfaz que define la estructura de un contrato almacenado
- en Firestore.
-
- Esto debido a que Typescript necesita saber la forma de
- los datos que vamos a recibir, de esta manera detecta
- errores antes de ejecutar el codigo.
-
-*/
-
+/**
+ * Interfaz que define la estructura de un contrato almacenado en Firestore
+ */
 export interface ContratoFirebase {
-    id: string;     // Id del doc en firestore
-    name: string;   // Name contrato
-    type: string;   // Tipo contrato
-    storagePath: string;    // Ruta del pdf
-    createdAt: Date;    // Fecha de creacion
+  id: string
+  name: string
+  type: string
+  storagePath: string
+  createdAt: Date
 }
 
-
-/*
-
-Ahora usamos la funcion onSnapshot para obtener los datos de 
-la coleccion contratos en tiempo real.
-
-*/
-
+/**
+ * Escucha en tiempo real los contratos generados en Firestore
+ */
 export function listenContratos(
-    callback: (contratos: ContratoFirebase[]) => void,
-    onError: (error: Error) => void
+  callback: (contratos: ContratoFirebase[]) => void,
+  onError: (error: Error) => void
 ): Unsubscribe {
+  const contratosRef = collection(db, 'contratos')
+  const q = query(contratosRef, orderBy('createdAt', 'desc'))
 
-    // 1. Crear referencias a coleccion contratos:
-    const contratosRef = collection(db, 'contratos');
-
-    // 2. Creamos query ordenada por fecha de creacion (mas reciente va al inicio)
-    const q = query(contratosRef, orderBy('createdAt', 'desc'));
-
-    // 3. Establecemos el listener en tiempo real:
-    const unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-            // 4. Transformar doc de firestore a nuestro tipo ContratoFirebase
-            const contratos: ContratoFirebase[] = snapshot.docs.map((doc) => {
-                const data = doc.data();
-                return {
-                    id: doc.id,  // El ID del doc en Firestore
-                    name: data.name,
-                    type: data.type,
-                    storagePath: data.storagePath,
-                    // Firestore guarda las fechas como Timestamp, las convertimos a Date
-                    createdAt: data.createdAt?.toDate?.() || new Date(),
-                };
-            });
-
-            // 5. Llama al callback con los datos transformados
-            callback(contratos);
-        },
-
-        (error) => {
-            // 6. Si hay un error en la escucha, lo reportamos
-            console.error('Error escuchando contratos:', error);
-            onError(error);
+  const unsubscribe = onSnapshot(
+    q,
+    (snapshot) => {
+      const contratos: ContratoFirebase[] = snapshot.docs.map((doc) => {
+        const data = doc.data()
+        return {
+          id: doc.id,
+          name: data.name || 'Sin nombre',
+          type: data.type || 'general',
+          storagePath: data.storagePath || '',
+          createdAt: data.createdAt?.toDate?.() || new Date()
         }
-    );
+      })
 
+      callback(contratos)
+    },
+    (error) => {
+      console.error('❌ Error escuchando contratos:', error)
+      onError(error)
+    }
+  )
 
-    // 7. Retornamos la funcion para cancelar la escucha
-    return unsubscribe;
-
+  return unsubscribe
 }
 
-
-/*
-
-Aca obtendremos el URL para descargar el doc en firestore.
-Usaremos getDownloadURL y getBlob.
-
-*/
-
+/**
+ * Obtiene la URL de descarga de un contrato generado
+ */
 export async function getContratoDownloadURL(storagePath: string): Promise<string> {
-    // ref() crea una referencia al archivo en Storage (no lo descarga aún)
-    const fileRef = ref(storage, storagePath);
-    // getDownloadURL() obtiene la URL firmada para acceder al archivo
-    return await getDownloadURL(fileRef);
+  try {
+    const fileRef = ref(storage, storagePath)
+    return await getDownloadURL(fileRef)
+  } catch (err) {
+  const error = err as Error
+  throw new Error(`No se pudo obtener la URL: ${error.message}`)
+}
 }
 
-/*
-
-Usamos Blob ( Binary Large Object ).
-Ayuda a saber como el navegador representa un archivo en memoria.
-Usando esto, podemos crear un enlace de descarga usando el:
-URL.createObjectURL()
-
-*/
-
+/**
+ * Descarga un contrato como Blob
+ */
 export async function downloadContrato(storagePath: string): Promise<Blob> {
-    const fileRef = ref(storage, storagePath);
-    // getBlob() descarga el archivo completo como un Blob
-    return await getBlob(fileRef);
+  try {
+    const fileRef = ref(storage, storagePath)
+    return await getBlob(fileRef)
+  } catch (err) {
+    const error = err as Error
+    console.error('❌ Error descargando contrato:', error)
+    throw new Error(`No se pudo descargar el archivo: ${error.message}`)
+  }
+}
+
+/**
+ * ⭐ NUEVA FUNCIÓN: Obtiene la URL de descarga de una plantilla (template)
+ * Esta es la que faltaba para cargar los PDFs en ContratosPage
+ */
+export async function getTemplateDownloadURL(storagePath: string): Promise<string> {
+  try {
+    // Verifica que el storagePath no esté vacío
+    if (!storagePath) {
+      throw new Error('La ruta de almacenamiento está vacía')
+    }
+
+    const fileRef = ref(storage, storagePath)
+    const url = await getDownloadURL(fileRef)
+
+    console.log('✅ URL obtenida para template:', storagePath)
+    return url
+  } catch (err) {
+    const error = err as Error
+    console.error('❌ Error obteniendo URL del template:', error)
+    console.error('📍 Ruta intentada:', storagePath)
+    throw new Error(`No se pudo obtener la URL del template: ${error.message}`)
+  }
 }
