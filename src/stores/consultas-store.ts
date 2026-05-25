@@ -20,27 +20,28 @@ interface ConsultasState {
   archivoActual: ArchivoPDF | null;
 }
 
-// Carga la API Key
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 if (!API_KEY) {
   throw new Error('Error: La API Key no está definida en las variables de entorno');
 }
 
-// Inicializar Gemini con la configuración correcta
 const genAI = new GoogleGenerativeAI(API_KEY);
 
-// Prompt base para la IA
+// ✅ Modelo actualizado en un solo lugar
+const MODELO = 'gemini-2.5-flash'
+
+
 const PROMPT_BASE = [
-  'Eres un asistente legal especializado en derecho contractual y civil.',
+  'Eres Letxi , una IA jurídica especializada en derecho peruano.',
   'Tu objetivo es ayudar a interpretar y explicar conceptos legales de manera clara y precisa.',
   'Debes:',
   '1. Analizar consultas legales relacionadas con contratos.',
   '2. Responder de forma estructurada usando markdown (negritas, listas, etc.).',
-  '3. Mantener un tono profesional pero accesible.'
+  '3. Mantener un tono profesional pero accesible.',
+  '4. Citar artículos y normas legales peruanas cuando sea relevante.'
 ].join('\n');
 
-// Prompt para el análisis de los contratos
 const PROMPT_ANALISIS_CONTRATO = `
 Analiza el siguiente contrato en PDF y proporciona un resumen estructurado en formato markdown.
 El análisis debe incluir:
@@ -61,6 +62,7 @@ export const useConsultasStore = defineStore('consultas', {
     archivosPDF: [],
     archivoActual: null,
   }),
+
   actions: {
     async enviarConsulta(pregunta: string) {
       this.loading = true;
@@ -68,8 +70,6 @@ export const useConsultasStore = defineStore('consultas', {
       this.respuesta = '';
       this.referencias = [];
 
-
-      // Agregamos el mensaje del usuario
       this.mensajes.push({
         contenido: pregunta,
         esIA: false,
@@ -78,7 +78,7 @@ export const useConsultasStore = defineStore('consultas', {
 
       try {
         const model = genAI.getGenerativeModel({
-          model: "gemini-1.5-flash",
+          model: MODELO,  // ✅ usa la constante
           generationConfig: {
             temperature: 0.7,
             topK: 40,
@@ -87,10 +87,8 @@ export const useConsultasStore = defineStore('consultas', {
           },
         });
 
-        // Preparar el contenido de la consulta
         let promptCompleto = PROMPT_BASE;
 
-        // Si hay un archivo PDF cargado, incluirlo en el contexto
         if (this.archivoActual) {
           promptCompleto += `\n\nContexto del contrato analizado:\n${this.archivoActual.analisis?.resumen || 'Contrato cargado pero no analizado aún'}`;
           promptCompleto += `\n\nConsulta del usuario sobre el contrato: ${pregunta}`;
@@ -98,17 +96,9 @@ export const useConsultasStore = defineStore('consultas', {
           promptCompleto += `\n\nConsulta del usuario: ${pregunta}`;
         }
 
-        const contents = [{
-          role: "user",
-          parts: [{ text: promptCompleto }]
-        }];
-
-
-        // Enviar consulta
         const result = await model.generateContent({
-          contents: contents
+          contents: [{ role: 'user', parts: [{ text: promptCompleto }] }]
         });
-
 
         if (!result.response) {
           throw new Error('No se recibió respuesta de la IA');
@@ -116,7 +106,6 @@ export const useConsultasStore = defineStore('consultas', {
 
         const respuestaIA = result.response.text();
 
-        // Agregar respuesta al historial solo si tenemos contenido
         if (respuestaIA) {
           this.mensajes.push({
             contenido: respuestaIA,
@@ -124,63 +113,24 @@ export const useConsultasStore = defineStore('consultas', {
             timestamp: new Date(),
             referencias: []
           });
-
-          // Force reactivity update for mensajes array
           this.mensajes = [...this.mensajes];
-
           this.respuesta = respuestaIA;
         } else {
           throw new Error('La respuesta de la IA está vacía');
         }
 
-      } catch (error) {
+      } catch (err) {
+        const error = err as Error
         console.error('Error completo:', error);
 
-        let errorMessage = 'Error desconocido';
-        if (error instanceof Error) {
-          errorMessage = error.message;
-        }
-
-        // Crear mensaje de error para mostrar en el chat
-        let mensajeError = `❌ **Error al consultar la IA jurídica**\n\n${errorMessage}`;
-
-        // Manejo específico de errores de API key
-        if (errorMessage.includes('API Key not found') || errorMessage.includes('API_KEY_INVALID')) {
-          mensajeError = `❌ **Error de API Key**\n\nLa clave API no es válida para Google Generative AI.
-
-🔧 **Soluciones:**
-1. Verifica que tienes habilitada la API de Generative Language en Google Cloud Console
-2. Asegúrate de que la API key tenga permisos para usar Gemini
-3. Si usas una API key de Google Maps, necesitas una específica para AI
-
-📋 Tu API key actual: ${API_KEY.substring(0, 10)}...
-
-💡 Para obtener una API key válida:
-- Ve a https://makersuite.google.com/app/apikey
-- Crea una nueva API key
-- Asegúrate de que tenga habilitada la facturación (necesario para usar Gemini)`;
-        } else if (errorMessage.includes('QUOTA_EXCEEDED') || errorMessage.includes('RATE_LIMIT_EXCEEDED')) {
-          mensajeError = `⚠️ **Límite de cuota excedido**\n\nHas alcanzado el límite de uso de la API.
-
-🔧 **Soluciones:**
-1. Espera unos minutos antes de intentar nuevamente
-2. Verifica tu plan de facturación en Google Cloud Console
-3. Considera actualizar tu plan si necesitas más uso`;
-        }
-
-        // Agregar mensaje de error al chat
         this.mensajes.push({
-          contenido: mensajeError,
+          contenido: `❌ **Error al consultar la IA jurídica**\n\n${error.message}`,
           esIA: true,
           timestamp: new Date(),
           referencias: []
         });
-
-        // Force reactivity update for mensajes array
         this.mensajes = [...this.mensajes];
-
-        this.error = `Error al consultar la IA jurídica: ${errorMessage}`;
-        console.error('Error detallado:', error);
+        this.error = `Error al consultar la IA jurídica: ${error.message}`;
       } finally {
         this.loading = false;
       }
@@ -191,7 +141,6 @@ export const useConsultasStore = defineStore('consultas', {
       this.error = '';
 
       try {
-        // Crear objeto para el archivo
         const nuevoArchivo: ArchivoPDF = {
           id: Date.now().toString(),
           nombre: archivo.name,
@@ -199,12 +148,10 @@ export const useConsultasStore = defineStore('consultas', {
           fechaSubida: new Date(),
         };
 
-        // Agregar archivo a la lista
         this.archivosPDF.push(nuevoArchivo);
         this.archivoActual = nuevoArchivo;
 
-        // Verificar tamaño del archivo (Gemini tiene límites)
-        if (archivo.size > 20 * 1024 * 1024) { // 20MB límite
+        if (archivo.size > 20 * 1024 * 1024) {
           throw new Error('El archivo es demasiado grande. El límite es 20MB.');
         }
 
@@ -214,7 +161,7 @@ export const useConsultasStore = defineStore('consultas', {
         }
 
         const model = genAI.getGenerativeModel({
-          model: "gemini-1.5-flash",
+          model: MODELO,  // ✅ usa la constante
           generationConfig: {
             temperature: 0.3,
             topK: 40,
@@ -223,27 +170,14 @@ export const useConsultasStore = defineStore('consultas', {
           },
         });
 
-        // Crear el contenido con el PDF
-        const contents = [
-          {
-            role: "user",
-            parts: [
-              {
-                text: PROMPT_ANALISIS_CONTRATO
-              },
-              {
-                inlineData: {
-                  mimeType: "application/pdf",
-                  data: base64Data
-                }
-              }
-            ]
-          }
-        ];
-
-
         const result = await model.generateContent({
-          contents: contents
+          contents: [{
+            role: 'user',
+            parts: [
+              { text: PROMPT_ANALISIS_CONTRATO },
+              { inlineData: { mimeType: 'application/pdf', data: base64Data } }
+            ]
+          }]
         });
 
         if (!result.response) {
@@ -252,11 +186,6 @@ export const useConsultasStore = defineStore('consultas', {
 
         const analisisTexto = result.response.text();
 
-        if (analisisTexto.includes('no puedo analizar un contrato sin tener acceso al texto')) {
-          throw new Error('Gemini no pudo procesar el PDF. Esto puede deberse a que el PDF está escaneado o protegido.');
-        }
-
-        // Parsear el análisis para estructurarlo
         const analisis: AnalisisContrato = {
           resumen: this.extraerResumen(analisisTexto),
           clausulas: this.extraerClausulas(analisisTexto),
@@ -265,135 +194,82 @@ export const useConsultasStore = defineStore('consultas', {
           fechaAnalisis: new Date()
         };
 
-        // Actualizar el archivo con el análisis
         nuevoArchivo.analisis = analisis;
 
-        // Agregar mensaje al chat sobre el análisis
         this.mensajes.push({
           contenido: `✅ **Contrato analizado exitosamente**\n\n**Archivo:** ${archivo.name}\n**Tamaño:** ${(archivo.size / 1024).toFixed(1)} KB\n\n**Resumen del análisis:**\n${analisis.resumen}`,
           esIA: true,
           timestamp: new Date(),
           referencias: []
         });
-
         this.mensajes = [...this.mensajes];
 
-      } catch (error) {
+      } catch (err) {
+        const error = err as Error
         console.error('Error completo en análisis PDF:', error);
 
-        let errorMessage = 'Error desconocido';
-        if (error instanceof Error) {
-          errorMessage = error.message;
-        }
-
-        // Agregar mensaje de error al chat con información específica
-        let mensajeError = `❌ **Error al analizar el contrato**\n\n${errorMessage}`;
-
-        // Manejo específico de errores de API key en análisis PDF
-        if (errorMessage.includes('API Key not found') || errorMessage.includes('API_KEY_INVALID')) {
-          mensajeError = `❌ **Error de API Key en análisis PDF**
-
-La clave API no es válida para Google Generative AI.
-
-🔧 **Para solucionarlo:**
-1. Ve a https://makersuite.google.com/app/apikey
-2. Crea una nueva API key específica para AI
-3. Asegúrate de tener facturación habilitada
-
-📋 Tu API key actual: ${API_KEY.substring(0, 10)}...`;
-        } else if (errorMessage.includes('QUOTA_EXCEEDED') || errorMessage.includes('RATE_LIMIT_EXCEEDED')) {
-          mensajeError = `⚠️ **Límite de cuota excedido**
-
-Has alcanzado el límite de uso de la API para análisis de PDFs.
-
-🔧 **Soluciones:**
-1. Espera unos minutos antes de intentar nuevamente
-2. Verifica tu plan de facturación en Google Cloud Console
-3. Considera actualizar tu plan si necesitas más uso`;
-        }
-
-        this.error = `Error al analizar el PDF: ${errorMessage}`;
-
         this.mensajes.push({
-          contenido: mensajeError,
+          contenido: `❌ **Error al analizar el contrato**\n\n${error.message}`,
           esIA: true,
           timestamp: new Date(),
           referencias: []
         });
         this.mensajes = [...this.mensajes];
-
-        console.error('Error detallado:', error);
+        this.error = `Error al analizar el PDF: ${error.message}`;
       } finally {
         this.loading = false;
       }
     },
 
-    // Métodos auxiliares
     async fileToBase64(file: File): Promise<string | null> {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
-
         reader.onload = () => {
           try {
             const base64 = reader.result as string;
-
-            // Verificar que tenemos el resultado correcto
             if (!base64 || !base64.startsWith('data:application/pdf;base64,')) {
-              console.error('Formato base64 incorrecto:', base64?.substring(0, 50));
               resolve(null);
               return;
             }
-
-            // Remover el prefijo "data:application/pdf;base64," para obtener solo el base64
             const data = base64.split(',')[1];
             resolve(data || null);
-
-          } catch (error) {
-            console.error('Error en fileToBase64:', error);
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          } catch (err) {
             resolve(null);
           }
         };
-
-        reader.onerror = () => {
-          console.error('Error en FileReader');
-          reject(new Error('Error al leer el archivo PDF'));
-        };
-
+        reader.onerror = () => reject(new Error('Error al leer el archivo PDF'));
         reader.readAsDataURL(file);
       });
     },
 
     extraerResumen(texto: string): string {
       const match = texto.match(/# Resumen ejecutivo[:\n](.*?)(?=#|$)/is);
-      return match && match[1] ? match[1].trim() : 'No se pudo extraer el resumen';
+      return match?.[1]?.trim() ?? 'No se pudo extraer el resumen';
     },
 
     extraerClausulas(texto: string): Array<{ numero: number, texto: string, riesgo?: string }> {
       const clausulas: Array<{ numero: number, texto: string, riesgo?: string }> = [];
       const matches = texto.match(/Cláusula (\d+):([^#]*?)(?=(Cláusula \d+|$))/g);
-
       if (matches) {
         matches.forEach((match, index) => {
-          const numero = index + 1;
-          const textoLimpio = match.replace(/Cláusula \d+:/, '').trim();
           clausulas.push({
-            numero,
-            texto: textoLimpio
+            numero: index + 1,
+            texto: match.replace(/Cláusula \d+:/, '').trim()
           });
         });
       }
-
       return clausulas;
     },
 
     extraerTipoContrato(texto: string): string {
       const match = texto.match(/## Tipo de contrato[:\n](.*?)(?=\n|$)/i);
-      return match && match[1] ? match[1].trim() : 'No especificado';
+      return match?.[1]?.trim() ?? 'No especificado';
     },
 
     extraerPartes(texto: string): string[] {
       const match = texto.match(/## Partes involucradas[:\n](.*?)(?=\n|$)/i);
-      if (match && match[1]) {
+      if (match?.[1]) {
         return match[1].split(/[,y]/).map(p => p.trim()).filter(p => p);
       }
       return [];
@@ -409,65 +285,49 @@ Has alcanzado el límite de uso de la API para análisis de PDFs.
       this.archivoActual = null;
     },
 
-    // Método para probar la API key
     async probarAPIKey() {
-      // console.log('Probando API key...');
       this.loading = true;
       this.error = '';
 
       try {
         const model = genAI.getGenerativeModel({
-          model: "gemini-1.5-flash",
+          model: MODELO,  // ✅ usa la constante
           generationConfig: {
             temperature: 0.1,
-            topK: 1,
-            topP: 0.1,
             maxOutputTokens: 50,
           },
         });
 
         const result = await model.generateContent({
           contents: [{
-            role: "user",
+            role: 'user',
             parts: [{ text: "Responde solo con 'OK' si puedes leer este mensaje." }]
           }]
         });
 
         if (result.response) {
-          const respuesta = result.response.text();
-          // console.log('✅ API Key funciona correctamente. Respuesta:', respuesta);
-
           this.mensajes.push({
-            contenido: `✅ **API Key válida**\n\nLa API key funciona correctamente. Puedes usar todas las funciones de IA jurídica.`,
+            contenido: `✅ **API Key válida**\n\nLetsy IA está funcionando correctamente.`,
             esIA: true,
             timestamp: new Date(),
             referencias: []
           });
           this.mensajes = [...this.mensajes];
-
           return true;
         } else {
           throw new Error('No se recibió respuesta de la API');
         }
 
-      } catch (error) {
-        console.error('❌ Error al probar API key:', error);
-
-        let errorMessage = 'Error desconocido';
-        if (error instanceof Error) {
-          errorMessage = error.message;
-        }
-
-        this.error = `❌ Error al probar API key: ${errorMessage}`;
-
+      } catch (err) {
+        const error = err as Error
+        this.error = `❌ Error al probar API key: ${error.message}`;
         this.mensajes.push({
-          contenido: `❌ **API Key no válida**\n\nError: ${errorMessage}\n\n**Solución:**\n1. Ve a https://makersuite.google.com/app/apikey\n2. Crea una nueva API key\n3. Asegúrate de tener facturación habilitada`,
+          contenido: `❌ **API Key no válida**\n\nError: ${error.message}`,
           esIA: true,
           timestamp: new Date(),
           referencias: []
         });
         this.mensajes = [...this.mensajes];
-
         return false;
       } finally {
         this.loading = false;

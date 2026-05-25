@@ -1,214 +1,44 @@
 <template>
-  <q-page class="contratos-page q-pa-md fade-in">
-    <div class="page-header q-mb-lg">
-      <div class="text-h5 text-weight-bold q-mb-sm header-gradient">
-        <q-icon name="description" class="q-mr-sm" /> Contratos
-      </div>
-      <p class="text-body2 text-grey-7">Genera contratos personalizados desde plantillas profesionales</p>
-    </div>
-
-    <!-- Sección: Almacen contratos en Firebase -->
-
-    <div class="firebase-section q-mb-xl">
-      
-      <div class="text-subtitle1 text-weight-bold q-mb-md" style="display: flex; align-items: center; gap: 8px;">
-        <q-icon name="cloud" color="orange" />
-        Contratos Almacenados
-        <q-badge color="orange" :label="store.firebaseContratos.length" />
-      </div>
-
-      <!-- Loading state -->
-      <div v-if="store.firebaseLoading" class="text-center q-pa-lg">
-        <q-spinner-dots size="40px" color="orange" />
-        <p class="text-grey-7 q-mt-sm">Cargando contratos...</p>
-      </div>
-
-      <!-- Error state -->
-      <div v-else-if="store.firebaseError" class="text-center q-pa-lg">
-        <q-icon name="error" size="40px" color="negative" />
-        <p class="text-negative q-mt-sm">{{ store.firebaseError }}</p>
-      </div>
-
-      <!-- Sin contratos -->
-      <div v-else-if="store.firebaseContratos.length === 0" class="text-center q-pa-lg">
-        <q-icon name="folder_open" size="40px" color="grey-5" />
-        <p class="text-grey-6 q-mt-sm">No hay contratos almacenados aún</p>
-      </div>
-
-      <!-- Lista + Previsualizador -->
-      <div v-else class="row q-col-gutter-lg">
-
-        <!-- Columna izquierda: Lista de contratos -->
-        <div class="col-12 col-md-4">
-          <q-card class="templates-card">
-            <q-card-section class="templates-header">
-              <div class="text-h6 text-weight-medium">Archivos de Contratos</div>
-              <q-icon name="folder" size="sm" color="orange" />
-            </q-card-section>
-            <q-card-section class="templates-list">
-              <q-list separator class="rounded-borders">
-                <q-item
-                  v-for="contrato in store.firebaseContratos"
-                  :key="contrato.id"
-                  clickable
-                  :active="store.selectedContrato?.id === contrato.id"
-                  @click="selectFirebaseContrato(contrato)"
-                  v-ripple
-                  class="template-item"
-                >
-                  <q-item-section avatar>
-                    <q-icon name="picture_as_pdf" color="red" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label class="text-weight-medium">{{ contrato.name }}</q-item-label>
-                    <q-item-label caption class="text-grey-7">{{ contrato.type }}</q-item-label>
-                  </q-item-section>
-                  <q-item-section side v-if="store.selectedContrato?.id === contrato.id">
-                    <q-icon name="visibility" color="orange" />
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-card-section>
-          </q-card>
-        </div>
-
-        <!-- Columna derecha: Vista previa del PDF -->
-         <div class="col-12 col-md-8">
-
-          <template v-if="store.selectedContrato">
-            <q-card class="editor-card">
-              
-              <q-card-section class="editor-header">
-                <div class="row items-center justify-between">
-                  <div>
-                    <h6 class="text-h6 text-weight-medium q-mb-xs">{{ store.selectedContrato.name }}</h6>
-                    <p class="text-caption text-grey-7">{{ store.selectedContrato.type }}</p>
-                  </div>
-                  <q-badge color="orange" label="Firebase" />
-                </div>
-              </q-card-section>
-
-              <q-card-section class="editor-content">
-                <div class="pdf-viewer-section">
-                  <div class="text-subtitle2 text-weight-medium q-mb-md">
-                    <q-icon name="picture_as_pdf" color="orange" class="q-mr-sm" />
-                    Vista Previa - Primera Página
-                  </div>
-
-                  <!-- Loading -->
-                  <div v-if="fbLoadingPdf" class="pdf-loading text-center q-pa-xl">
-                    <q-spinner-dots size="50px" color="orange" />
-                    <p class="text-grey-7 q-mt-md">Cargando PDF...</p>
-                  </div>
-
-                  <!-- Error -->
-                  <div v-else-if="fbPdfError" class="pdf-error text-center q-pa-xl">
-                    <q-icon name="error" size="50px" color="negative" />
-                    <p class="text-negative q-mt-md">{{ fbPdfError }}</p>
-                    <q-btn
-                      flat
-                      color="orange"
-                      label="Reintentar"
-                      @click="selectFirebaseContrato(store.selectedContrato!)"
-                      class="q-mt-md"
-                    />
-                  </div>
-
-                  <!-- Canvas del PDF (solo primera página) -->
-                  <div v-else class="pdf-canvas-container">
-                    <canvas ref="fbPdfCanvas" class="pdf-canvas"></canvas>
-                    <div v-if="fbPdfDoc" class="q-mt-sm text-center text-caption text-grey-6">
-                      Mostrando página 1 de {{ fbNumPages }}
-                    </div>
-                  </div>
-
-                </div>
-
-              </q-card-section>
-
-            </q-card>
-
-            <!-- Botón de descarga -->
-            <q-card class="export-card q-mt-md">
-              <q-card-section>
-                <div class="text-subtitle2 text-weight-medium q-mb-md">Descargar Contrato</div>
-                <div class="row justify-center">
-                  <q-btn
-                    color="orange"
-                    icon="download"
-                    label="Descargar PDF"
-                    @click="downloadFirebaseContrato"
-                    :loading="fbDownloading"
-                    class="export-btn"
-                    unelevated
-                  >
-                    <q-tooltip>Descargar el archivo PDF desde Firebase</q-tooltip>
-                  </q-btn>
-                </div>
-              </q-card-section>
-            </q-card>
-          </template>  
-
-          <!-- Estado vacío cuando no hay contrato seleccionado -->
-          <div v-else class="empty-state text-center q-pa-xl">
-
-            <q-icon name="touch_app" size="4rem" color="grey-5" class="q-mb-md" />
-            
-            <div class="text-h6 text-grey-7 q-mb-sm">
-              Selecciona un contrato para previsualizar
-            </div>
-
-            <p class="text-body2 text-grey-6">
-              Haz click en un contrato de la lista para ver la primera página
-            </p>
-
-          </div>
-
-        </div>
-        
-      </div>
-
-    </div>
-
-    <!-- Separador visual entre secciones -->
-    <q-separator class="q-mb-lg" />
-    <p class="text-body2 text-grey-7 q-mb-md">
-      <q-icon name="edit" class="q-mr-xs" /> Plantillas editables (Supabase)
-    </p>
-
-
-    <!-- -------------------------------------- -->
-
-    <div class="row q-col-gutter-lg">
-      <!-- Columna de Selección de Plantillas (obtenidas de Supabase) -->
+  <q-page class="q-pa-md">
+    <div class="row q-col-gutter-md">
+      <!-- Columna Izquierda: Templates -->
       <div class="col-12 col-md-4">
         <q-card class="templates-card">
-          <q-card-section class="templates-header">
-            <div class="text-h6 text-weight-medium">Plantillas de Contratos</div>
-            <q-icon name="library_books" size="sm" color="primary" />
+          <q-card-section class="templates-header q-pa-md">
+            <div class="text-h6 text-weight-bold">
+              <q-icon name="description" size="sm" class="q-mr-sm" />
+              Plantillas de Contratos
+            </div>
+            <q-btn flat round dense icon="refresh" @click="store.fetchTemplates()" :loading="isLoading" />
           </q-card-section>
 
-          <q-card-section class="templates-list">
-            <q-list separator class="rounded-borders">
-              <!-- NUEVO: Bucle dinámico que crea un botón por cada plantilla de Supabase -->
+          <q-separator />
+
+          <q-card-section class="q-pa-none">
+            <q-list class="templates-list">
               <q-item
                 v-for="template in templates"
                 :key="template.id"
-                clickable
+                clickable v-ripple
+                class="template-item"
                 :active="currentTemplate?.id === template.id"
                 @click="selectTemplate(template)"
-                v-ripple
-                class="template-item"
               >
                 <q-item-section avatar>
-                  <q-icon name="article" color="primary" />
+                  <q-avatar color="orange" text-color="white" icon="article" />
                 </q-item-section>
                 <q-item-section>
                   <q-item-label class="text-weight-medium">{{ template.name }}</q-item-label>
-                  <q-item-label caption class="text-grey-7">{{ template.type }}</q-item-label>
+                  <q-item-label caption lines="2">{{ template.description }}</q-item-label>
                 </q-item-section>
-                <q-item-section side v-if="currentTemplate?.id === template.id">
-                  <q-icon name="check_circle" color="positive" />
+                <q-item-section side>
+                  <q-icon name="chevron_right" color="grey" />
+                </q-item-section>
+              </q-item>
+
+              <q-item v-if="templates.length === 0 && !isLoading">
+                <q-item-section class="text-center text-grey">
+                  No hay plantillas disponibles
                 </q-item-section>
               </q-item>
             </q-list>
@@ -216,678 +46,745 @@
         </q-card>
       </div>
 
-      <!-- Columna del Editor de Contrato o Visor PDF (se activa al seleccionar una plantilla) -->
+      <!-- Columna Derecha -->
       <div class="col-12 col-md-8">
-        <template v-if="currentTemplate">
-          <q-card class="editor-card">
-            <q-card-section class="editor-header">
-              <div class="row items-center justify-between">
-                <div>
-                  <h6 class="text-h6 text-weight-medium q-mb-xs">{{ currentTemplate.name }}</h6>
-                  <p class="text-caption text-grey-7">{{ currentTemplate.type }}</p>
-                </div>
-                <q-badge color="primary" label="Activo" />
+
+        <!-- VISTA PREVIA DEL PDF -->
+        <q-card class="editor-card" v-if="!modoEdicion">
+          <q-card-section class="editor-header q-pa-md">
+            <div class="row items-center justify-between">
+              <div class="text-h6 text-weight-bold">
+                <q-icon name="preview" size="sm" class="q-mr-sm" />
+                Vista Previa del Contrato
               </div>
-            </q-card-section>
+              <q-btn
+                v-if="pdfDoc"
+                color="orange"
+                icon="edit"
+                label="Editar Contrato"
+                @click="abrirEditor"
+                unelevated
+                :loading="extrayendoTexto"
+              />
+            </div>
+          </q-card-section>
 
-            <q-card-section class="editor-content">
-              <!-- Si el contrato tiene storage_path, mostramos el visor PDF -->
-              <template v-if="currentTemplate.storage_path">
-                <div class="pdf-viewer-section">
-                  <div class="text-subtitle2 text-weight-medium q-mb-md">
-                    <q-icon name="picture_as_pdf" color="primary" class="q-mr-sm" />
-                    Vista Previa del Contrato
-                  </div>
-                  
-                  <!-- Loading state -->
-                  <div v-if="loadingPdf" class="pdf-loading text-center q-pa-xl">
-                    <q-spinner-dots size="50px" color="primary" />
-                    <p class="text-grey-7 q-mt-md">Cargando PDF...</p>
-                  </div>
+          <q-separator />
 
-                  <!-- Error state -->
-                  <div v-else-if="pdfError" class="pdf-error text-center q-pa-xl">
-                    <q-icon name="error" size="50px" color="negative" />
-                    <p class="text-negative q-mt-md">{{ pdfError }}</p>
-                    <q-btn
-                      flat
-                      color="primary"
-                      label="Reintentar"
-                      @click="loadPDFPreview"
-                      class="q-mt-md"
-                    />
-                  </div>
+          <q-card-section class="editor-content">
+            <div v-if="!currentTemplate" class="pdf-canvas-container">
+              <q-icon name="touch_app" size="64px" color="grey-5" />
+              <p class="text-grey-6 q-mt-md text-center">
+                Selecciona una plantilla de la lista para ver su contenido
+              </p>
+            </div>
 
-                  <!-- PDF Canvas -->
-                  <div v-else class="pdf-canvas-container">
-                    <canvas ref="pdfCanvas" class="pdf-canvas"></canvas>
-                    
-                    <!-- PDF Navigation -->
-                    <div v-if="pdfDoc" class="pdf-nav q-mt-md row justify-center items-center">
-                      <q-btn
-                        flat
-                        round
-                        dense
-                        icon="chevron_left"
-                        :disable="currentPage <= 1"
-                        @click="prevPage"
-                      />
-                      <span class="q-mx-md text-body2">
-                        Página {{ currentPage }} de {{ numPages }}
-                      </span>
-                      <q-btn
-                        flat
-                        round
-                        dense
-                        icon="chevron_right"
-                        :disable="currentPage >= numPages"
-                        @click="nextPage"
-                      />
-                    </div>
-                  </div>
+            <div v-else-if="loadingPdf" class="pdf-loading row items-center justify-center">
+              <q-spinner-dots color="orange" size="50px" />
+              <p class="q-ml-md text-grey-7">Cargando PDF...</p>
+            </div>
+
+            <div v-else-if="pdfError" class="pdf-error row items-center justify-center">
+              <div class="text-center">
+                <q-icon name="error_outline" size="48px" color="negative" />
+                <p class="text-negative q-mt-md">{{ pdfError }}</p>
+                <q-btn color="orange" label="Reintentar" @click="loadPDFPreview" class="q-mt-md" />
+              </div>
+            </div>
+
+            <div v-else-if="pdfDoc" class="pdf-canvas-container">
+              <canvas ref="pdfCanvas" class="pdf-canvas" />
+              <div class="row items-center q-mt-md q-gutter-sm">
+                <q-btn round color="orange" icon="chevron_left"
+                  :disable="currentPage <= 1 || isRendering" @click="prevPage" />
+                <span class="text-body1">Página {{ currentPage }} de {{ numPages }}</span>
+                <q-btn round color="orange" icon="chevron_right"
+                  :disable="currentPage >= numPages || isRendering" @click="nextPage" />
+              </div>
+            </div>
+          </q-card-section>
+        </q-card>
+
+        <!-- EDITOR DE CONTRATO -->
+        <q-card class="editor-card" v-if="modoEdicion">
+          <q-card-section class="editor-header q-pa-md">
+            <div class="row items-center justify-between">
+              <div class="text-h6 text-weight-bold">
+                <q-icon name="edit_document" size="sm" class="q-mr-sm" />
+                Editando: {{ currentTemplate?.name }}
+              </div>
+              <q-btn flat icon="arrow_back" label="Volver" @click="modoEdicion = false" />
+            </div>
+          </q-card-section>
+
+          <q-separator />
+
+          <!-- Tabs: Manual / IA -->
+          <q-tabs v-model="tabEdicion" color="orange" align="left" class="q-px-md q-pt-sm">
+            <q-tab name="manual" icon="edit" label="Editar Manualmente" />
+            <q-tab name="ia" icon="auto_awesome" label="Modificar con IA" />
+          </q-tabs>
+
+          <q-separator />
+
+          <q-card-section>
+
+            <!-- TAB MANUAL -->
+            <div v-if="tabEdicion === 'manual'">
+              <!-- Barra de herramientas tipo Word -->
+              <div class="toolbar-word q-mb-sm">
+                <q-btn-group flat>
+                  <q-btn flat dense size="sm" icon="format_bold" @click="aplicarFormato('bold')" title="Negrita" />
+                  <q-btn flat dense size="sm" icon="format_italic" @click="aplicarFormato('italic')" title="Cursiva" />
+                  <q-btn flat dense size="sm" icon="format_underlined" @click="aplicarFormato('underline')" title="Subrayado" />
+                </q-btn-group>
+                <q-separator vertical inset class="q-mx-xs" />
+                <q-btn flat dense size="sm" icon="format_align_left" title="Alinear izquierda" />
+                <q-btn flat dense size="sm" icon="format_align_center" title="Centrar" />
+                <q-btn flat dense size="sm" icon="format_align_justify" title="Justificar" />
+                <q-separator vertical inset class="q-mx-xs" />
+                <q-btn flat dense size="sm" icon="undo" @click="deshacerCambio" title="Deshacer" />
+              </div>
+
+              <!-- Editor de texto tipo documento -->
+              <div class="document-container">
+                <div class="document-page">
+                  <div
+                    ref="editorRef"
+                    class="document-editor"
+                    contenteditable="true"
+                    @input="onEditorInput"
+
+                  />
                 </div>
-              </template>
+              </div>
+            </div>
 
-              <!-- Si NO tiene storage_path, mostramos el editor HTML normal -->
-              <template v-else>
-                <contract-editor
-                  :template="currentTemplate"
-                  :modified-contract="getModifiedContract(currentTemplate.id)"
-                  @update:contract="updateContract"
+            <!-- TAB IA -->
+            <div v-if="tabEdicion === 'ia'">
+              <div class="ia-panel q-mb-md">
+                <p class="text-grey-7 q-mb-sm text-weight-medium">
+                  <q-icon name="auto_awesome" color="orange" class="q-mr-xs" />
+                  Dile a Letsy AI qué cambios quieres:
+                </p>
+
+                <q-input
+                  v-model="instruccionIA"
+                  outlined
+                  placeholder="Ej: Cambia el plazo a 2 años, el monto a S/. 1500 mensuales, y el nombre del arrendador a Juan Pérez..."
+                  :rows="3"
+                  type="textarea"
+                  class="q-mb-md"
                 />
-              </template>
-            </q-card-section>
-          </q-card>
 
-          <!-- Acciones de Exportación -->
-          <q-card class="export-card q-mt-md">
-            <q-card-section>
-              <div class="text-subtitle2 text-weight-medium q-mb-md">Exportar Contrato</div>
-              <div class="row q-col-gutter-md justify-center">
-                <!-- Botón de descarga PDF original (solo si tiene storage_path) -->
-                <div v-if="currentTemplate.storage_path" class="col-auto">
-                  <q-btn
-                    color="accent"
-                    icon="download"
-                    label="Descargar PDF Original"
-                    @click="downloadOriginalPDF"
-                    :loading="downloading"
-                    class="export-btn"
-                    unelevated
-                  >
-                    <q-tooltip>Descargar el archivo PDF original desde Supabase</q-tooltip>
-                  </q-btn>
-                </div>
+                <q-btn
+                  color="orange"
+                  icon="auto_awesome"
+                  label="Modificar con Letsy AI"
+                  @click="modificarConIA"
+                  :loading="cargandoIA"
+                  unelevated
+                  class="full-width"
+                />
 
-                <!-- Botón de exportar a Word (solo si NO tiene storage_path, o sea, es editable) -->
-                <div v-if="!currentTemplate.storage_path" class="col-auto">
-                  <q-btn
-                    color="primary"
-                    icon="file_download"
-                    label="Exportar como Word"
-                    @click="exportToWord"
-                    :loading="exporting"
-                    class="export-btn"
-                    unelevated
-                  >
-                    <q-tooltip>Descargar en formato Word (.docx) editable</q-tooltip>
-                  </q-btn>
-                </div>
-
-                <!-- Botón de exportar a PDF generado (solo si NO tiene storage_path) -->
-                <div v-if="!currentTemplate.storage_path" class="col-auto">
-                  <q-btn
-                    color="secondary"
-                    icon="picture_as_pdf"
-                    label="Exportar como PDF"
-                    @click="exportToPDF"
-                    :loading="exporting"
-                    class="export-btn"
-                    unelevated
-                  >
-                    <q-tooltip>Generar y descargar en formato PDF</q-tooltip>
-                  </q-btn>
+                <div v-if="cargandoIA" class="row items-center justify-center q-mt-md">
+                  <q-spinner-dots color="orange" size="40px" />
+                  <span class="q-ml-md text-grey-7">Letsy AI está modificando el contrato...</span>
                 </div>
               </div>
-            </q-card-section>
-          </q-card>
-        </template>
 
-        <!-- Estado inicial cuando no hay plantilla seleccionada -->
-        <div v-else class="empty-state text-center q-pa-xl">
-          <q-icon name="description" size="4rem" color="grey-5" class="q-mb-md" />
-          <div class="text-h6 text-grey-7 q-mb-sm">
-            Selecciona una plantilla para comenzar
-          </div>
-          <p class="text-body2 text-grey-6">
-            Elige una plantilla de contrato de la lista para empezar a personalizar tu documento
-          </p>
-        </div>
+              <!-- Preview del resultado de IA -->
+              <div v-if="textoEditado && !cargandoIA">
+                <q-separator class="q-mb-md" />
+                <p class="text-grey-7 q-mb-sm text-weight-medium">Resultado (puedes seguir editando en la pestaña Manual):</p>
+                <div class="document-container" style="max-height: 400px; overflow-y: auto;">
+                  <div class="document-page">
+                    <div class="document-preview" v-html="textoHtml" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </q-card-section>
+
+          <q-separator />
+
+          <!-- Botones de descarga -->
+          <q-card-section class="row q-gutter-sm items-center">
+            <div class="text-grey-7 text-caption">Descargar como:</div>
+            <q-btn
+              color="blue-8"
+              icon="description"
+              label="Word (.docx)"
+              @click="descargarWord"
+              :loading="descargandoWord"
+              unelevated
+            />
+            <q-btn
+              color="red-8"
+              icon="picture_as_pdf"
+              label="PDF"
+              @click="descargarPDF"
+              :loading="descargandoPDF"
+              unelevated
+            />
+          </q-card-section>
+        </q-card>
+
+        <!-- Sección Firebase Contratos -->
+        <q-card class="firebase-section q-mt-md">
+          <q-card-section>
+            <div class="text-h6 text-weight-bold q-mb-md">
+              <q-icon name="cloud" size="sm" class="q-mr-sm" />
+              Contratos Generados
+            </div>
+
+            <q-list bordered separator>
+              <q-item
+                v-for="contrato in store.firebaseContratos"
+                :key="contrato.id"
+                clickable v-ripple
+                :active="store.selectedContrato?.id === contrato.id"
+                @click="selectFirebaseContrato(contrato)"
+              >
+                <q-item-section avatar>
+                  <q-avatar color="primary" text-color="white" icon="picture_as_pdf" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>{{ contrato.name }}</q-item-label>
+                  <q-item-label caption>{{ new Date(contrato.createdAt).toLocaleString('es-PE') }}</q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <q-btn flat round dense icon="download" color="orange"
+                    @click.stop="downloadFirebaseContrato" :loading="fbDownloading" />
+                </q-item-section>
+              </q-item>
+
+              <q-item v-if="store.firebaseContratos.length === 0">
+                <q-item-section class="text-center text-grey">
+                  No hay contratos generados aún
+                </q-item-section>
+              </q-item>
+            </q-list>
+
+            <div v-if="store.selectedContrato" class="q-mt-md">
+              <q-separator class="q-mb-md" />
+              <div v-if="fbLoadingPdf" class="pdf-loading row items-center justify-center">
+                <q-spinner-dots color="orange" size="50px" />
+                <p class="q-ml-md text-grey-7">Cargando contrato...</p>
+              </div>
+              <div v-else-if="fbPdfError" class="pdf-error row items-center justify-center">
+                <div class="text-center">
+                  <q-icon name="error_outline" size="48px" color="negative" />
+                  <p class="text-negative q-mt-md">{{ fbPdfError }}</p>
+                </div>
+              </div>
+              <div v-else-if="fbPdfDoc" class="pdf-canvas-container">
+                <canvas ref="fbPdfCanvas" class="pdf-canvas" />
+                <div class="row items-center q-mt-md q-gutter-sm">
+                  <q-btn round color="orange" icon="chevron_left"
+                    :disable="fbCurrentPage <= 1 || fbIsRendering" @click="fbPrevPage" />
+                  <span class="text-body1">Página {{ fbCurrentPage }} de {{ fbNumPages }}</span>
+                  <q-btn round color="orange" icon="chevron_right"
+                    :disable="fbCurrentPage >= fbNumPages || fbIsRendering" @click="fbNextPage" />
+                </div>
+              </div>
+            </div>
+          </q-card-section>
+        </q-card>
       </div>
     </div>
 
-    <!-- Estado de Carga -->
-    <q-inner-loading :showing="isLoading">
-      <q-spinner-dots size="50px" color="primary" />
-    </q-inner-loading>
-
-    <!-- Manejo de Errores -->
+    <!-- Dialog de Error -->
     <q-dialog v-model="showErrorDialog">
-      <q-card class="error-dialog">
-        <q-card-section class="row items-center">
-          <q-avatar icon="error" color="negative" text-color="white" />
-          <span class="q-ml-sm text-weight-medium">{{ store.error }}</span>
+      <q-card style="min-width: 350px">
+        <q-card-section class="bg-negative text-white">
+          <div class="text-h6">Error</div>
         </q-card-section>
+        <q-card-section>{{ error }}</q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Cerrar" color="primary" v-close-popup />
         </q-card-actions>
       </q-card>
     </q-dialog>
-
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, computed, watch, nextTick } from 'vue'; // 'ref' se mantiene para 'exporting', hay imports para firebase
-import { storeToRefs } from 'pinia';
-import { useContratosStore, type ContractTemplate } from '../stores/contratos-store';
-import ContractEditor from '../components/ContractEditor.vue';
+import {
+  onMounted,
+  onUnmounted,
+  ref,
+  shallowRef,
+  computed,
+  watch,
+  nextTick
+} from 'vue'
+import { storeToRefs } from 'pinia'
+import { useContratosStore } from '../stores/contratos-store'
+import type { ContratoFirebase } from '../services/contratosService'
+import type { ContractTemplate } from '../stores/contratos-store'
+import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy } from 'pdfjs-dist'
+import { modificarPlantilla } from '../services/geminiService'
+import { exportarWord, exportarPDF } from '../services/documentService'
 
-// imports para Firebase:
-import type { ContratoFirebase } from '../services/contratosService';
+// ✅ Worker local que ya funciona
+GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js'
 
+// =========================
+// STORE
+// =========================
+const store = useContratosStore()
+const { templates, currentTemplate, isLoading, error } = storeToRefs(store)
 
+// =========================
+// PDF NORMAL
+// =========================
+const pdfCanvas = ref<HTMLCanvasElement | null>(null)
+const pdfDoc = shallowRef<PDFDocumentProxy | null>(null)
+const currentPage = ref(1)
+const numPages = ref(0)
+const loadingPdf = ref(false)
+const pdfError = ref<string | null>(null)
+const isRendering = ref(false)
 
-// --- LÓGICA DEL COMPONENTE ---
-const store = useContratosStore();
+// =========================
+// PDF FIREBASE
+// =========================
+const fbPdfCanvas = ref<HTMLCanvasElement | null>(null)
+const fbPdfDoc = shallowRef<PDFDocumentProxy | null>(null)
+const fbCurrentPage = ref(1)
+const fbNumPages = ref(0)
+const fbLoadingPdf = ref(false)
+const fbPdfError = ref<string | null>(null)
+const fbDownloading = ref(false)
+const fbIsRendering = ref(false)
 
-// PASO 1: Desestructurar el store manteniendo la reactividad con storeToRefs.
-// Las propiedades como 'templates', 'currentTemplate', 'isLoading' y 'error' ahora son refs reactivas.
-const { templates, currentTemplate, isLoading, error } = storeToRefs(store);
+// =========================
+// EDITOR
+// =========================
+const modoEdicion = ref(false)
+const tabEdicion = ref('manual')
+const textoEditado = ref('')
+const textoHtml = ref('')
+const instruccionIA = ref('')
+const cargandoIA = ref(false)
+const descargandoWord = ref(false)
+const descargandoPDF = ref(false)
+const extrayendoTexto = ref(false)
+const editorRef = ref<HTMLDivElement | null>(null)
+const historialTexto = ref<string[]>([])
 
-// PASO 2: Desestructurar las acciones directamente, ya que son funciones.
-const { fetchTemplates, setCurrentTemplate, updateModifiedContract, getModifiedContract, exportToWord: exportToWordAction, exportToPDF: exportToPDFAction, getPDFUrl, downloadOriginalPDF: downloadOriginalPDFAction } = store;
-
-const exporting = ref(false);
-const downloading = ref(false);
-
-// Estados para el visor PDF
-const pdfCanvas = ref<HTMLCanvasElement | null>(null);
-const pdfDoc = ref<any>(null);
-const currentPage = ref(1);
-const numPages = ref(0);
-const loadingPdf = ref(false);
-const pdfError = ref<string | null>(null);
-
-
-// Estados para los contratos de Firebase:
-const fbPdfCanvas = ref<HTMLCanvasElement | null>(null);
-const fbPdfDoc = ref<any>(null);
-const fbCurrentPage = ref(1);
-const fbNumPages = ref(0);
-const fbLoadingPdf = ref(false);
-const fbPdfError = ref<string | null>(null);
-const fbDownloading = ref(false);
-
-
-// El diálogo de error ahora usa la ref 'error' desestructurada.
-const showErrorDialog = computed<boolean>({
+// =========================
+// DIALOG ERROR
+// =========================
+const showErrorDialog = computed({
   get: () => !!error.value,
-  set: (val: boolean) => {
-    if (!val) {
-      error.value = null; // Limpia el error al cerrar el diálogo
-    }
-  }
-});
+  set: (val: boolean) => { if (!val) error.value = null }
+})
 
-
-// Al cargar el componente, llama a la acción para buscar las plantillas en Supabase.
+// =========================
+// MOUNT / UNMOUNT
+// =========================
 onMounted(async () => {
-  await store.fetchTemplates();
+  await store.fetchTemplates()
+  store.startListeningFirebaseContratos()
+})
 
-  // NUEVO: Iniciar escucha en tiempo real de contratos de Firebase
-  store.startListeningFirebaseContratos();
-
-});
-
-/*
-Limpiar la suscripcion cuando el componente se desmonte.
-Sin esto, la conexion con Firebase seguiria abiera en segundo plano.
-*/
 onUnmounted(() => {
-  store.stopListeningFirebaseContratos();
-});
+  store.stopListeningFirebaseContratos()
+  if (pdfDoc.value) { void pdfDoc.value.destroy(); pdfDoc.value = null }
+  if (fbPdfDoc.value) { void fbPdfDoc.value.destroy(); fbPdfDoc.value = null }
+})
 
-
-
-
-/**
- * FUNCIÓN CONSERVADA: Selecciona la plantilla actual en el store.
- */
+// =========================
+// SELECCIONAR TEMPLATE
+// =========================
 const selectTemplate = (template: ContractTemplate) => {
-  store.setCurrentTemplate(template);
-};
+  store.setCurrentTemplate(template)
+  modoEdicion.value = false
+  textoEditado.value = ''
+  textoHtml.value = ''
+  instruccionIA.value = ''
+  historialTexto.value = []
+}
 
-/**
- * FUNCIÓN CONSERVADA: Actualiza el contenido modificado del contrato en el store.
- */
-const updateContract = (templateId: string, variables: Record<string, string>, content: string) => {
-  store.updateModifiedContract(templateId, variables, content);
-};
-
-/**
- * FUNCIÓN CONSERVADA: Llama a la acción del store para exportar a Word.
- */
-const exportToWord = async () => {
-  if (!currentTemplate.value) return;
-
-  exporting.value = true;
-  try {
-    const blob = await exportToWordAction(currentTemplate.value.id);
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${currentTemplate.value.name}.docx`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-  } catch (err: unknown) {
-    console.error('Error exporting to Word:', err);
-    // El diálogo de error se mostrará automáticamente porque estamos asignando al store.error
-  } finally {
-    exporting.value = false;
+// =========================
+// EXTRAER TEXTO DEL PDF
+// =========================
+const extraerTextoPDF = async (pdf: PDFDocumentProxy): Promise<string> => {
+  let textoCompleto = ''
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i)
+    const content = await page.getTextContent()
+    const textoPagina = content.items
+      .map((item) => ('str' in item ? item.str : ''))
+      .join(' ')
+    textoCompleto += textoPagina + '\n\n'
   }
-};
+  return textoCompleto.trim()
+}
 
-/**
- * FUNCIÓN CONSERVADA: Llama a la acción del store para exportar a PDF.
- */
-const exportToPDF = async () => {
-  if (!currentTemplate.value) return;
+// =========================
+// TEXTO A HTML
+// =========================
+const textoAHtml = (texto: string): string => {
+  const procesado = texto
+    .replace(/CLÁUSULA/g, '\n\nCLÁUSULA')
+    .replace(/CONTRATO DE/g, '\n\nCONTRATO DE')
+    .replace(/Definiciones/g, '\n\nDefiniciones')
+    .replace(/ {2,}/g, ' ')
+    .trim()
 
-  exporting.value = true;
-  try {
-    const blob = await exportToPDFAction(currentTemplate.value.id);
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${currentTemplate.value.name}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-  } catch (err: unknown) {
-    console.error('Error exporting to PDF:', err);
-    // El diálogo de error se mostrará automáticamente
-  } finally {
-    exporting.value = false;
-  }
-};
+  return procesado
+    .split('\n')
+    .map(linea => {
+      linea = linea.trim()
+      if (!linea) return '<p style="margin:4px 0;"><br></p>'
 
-/**
- * Carga la vista previa del PDF usando PDF.js
- */
+      if (linea.startsWith('CONTRATO DE')) {
+        return `<p style="text-align:center; font-weight:bold; font-size:14pt; font-family:Times New Roman; margin:16px 0 12px 0;">${linea}</p>`
+      }
+
+      if (linea.startsWith('CLÁUSULA')) {
+        return `<p style="font-weight:bold; font-size:11pt; font-family:Times New Roman; margin:12px 0 4px 0;">${linea}</p>`
+      }
+
+      if (linea === 'Definiciones') {
+        return `<p style="font-weight:bold; font-size:12pt; font-family:Times New Roman; margin:12px 0 6px 0;">${linea}</p>`
+      }
+
+      return `<p style="text-align:justify; font-size:11pt; font-family:Times New Roman; margin:2px 0;">${linea}</p>`
+    })
+    .join('')
+}
+
+// =========================
+// CARGAR PDF NORMAL
+// =========================
 const loadPDFPreview = async () => {
-  if (!currentTemplate.value?.storage_path || !pdfCanvas.value) {
-    return;
-  }
+  if (!currentTemplate.value?.storage_path) return
 
-  loadingPdf.value = true;
-  pdfError.value = null;
+  loadingPdf.value = true
+  pdfError.value = null
+  textoEditado.value = ''
+  textoHtml.value = ''
 
   try {
-    // Obtener la URL del PDF desde Supabase
-    const pdfUrl = await getPDFUrl(currentTemplate.value.storage_path);
+    const pdfUrl = await store.getPDFUrl(currentTemplate.value.storage_path)
+    const pdf = await getDocument({ url: pdfUrl }).promise
 
-    // Cargar PDF.js
-    const pdfjsLib = await import('pdfjs-dist');
-    
-    // Configurar el worker de PDF.js usando CDN (más confiable con Vite)
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.mjs`;
+    pdfDoc.value = pdf
+    numPages.value = pdf.numPages
+    currentPage.value = 1
+    loadingPdf.value = false
 
-    // Cargar el documento PDF
-    const loadingTask = pdfjsLib.getDocument(pdfUrl);
-    pdfDoc.value = await loadingTask.promise;
-    numPages.value = pdfDoc.value.numPages;
-    currentPage.value = 1;
+    setTimeout(() => { void renderPage(1) }, 300)
 
-    // Renderizar la primera página
-    await renderPage(1);
-  } catch (err: any) {
-    console.error('Error cargando PDF:', err);
-    pdfError.value = err?.message || 'Error al cargar el PDF';
-  } finally {
-    loadingPdf.value = false;
+    // Extraer texto en segundo plano
+    const texto = await extraerTextoPDF(pdf)
+    textoEditado.value = texto
+    textoHtml.value = textoAHtml(texto)
+
+  } catch (err) {
+    console.error('❌ Error cargando PDF:', err)
+    pdfError.value = 'No se pudo cargar el PDF'
+    loadingPdf.value = false
   }
-};
+}
 
-/**
- * Renderiza una página específica del PDF
- */
+// =========================
+// ABRIR EDITOR
+// =========================
+const abrirEditor = async () => {
+  if (!textoEditado.value) {
+    extrayendoTexto.value = true
+    if (pdfDoc.value) {
+      const texto = await extraerTextoPDF(pdfDoc.value)
+      textoEditado.value = texto
+      textoHtml.value = textoAHtml(texto)
+    }
+    extrayendoTexto.value = false
+  }
+  modoEdicion.value = true
+  tabEdicion.value = 'manual'
+
+  // ✅ Solo inicializar el contenido UNA VEZ
+  await nextTick()
+  if (editorRef.value && !editorRef.value.innerHTML) {
+    editorRef.value.innerHTML = textoHtml.value
+  }
+}
+// =========================
+// RENDER PDF NORMAL
+// =========================
 const renderPage = async (pageNum: number) => {
-  if (!pdfDoc.value || !pdfCanvas.value) return;
-
+  if (!pdfDoc.value || !pdfCanvas.value || isRendering.value) return
+  isRendering.value = true
   try {
-    const page = await pdfDoc.value.getPage(pageNum);
-    const canvas = pdfCanvas.value;
-    const context = canvas.getContext('2d');
-
-    if (!context) return;
-
-    // Configurar el viewport con escala apropiada
-    const viewport = page.getViewport({ scale: 1.5 });
-    canvas.height = viewport.height;
-    canvas.width = viewport.width;
-
-    // Renderizar la página
-    const renderContext = {
-      canvasContext: context,
-      viewport: viewport
-    };
-
-    await page.render(renderContext).promise;
+    const page = await pdfDoc.value.getPage(pageNum)
+    const viewport = page.getViewport({ scale: 1.5 })
+    const canvas = pdfCanvas.value
+    const context = canvas.getContext('2d')
+    if (!context) return
+    canvas.height = viewport.height
+    canvas.width = viewport.width
+    context.clearRect(0, 0, canvas.width, canvas.height)
+    await page.render({ canvasContext: context, viewport }).promise
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (err) {
-    console.error('Error renderizando página:', err);
+    pdfError.value = 'Error al renderizar PDF'
+  } finally {
+    isRendering.value = false
   }
-};
+}
 
-/**
- * Navegar a la página anterior
- */
 const prevPage = async () => {
-  if (currentPage.value <= 1) return;
-  currentPage.value--;
-  await renderPage(currentPage.value);
-};
+  if (currentPage.value <= 1) return
+  currentPage.value--
+  await renderPage(currentPage.value)
+}
 
-/*
- * Navegar a la página siguiente
- */
 const nextPage = async () => {
-  if (currentPage.value >= numPages.value) return;
-  currentPage.value++;
-  await renderPage(currentPage.value);
-};
+  if (currentPage.value >= numPages.value) return
+  currentPage.value++
+  await renderPage(currentPage.value)
+}
 
-/*
- * Descarga el PDF original desde Supabase
- */
-const downloadOriginalPDF = async () => {
-  if (!currentTemplate.value) return;
+// =========================
+// EDITOR INPUT
+// =========================
+const onEditorInput = () => {
+  if (editorRef.value) {
+    // ✅ Solo guardar el texto, NO actualizar el HTML del editor
+    textoEditado.value = editorRef.value.innerText
+  }
+}
 
-  downloading.value = true;
+// =========================
+// FORMATO TEXTO
+// =========================
+const aplicarFormato = (formato: string) => {
+  document.execCommand(formato, false)
+  if (editorRef.value) {
+    textoHtml.value = editorRef.value.innerHTML
+    textoEditado.value = editorRef.value.innerText
+  }
+}
+
+// =========================
+// DESHACER
+// =========================
+const deshacerCambio = () => {
+  document.execCommand('undo', false)
+}
+
+// =========================
+// MODIFICAR CON IA
+// =========================
+const modificarConIA = async () => {
+  if (!instruccionIA.value.trim() || !textoEditado.value) return
+
+  cargandoIA.value = true
   try {
-    const blob = await downloadOriginalPDFAction(currentTemplate.value.id);
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${currentTemplate.value.name}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-  } catch (err: unknown) {
-    console.error('Error downloading original PDF:', err);
-    // El diálogo de error se mostrará automáticamente
-  } finally {
-    downloading.value = false;
-  }
-};
+    const resultado = await modificarPlantilla(textoEditado.value, instruccionIA.value)
+    textoEditado.value = resultado
+    textoHtml.value = textoAHtml(resultado)
+    instruccionIA.value = ''
 
-
-// Funcion de los contratos de Firebase: -----------------------||
-
-// Seleccionar contrato de Firebase y cargar su vista previa:
-const selectFirebaseContrato = async (contrato: ContratoFirebase) => {
-
-  store.selectFirebaseContrato(contrato);
-
-
-  // Limpiar estado anterior:
-  fbPdfDoc.value = null;
-  fbCurrentPage.value = 1;
-  fbNumPages.value = 0;
-  fbPdfError.value = null;
-  fbLoadingPdf.value = true;
-
-
-  // Esperar que se renderice en el DOM:
-  await nextTick();
-
-  if (!fbPdfCanvas.value) {
-    fbPdfError.value = 'Error: canvas no disponible';
-    fbLoadingPdf.value = false;
-    return;
-  }
-
-
-  try{
-
-    // 1. Obtener la URL del PDF desde Firebase Storage
-    const pdfUrl = await store.getFirebaseContratoURL(contrato.storagePath);
-
-    // 2. Cargar PDF.js (importación dinámica - solo se descarga cuando se necesita)
-    const pdfjsLib = await import('pdfjs-dist');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.mjs`;
-
-    // 3. Cargar el documento PDF
-    const loadingTask = pdfjsLib.getDocument(pdfUrl);
-    fbPdfDoc.value = await loadingTask.promise;
-    fbNumPages.value = fbPdfDoc.value.numPages;
-    fbCurrentPage.value = 1;
-
-    // 4. Renderizar SOLO la primera página
-    await renderFbPage(1);
-
-
-  }catch(err: any){
-
-    console.error('Error cargando PDF de Firebase:', err);
-    fbPdfError.value = err?.message || 'Error al cargar el PDF';
-
-  }finally {
-
-    fbLoadingPdf.value = false;
-
-  }
-
-};
-
-
-// Renderizar una pagina del PDF de Firebase en el canvas:
-const renderFbPage = async (pageNum: number) => {
-
-  if (!fbPdfDoc.value || !fbPdfCanvas.value) return;
-
-  try {
-
-    const page = await fbPdfDoc.value.getPage(pageNum);
-    const canvas = fbPdfCanvas.value;
-    const context = canvas.getContext('2d');
-
-    if (!context) return;
-    const viewport = page.getViewport({ scale: 1.5 });
-    canvas.height = viewport.height;
-    canvas.width = viewport.width;
-    await page.render({ canvasContext: context, viewport }).promise;
-
+    // ✅ Actualizar el editor solo cuando la IA modifica
+    await nextTick()
+    if (editorRef.value) {
+      editorRef.value.innerHTML = textoHtml.value
+    }
   } catch (err) {
-    console.error('Error renderizando página:', err);
-  }
-
-};
-
-
-// Descargar contrato de Firebase Storage al local del usuario:
-const downloadFirebaseContrato = async () => {
-
-  const contrato = store.selectedContrato;
-  if (!contrato) return;
-
-  fbDownloading.value = true;
-
-  try {
-
-    // 1. Descarga el archivo como Blob desde Firebase Storage:
-    const blob = await store.downloadFirebaseContrato(contrato.storagePath);
-
-    // 2. Crear un enlace temporal de descarga
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${contrato.name}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-
-    // 3. Limpiar el enlace temporal
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-
-  } catch (err: unknown) {
-
-    console.error('Error descargando contrato de Firebase:', err);
-
+    console.error('❌ Error IA:', err)
   } finally {
-
-    fbDownloading.value = false;
-  
+    cargandoIA.value = false
   }
+}
 
-};
+// =========================
+// DESCARGAR WORD
+// =========================
+const descargarWord = async () => {
+  if (!textoEditado.value) return
+  descargandoWord.value = true
+  try {
+    await exportarWord(textoEditado.value, currentTemplate.value?.name || 'contrato')
+  } catch (err) {
+    console.error('❌ Error exportando Word:', err)
+  } finally {
+    descargandoWord.value = false
+  }
+}
 
-// -------------------------------------------------------------||
+// =========================
+// DESCARGAR PDF
+// =========================
+const descargarPDF = () => {
+  if (!textoEditado.value) return
+  descargandoPDF.value = true
+  try {
+    exportarPDF(textoEditado.value, currentTemplate.value?.name || 'contrato')
+  } catch (err) {
+    console.error('❌ Error exportando PDF:', err)
+  } finally {
+    descargandoPDF.value = false
+  }
+}
 
+// =========================
+// FIREBASE CONTRATOS
+// =========================
+const selectFirebaseContrato = async (contrato: ContratoFirebase) => {
+  store.selectFirebaseContrato(contrato)
+  fbLoadingPdf.value = true
+  fbPdfError.value = null
+  try {
+    const pdfUrl = await store.getFirebaseContratoURL(contrato.storagePath)
+    const pdf = await getDocument({ url: pdfUrl }).promise
+    fbPdfDoc.value = pdf
+    fbNumPages.value = pdf.numPages
+    fbCurrentPage.value = 1
+    fbLoadingPdf.value = false
+    setTimeout(() => { void renderFbPage(1) }, 300)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (err) {
+    fbPdfError.value = 'Error al cargar PDF'
+    fbLoadingPdf.value = false
+  }
+}
 
+const renderFbPage = async (pageNum: number) => {
+  if (!fbPdfDoc.value || !fbPdfCanvas.value || fbIsRendering.value) return
+  fbIsRendering.value = true
+  try {
+    const page = await fbPdfDoc.value.getPage(pageNum)
+    const viewport = page.getViewport({ scale: 1.5 })
+    const canvas = fbPdfCanvas.value
+    const context = canvas.getContext('2d')
+    if (!context) return
+    canvas.height = viewport.height
+    canvas.width = viewport.width
+    context.clearRect(0, 0, canvas.width, canvas.height)
+    await page.render({ canvasContext: context, viewport }).promise
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (err) {
+    fbPdfError.value = 'Error al renderizar PDF'
+  } finally {
+    fbIsRendering.value = false
+  }
+}
 
-/*
- * Watch para cargar la vista previa cuando se selecciona un contrato
- */
+const fbPrevPage = async () => {
+  if (fbCurrentPage.value <= 1) return
+  fbCurrentPage.value--
+  await renderFbPage(fbCurrentPage.value)
+}
+
+const fbNextPage = async () => {
+  if (fbCurrentPage.value >= fbNumPages.value) return
+  fbCurrentPage.value++
+  await renderFbPage(fbCurrentPage.value)
+}
+
+const downloadFirebaseContrato = async () => {
+  const contrato = store.selectedContrato
+  if (!contrato) return
+  fbDownloading.value = true
+  try {
+    const blob = await store.downloadFirebaseContrato(contrato.storagePath)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = contrato.name + '.pdf'
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    console.error('❌ Error descargando:', err)
+  } finally {
+    fbDownloading.value = false
+  }
+}
+
+// =========================
+// WATCH TEMPLATE
+// =========================
 watch(currentTemplate, async (newTemplate) => {
-  if (newTemplate?.storage_path) {
-    await loadPDFPreview();
-  }
-});
+  if (newTemplate?.storage_path) await loadPDFPreview()
+})
 </script>
 
 <style scoped>
-.contratos-page {
-  background: #f4f6f8;
-}
-
-/* Modo Oscuro */
-.body--dark .contratos-page {
-  background: #121212;
-}
-
-.page-header {
-  border-bottom: 1px solid #e0e0e0;
-  padding-bottom: 1rem;
-}
-
-.body--dark .page-header {
-  border-bottom-color: #333;
-}
-
-.header-gradient {
-  background: linear-gradient(135deg, var(--q-primary), var(--q-secondary));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  display: inline-block;
-}
-
-.templates-card, .editor-card, .export-card {
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+.toolbar-word {
+  background: #f8f8f8;
   border: 1px solid #e0e0e0;
-  transition: all 0.3s ease;
-}
-.body--dark .templates-card, .body--dark .editor-card, .body--dark .export-card {
-  border-color: #333;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-}
-
-.templates-card:hover, .editor-card:hover, .export-card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  transform: translateY(-2px);
-}
-
-.templates-header {
-  background-color: #fafafa;
-  border-bottom: 1px solid #e0e0e0;
+  border-radius: 8px 8px 0 0;
+  padding: 6px 12px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 2px;
 }
 
-/* Fixeando modo oscuro */
-.body--dark .templates-header {
-  background-color: #2a2a2a;
-  border-bottom-color: #444;
+.document-container {
+  background: #e8e8e8;
+  padding: 24px;
+  border-radius: 0 0 8px 8px;
+  min-height: 600px;
+  overflow-y: auto;
 }
 
-.templates-list {
-  padding: 0;
-}
-
-.template-item:hover {
-  background-color: rgba(var(--q-primary-rgb), 0.05);
-}
-
-.q-item--active {
-  background-color: rgba(var(--q-primary-rgb), 0.1);
-  border-left: 4px solid var(--q-primary);
-  font-weight: 500;
-}
-
-.editor-header {
-  background-color: #fafafa;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-/* Fixeando modo oscuro pt 2 xd */
-.body--dark .editor-header {
-  background-color: #2a2a2a;
-  border-bottom-color: #444;
-}
-
-.editor-content {
-  padding: 1rem;
-}
-
-.export-btn {
-  border-radius: 6px;
-  padding: 10px 20px;
-  font-weight: 500;
-  transition: all 0.2s ease-in-out;
-}
-
-.export-btn:hover {
-  transform: translateY(-1px);
-}
-
-.empty-state {
-  border: 2px dashed #d0d0d0;
-  border-radius: 8px;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
-}
-.body--dark .empty-state {
-  border-color: #444;
-}
-
-.error-dialog {
-  border-radius: 8px;
-}
-
-/* PDF Viewer Styles */
-.pdf-viewer-section {
+.document-page {
+  background: white;
   width: 100%;
+  max-width: 800px;
+  min-height: 1000px;
+  margin: 0 auto;
+  padding: 60px 70px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+.document-editor {
+  outline: none;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 12pt;
+  line-height: 1.8;
+  color: #1a1a1a;
+  min-height: 800px;
+  cursor: text;
+}
+
+.document-editor p {
+  margin: 0 0 6px 0;
+  text-align: justify;
+}
+
+.document-preview {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 12pt;
+  line-height: 1.8;
+  color: #1a1a1a;
+}
+
+.document-preview p {
+  margin: 0 0 6px 0;
+  text-align: justify;
+}
+
+.ia-panel {
+  background: rgba(255, 152, 0, 0.05);
+  border: 1px solid rgba(255, 152, 0, 0.2);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+canvas {
+  max-width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  background: white !important;
 }
 
 .pdf-canvas-container {
@@ -895,50 +792,66 @@ watch(currentTemplate, async (newTemplate) => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #f5f5f5;
-  padding: 1rem;
-  border-radius: 8px;
+  background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%);
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 2rem 1rem;
   min-height: 500px;
 }
 
 .pdf-canvas {
-  max-width: 100%;
-  height: auto;
-  box-shadow: 0 4px 12px rgb(186, 227, 255);
-  background: white;
-  border-radius: 4px;
-}
-
-.pdf-nav {
-  background: white;
-  padding: 8px 16px;
+  max-height: 600px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(255, 255, 255, 0.632);
 }
 
-.pdf-loading,
-.pdf-error {
+.pdf-loading, .pdf-error {
   min-height: 400px;
   background: #fafafa;
   border-radius: 8px;
-}
-/* Fixeandoo pt 3 */
-.body--dark .pdf-loading,
-.body--dark .pdf-error {
-  background: #2a2a2a;
+  border: 2px solid #e0e0e0;
 }
 
-/* Firebase Section: */
+.editor-card {
+  border: 1px solid rgba(255, 152, 0, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 152, 0, 0.02);
+}
+
+.editor-header {
+  border-bottom: 1px solid rgba(255, 152, 0, 0.15);
+  background: rgba(255, 152, 0, 0.05);
+  border-radius: 12px 12px 0 0;
+}
+
+.editor-content { padding: 2rem 1.5rem; }
+
 .firebase-section {
   padding: 1rem;
   background: rgba(255, 152, 0, 0.03);
   border-radius: 12px;
   border: 1px solid rgba(255, 152, 0, 0.15);
 }
-.body--dark .firebase-section {
-  background: rgba(255, 152, 0, 0.05);
-  border-color: rgba(255, 152, 0, 0.2);
+
+.templates-card {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
 }
 
+.templates-header {
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.05) 100%);
+  border-bottom: 2px solid rgba(255, 152, 0, 0.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 
+.templates-list { max-height: 600px; overflow-y: auto; }
+
+.template-item { border-radius: 8px; transition: all 0.3s ease; }
+.template-item:hover { background: rgba(255, 152, 0, 0.05); }
+.template-item.q-item--active {
+  background: rgba(255, 152, 0, 0.15);
+  border-left: 3px solid #ff9800;
+}
 </style>
