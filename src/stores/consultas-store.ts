@@ -20,18 +20,17 @@ interface ConsultasState {
   archivoActual: ArchivoPDF | null;
 }
 
-// Debug log para verificar la API key
+// Carga la API Key
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-console.log('API Key presente:', !!API_KEY);
-console.log('API Key (primeros 10 caracteres):', API_KEY ? API_KEY.substring(0, 10) + '...' : 'No definida');
 
 if (!API_KEY) {
-  console.error('❌ VITE_GEMINI_API_KEY no está definida en las variables de entorno');
+  throw new Error('Error: La API Key no está definida en las variables de entorno');
 }
 
 // Inicializar Gemini con la configuración correcta
 const genAI = new GoogleGenerativeAI(API_KEY);
 
+// Prompt base para la IA
 const PROMPT_BASE = [
   'Eres un asistente legal especializado en derecho contractual y civil.',
   'Tu objetivo es ayudar a interpretar y explicar conceptos legales de manera clara y precisa.',
@@ -41,6 +40,7 @@ const PROMPT_BASE = [
   '3. Mantener un tono profesional pero accesible.'
 ].join('\n');
 
+// Prompt para el análisis de los contratos
 const PROMPT_ANALISIS_CONTRATO = `
 Analiza el siguiente contrato en PDF y proporciona un resumen estructurado en formato markdown.
 El análisis debe incluir:
@@ -63,11 +63,11 @@ export const useConsultasStore = defineStore('consultas', {
   }),
   actions: {
     async enviarConsulta(pregunta: string) {
-      console.log('Método enviarConsulta llamado con:', pregunta);
       this.loading = true;
       this.error = '';
       this.respuesta = '';
       this.referencias = [];
+
 
       // Agregamos el mensaje del usuario
       this.mensajes.push({
@@ -87,8 +87,6 @@ export const useConsultasStore = defineStore('consultas', {
           },
         });
 
-        console.log('Configuración del modelo:', model);
-
         // Preparar el contenido de la consulta
         let promptCompleto = PROMPT_BASE;
 
@@ -105,21 +103,18 @@ export const useConsultasStore = defineStore('consultas', {
           parts: [{ text: promptCompleto }]
         }];
 
-        console.log('Enviando consulta a Gemini...', contents);
 
         // Enviar consulta
         const result = await model.generateContent({
           contents: contents
         });
 
-        console.log('Resultado recibido de Gemini:', result);
 
         if (!result.response) {
           throw new Error('No se recibió respuesta de la IA');
         }
 
         const respuestaIA = result.response.text();
-        console.log('Respuesta de la IA:', respuestaIA);
 
         // Agregar respuesta al historial solo si tenemos contenido
         if (respuestaIA) {
@@ -192,7 +187,6 @@ export const useConsultasStore = defineStore('consultas', {
     },
 
     async subirYAnalizarPDF(archivo: File) {
-      console.log('Subiendo y analizando PDF:', archivo.name, 'Tamaño:', archivo.size, 'bytes');
       this.loading = true;
       this.error = '';
 
@@ -214,13 +208,10 @@ export const useConsultasStore = defineStore('consultas', {
           throw new Error('El archivo es demasiado grande. El límite es 20MB.');
         }
 
-        console.log('Convirtiendo PDF a base64...');
         const base64Data = await this.fileToBase64(archivo);
         if (!base64Data) {
           throw new Error('No se pudo convertir el archivo a base64');
         }
-
-        console.log('Base64 generado, longitud:', base64Data.length);
 
         const model = genAI.getGenerativeModel({
           model: "gemini-1.5-flash",
@@ -250,26 +241,16 @@ export const useConsultasStore = defineStore('consultas', {
           }
         ];
 
-        console.log('Enviando PDF para análisis...');
-        console.log('Contenido del request:', {
-          model: 'gemini-1.5-flash',
-          hasPDF: !!base64Data,
-          pdfSize: base64Data.length,
-          mimeType: 'application/pdf'
-        });
 
         const result = await model.generateContent({
           contents: contents
         });
-
-        console.log('Respuesta recibida de Gemini:', result);
 
         if (!result.response) {
           throw new Error('No se recibió respuesta del análisis');
         }
 
         const analisisTexto = result.response.text();
-        console.log('Análisis del contrato recibido, longitud:', analisisTexto.length);
 
         if (analisisTexto.includes('no puedo analizar un contrato sin tener acceso al texto')) {
           throw new Error('Gemini no pudo procesar el PDF. Esto puede deberse a que el PDF está escaneado o protegido.');
@@ -355,7 +336,6 @@ Has alcanzado el límite de uso de la API para análisis de PDFs.
         reader.onload = () => {
           try {
             const base64 = reader.result as string;
-            console.log('FileReader completado, resultado tipo:', typeof base64);
 
             // Verificar que tenemos el resultado correcto
             if (!base64 || !base64.startsWith('data:application/pdf;base64,')) {
@@ -366,9 +346,8 @@ Has alcanzado el límite de uso de la API para análisis de PDFs.
 
             // Remover el prefijo "data:application/pdf;base64," para obtener solo el base64
             const data = base64.split(',')[1];
-            console.log('Base64 extraído, longitud:', data?.length || 0);
-
             resolve(data || null);
+
           } catch (error) {
             console.error('Error en fileToBase64:', error);
             resolve(null);
@@ -380,7 +359,6 @@ Has alcanzado el límite de uso de la API para análisis de PDFs.
           reject(new Error('Error al leer el archivo PDF'));
         };
 
-        console.log('Iniciando lectura del archivo:', file.name);
         reader.readAsDataURL(file);
       });
     },
@@ -390,8 +368,8 @@ Has alcanzado el límite de uso de la API para análisis de PDFs.
       return match && match[1] ? match[1].trim() : 'No se pudo extraer el resumen';
     },
 
-    extraerClausulas(texto: string): Array<{numero: number, texto: string, riesgo?: string}> {
-      const clausulas: Array<{numero: number, texto: string, riesgo?: string}> = [];
+    extraerClausulas(texto: string): Array<{ numero: number, texto: string, riesgo?: string }> {
+      const clausulas: Array<{ numero: number, texto: string, riesgo?: string }> = [];
       const matches = texto.match(/Cláusula (\d+):([^#]*?)(?=(Cláusula \d+|$))/g);
 
       if (matches) {
@@ -433,7 +411,7 @@ Has alcanzado el límite de uso de la API para análisis de PDFs.
 
     // Método para probar la API key
     async probarAPIKey() {
-      console.log('Probando API key...');
+      // console.log('Probando API key...');
       this.loading = true;
       this.error = '';
 
@@ -457,7 +435,7 @@ Has alcanzado el límite de uso de la API para análisis de PDFs.
 
         if (result.response) {
           const respuesta = result.response.text();
-          console.log('✅ API Key funciona correctamente. Respuesta:', respuesta);
+          // console.log('✅ API Key funciona correctamente. Respuesta:', respuesta);
 
           this.mensajes.push({
             contenido: `✅ **API Key válida**\n\nLa API key funciona correctamente. Puedes usar todas las funciones de IA jurídica.`,
