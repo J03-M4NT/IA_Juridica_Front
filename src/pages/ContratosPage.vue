@@ -303,7 +303,7 @@ import { exportarWord, exportarPDF } from '../services/documentService'
 import EditorContrato from '../components/EditorContrato.vue'
 
 // ✅ Worker local que ya funciona
-GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js'
+GlobalWorkerOptions.workerSrc = `${import.meta.env.BASE_URL}pdf.worker.min.js`
 
 // =========================
 // STORE
