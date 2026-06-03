@@ -4,19 +4,20 @@ import { getStorage } from 'firebase/storage'
 import { getAuth } from 'firebase/auth'
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAE4Q6n0uXqxjiSv4MBGlXlYyOTjd1tsOo",
-  authDomain: "lexit-ai.firebaseapp.com",
-  projectId: "lexit-ai",
-  storageBucket: "lexit-ai.firebasestorage.app",
-  messagingSenderId: "64541422499",
-  appId: "1:64541422499:web:11b144e2774b5f4ecd6016",
-  measurementId: "G-4Z0963YMN2"
-};
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+}
 
 const app = initializeApp(firebaseConfig)
 
 export const db = getFirestore(app)
 export const storage = getStorage(app)
 export const auth = getAuth(app)
+auth.useDeviceLanguage()
 
 export default app
