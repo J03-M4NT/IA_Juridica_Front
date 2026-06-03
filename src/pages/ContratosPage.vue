@@ -5,11 +5,11 @@
       <div class="col-12 col-md-4">
         <q-card class="templates-card">
           <q-card-section class="templates-header q-pa-md">
-            <div class="text-h6 text-weight-bold">
-              <q-icon name="description" size="sm" class="q-mr-sm" />
+            <div class="text-h6 text-weight-bold text-dark">
+              <q-icon name="description" size="sm" class="q-mr-sm" color="grey-9" />
               Plantillas de Contratos
             </div>
-            <q-btn flat round dense icon="refresh" @click="store.fetchTemplates()" :loading="isLoading" />
+            <q-btn flat round dense icon="refresh" color="grey-9" @click="store.fetchTemplates()" :loading="isLoading" />
           </q-card-section>
 
           <q-separator />
@@ -28,8 +28,8 @@
                   <q-avatar color="orange" text-color="white" icon="article" />
                 </q-item-section>
                 <q-item-section>
-                  <q-item-label class="text-weight-medium">{{ template.name }}</q-item-label>
-                  <q-item-label caption lines="2">{{ template.description }}</q-item-label>
+                  <q-item-label class="text-weight-medium text-dark">{{ template.name }}</q-item-label>
+                  <q-item-label caption lines="2" class="text-grey-8">{{ template.description }}</q-item-label>
                 </q-item-section>
                 <q-item-section side>
                   <q-icon name="chevron_right" color="grey" />
@@ -53,8 +53,8 @@
         <q-card class="editor-card" v-if="!modoEdicion">
           <q-card-section class="editor-header q-pa-md">
             <div class="row items-center justify-between">
-              <div class="text-h6 text-weight-bold">
-                <q-icon name="preview" size="sm" class="q-mr-sm" />
+              <div class="text-h6 text-weight-bold text-dark">
+                <q-icon name="preview" size="sm" class="q-mr-sm" color="grey-9" />
                 Vista Previa del Contrato
               </div>
               <q-btn
@@ -97,7 +97,7 @@
               <div class="row items-center q-mt-md q-gutter-sm">
                 <q-btn round color="orange" icon="chevron_left"
                   :disable="currentPage <= 1 || isRendering" @click="prevPage" />
-                <span class="text-body1">Página {{ currentPage }} de {{ numPages }}</span>
+                <span class="text-body1 text-dark">Página {{ currentPage }} de {{ numPages }}</span>
                 <q-btn round color="orange" icon="chevron_right"
                   :disable="currentPage >= numPages || isRendering" @click="nextPage" />
               </div>
@@ -109,18 +109,18 @@
         <q-card class="editor-card" v-if="modoEdicion">
           <q-card-section class="editor-header q-pa-md">
             <div class="row items-center justify-between">
-              <div class="text-h6 text-weight-bold">
-                <q-icon name="edit_document" size="sm" class="q-mr-sm" />
+              <div class="text-h6 text-weight-bold text-dark">
+                <q-icon name="edit_document" size="sm" class="q-mr-sm" color="grey-9" />
                 Editando: {{ currentTemplate?.name }}
               </div>
-              <q-btn flat icon="arrow_back" label="Volver" @click="modoEdicion = false" />
+              <q-btn flat icon="arrow_back" label="Volver" color="grey-9" @click="modoEdicion = false" />
             </div>
           </q-card-section>
 
           <q-separator />
 
           <!-- Tabs: Manual / IA -->
-          <q-tabs v-model="tabEdicion" color="orange" align="left" class="q-px-md q-pt-sm">
+          <q-tabs v-model="tabEdicion" color="orange" active-color="orange" class="q-px-md q-pt-sm text-dark" align="left">
             <q-tab name="manual" icon="edit" label="Editar Manualmente" />
             <q-tab name="ia" icon="auto_awesome" label="Modificar con IA" />
           </q-tabs>
@@ -131,33 +131,7 @@
 
             <!-- TAB MANUAL -->
             <div v-if="tabEdicion === 'manual'">
-              <!-- Barra de herramientas tipo Word -->
-              <div class="toolbar-word q-mb-sm">
-                <q-btn-group flat>
-                  <q-btn flat dense size="sm" icon="format_bold" @click="aplicarFormato('bold')" title="Negrita" />
-                  <q-btn flat dense size="sm" icon="format_italic" @click="aplicarFormato('italic')" title="Cursiva" />
-                  <q-btn flat dense size="sm" icon="format_underlined" @click="aplicarFormato('underline')" title="Subrayado" />
-                </q-btn-group>
-                <q-separator vertical inset class="q-mx-xs" />
-                <q-btn flat dense size="sm" icon="format_align_left" title="Alinear izquierda" />
-                <q-btn flat dense size="sm" icon="format_align_center" title="Centrar" />
-                <q-btn flat dense size="sm" icon="format_align_justify" title="Justificar" />
-                <q-separator vertical inset class="q-mx-xs" />
-                <q-btn flat dense size="sm" icon="undo" @click="deshacerCambio" title="Deshacer" />
-              </div>
-
-              <!-- Editor de texto tipo documento -->
-              <div class="document-container">
-                <div class="document-page">
-                  <div
-                    ref="editorRef"
-                    class="document-editor"
-                    contenteditable="true"
-                    @input="onEditorInput"
-
-                  />
-                </div>
-              </div>
+              <EditorContrato :model-value="textoHtml" @update:model-value="onEditorHtmlUpdate" />
             </div>
 
             <!-- TAB IA -->
@@ -234,8 +208,8 @@
         <!-- Sección Firebase Contratos -->
         <q-card class="firebase-section q-mt-md">
           <q-card-section>
-            <div class="text-h6 text-weight-bold q-mb-md">
-              <q-icon name="cloud" size="sm" class="q-mr-sm" />
+            <div class="text-h6 text-weight-bold q-mb-md text-dark">
+              <q-icon name="cloud" size="sm" class="q-mr-sm" color="grey-9" />
               Contratos Generados
             </div>
 
@@ -251,8 +225,8 @@
                   <q-avatar color="primary" text-color="white" icon="picture_as_pdf" />
                 </q-item-section>
                 <q-item-section>
-                  <q-item-label>{{ contrato.name }}</q-item-label>
-                  <q-item-label caption>{{ new Date(contrato.createdAt).toLocaleString('es-PE') }}</q-item-label>
+                  <q-item-label class="text-dark">{{ contrato.name }}</q-item-label>
+                  <q-item-label caption class="text-grey-8">{{ new Date(contrato.createdAt).toLocaleString('es-PE') }}</q-item-label>
                 </q-item-section>
                 <q-item-section side>
                   <q-btn flat round dense icon="download" color="orange"
@@ -284,7 +258,7 @@
                 <div class="row items-center q-mt-md q-gutter-sm">
                   <q-btn round color="orange" icon="chevron_left"
                     :disable="fbCurrentPage <= 1 || fbIsRendering" @click="fbPrevPage" />
-                  <span class="text-body1">Página {{ fbCurrentPage }} de {{ fbNumPages }}</span>
+                  <span class="text-body1 text-dark">Página {{ fbCurrentPage }} de {{ fbNumPages }}</span>
                   <q-btn round color="orange" icon="chevron_right"
                     :disable="fbCurrentPage >= fbNumPages || fbIsRendering" @click="fbNextPage" />
                 </div>
@@ -317,8 +291,7 @@ import {
   ref,
   shallowRef,
   computed,
-  watch,
-  nextTick
+  watch
 } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useContratosStore } from '../stores/contratos-store'
@@ -327,6 +300,7 @@ import type { ContractTemplate } from '../stores/contratos-store'
 import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy } from 'pdfjs-dist'
 import { modificarPlantilla } from '../services/geminiService'
 import { exportarWord, exportarPDF } from '../services/documentService'
+import EditorContrato from '../components/EditorContrato.vue'
 
 // ✅ Worker local que ya funciona
 GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js'
@@ -372,8 +346,16 @@ const cargandoIA = ref(false)
 const descargandoWord = ref(false)
 const descargandoPDF = ref(false)
 const extrayendoTexto = ref(false)
-const editorRef = ref<HTMLDivElement | null>(null)
-const historialTexto = ref<string[]>([])
+const stripHtml = (html: string): string => {
+  const tmp = document.createElement('div')
+  tmp.innerHTML = html
+  return tmp.textContent || tmp.innerText || ''
+}
+
+const onEditorHtmlUpdate = (html: string) => {
+  textoHtml.value = html
+  textoEditado.value = stripHtml(html)
+}
 
 // =========================
 // DIALOG ERROR
@@ -406,7 +388,6 @@ const selectTemplate = (template: ContractTemplate) => {
   textoEditado.value = ''
   textoHtml.value = ''
   instruccionIA.value = ''
-  historialTexto.value = []
 }
 
 // =========================
@@ -508,12 +489,6 @@ const abrirEditor = async () => {
   }
   modoEdicion.value = true
   tabEdicion.value = 'manual'
-
-  // ✅ Solo inicializar el contenido UNA VEZ
-  await nextTick()
-  if (editorRef.value && !editorRef.value.innerHTML) {
-    editorRef.value.innerHTML = textoHtml.value
-  }
 }
 // =========================
 // RENDER PDF NORMAL
@@ -552,34 +527,6 @@ const nextPage = async () => {
 }
 
 // =========================
-// EDITOR INPUT
-// =========================
-const onEditorInput = () => {
-  if (editorRef.value) {
-    // ✅ Solo guardar el texto, NO actualizar el HTML del editor
-    textoEditado.value = editorRef.value.innerText
-  }
-}
-
-// =========================
-// FORMATO TEXTO
-// =========================
-const aplicarFormato = (formato: string) => {
-  document.execCommand(formato, false)
-  if (editorRef.value) {
-    textoHtml.value = editorRef.value.innerHTML
-    textoEditado.value = editorRef.value.innerText
-  }
-}
-
-// =========================
-// DESHACER
-// =========================
-const deshacerCambio = () => {
-  document.execCommand('undo', false)
-}
-
-// =========================
 // MODIFICAR CON IA
 // =========================
 const modificarConIA = async () => {
@@ -591,12 +538,6 @@ const modificarConIA = async () => {
     textoEditado.value = resultado
     textoHtml.value = textoAHtml(resultado)
     instruccionIA.value = ''
-
-    // ✅ Actualizar el editor solo cuando la IA modifica
-    await nextTick()
-    if (editorRef.value) {
-      editorRef.value.innerHTML = textoHtml.value
-    }
   } catch (err) {
     console.error('❌ Error IA:', err)
   } finally {
@@ -717,50 +658,6 @@ watch(currentTemplate, async (newTemplate) => {
 </script>
 
 <style scoped>
-.toolbar-word {
-  background: #f8f8f8;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px 8px 0 0;
-  padding: 6px 12px;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 2px;
-}
-
-.document-container {
-  background: #e8e8e8;
-  padding: 24px;
-  border-radius: 0 0 8px 8px;
-  min-height: 600px;
-  overflow-y: auto;
-}
-
-.document-page {
-  background: white;
-  width: 100%;
-  max-width: 800px;
-  min-height: 1000px;
-  margin: 0 auto;
-  padding: 60px 70px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-}
-
-.document-editor {
-  outline: none;
-  font-family: 'Times New Roman', Times, serif;
-  font-size: 12pt;
-  line-height: 1.8;
-  color: #1a1a1a;
-  min-height: 800px;
-  cursor: text;
-}
-
-.document-editor p {
-  margin: 0 0 6px 0;
-  text-align: justify;
-}
-
 .document-preview {
   font-family: 'Times New Roman', Times, serif;
   font-size: 12pt;
@@ -853,5 +750,16 @@ canvas {
 .template-item.q-item--active {
   background: rgba(255, 152, 0, 0.15);
   border-left: 3px solid #ff9800;
+}
+
+.templates-header,
+.editor-header,
+.firebase-section {
+  color: #212529;
+}
+
+.templates-list .q-item,
+.firebase-section .q-list .q-item {
+  color: #212529;
 }
 </style>

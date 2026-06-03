@@ -6,13 +6,9 @@ const genAI = new GoogleGenerativeAI(
 )
 
 // ================================
-// MODELOS
+// MODELO
 // ================================
-const modeloPro = genAI.getGenerativeModel({
-  model: 'gemini-2.5-flash'
-})
-
-const modeloFlash = genAI.getGenerativeModel({
+const model = genAI.getGenerativeModel({
   model: 'gemini-2.5-flash'
 })
 // ================================
@@ -54,7 +50,7 @@ export async function analizarContrato(textoContrato: string) {
     ${textoContrato}
   `
 
-  const result = await modeloPro.generateContent(prompt)
+  const result = await model.generateContent(prompt)
   const text = result.response.text()
   const clean = text.replace(/```json|```/g, '').trim()
   return JSON.parse(clean)
@@ -79,7 +75,7 @@ export async function corregirContrato(
     ${textoContrato}
   `
 
-  const result = await modeloPro.generateContent(prompt)
+  const result = await model.generateContent(prompt)
   return result.response.text()
 }
 
@@ -87,7 +83,7 @@ export async function corregirContrato(
 // 3. CHAT JURÍDICO
 // ================================
 export function iniciarChatJuridico(): ChatSession {
-  const chat = modeloFlash.startChat({
+  const chat = model.startChat({
     history: [],
     generationConfig: {
       maxOutputTokens: 2000,
@@ -131,7 +127,7 @@ export async function modificarPlantilla(
     Devuelve SOLO el contrato modificado, sin explicaciones.
   `
 
-  const result = await modeloFlash.generateContent(prompt)
+  const result = await model.generateContent(prompt)
   return result.response.text()
 }
 
@@ -153,6 +149,6 @@ export async function rellenarContrato(
     ${textoPlantilla}
   `
 
-  const result = await modeloFlash.generateContent(prompt)
+  const result = await model.generateContent(prompt)
   return result.response.text()
 }

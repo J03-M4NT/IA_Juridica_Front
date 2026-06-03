@@ -44,7 +44,6 @@ import { onBeforeUnmount, watch } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import TextAlign from '@tiptap/extension-text-align'
-import Underline from '@tiptap/extension-underline'
 
 const props = defineProps<{
   modelValue: string
@@ -59,7 +58,6 @@ const editor = useEditor({
   extensions: [
     StarterKit,
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
-    Underline
   ],
   editorProps: {
     attributes: {
@@ -67,18 +65,13 @@ const editor = useEditor({
     }
   },
   onUpdate: () => {
-    emit('update:modelValue', editor.value?.getText() ?? '')
+    emit('update:modelValue', editor.value?.getHTML() ?? '')
   }
 })
 
 watch(() => props.modelValue, (newVal) => {
-  if (editor.value && newVal !== editor.value.getText()) {
-    // Convertir texto plano a HTML con párrafos
-    const html = newVal
-      .split('\n')
-      .map(line => `<p>${line || '<br>'}</p>`)
-      .join('')
-    editor.value.commands.setContent(html, { emitUpdate: false })
+  if (editor.value && newVal !== editor.value.getHTML()) {
+    editor.value.commands.setContent(newVal || '', { emitUpdate: false })
   }
 })
 
