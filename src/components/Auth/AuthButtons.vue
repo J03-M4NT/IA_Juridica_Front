@@ -161,7 +161,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../../stores/auth';
 import { useUserProfileStore } from '../../stores/userProfile';
@@ -170,8 +170,7 @@ import { useRouter } from 'vue-router';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged
+  signOut
 } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
 import { useQuasar } from 'quasar';
@@ -182,19 +181,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 const profileStore = useUserProfileStore();
 
-// Usar el estado de autenticación del store con storeToRefs para mantener la reactividad
 const { isAuthenticated, userName } = storeToRefs(authStore);
-
-// Configurar observador de estado de autenticación
-onMounted(() => {
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      console.log('Usuario autenticado:', user.email);
-    } else {
-      console.log('Usuario no autenticado');
-    }
-  });
-});
 
 // Control de diálogos
 const showLoginDialog = ref(false);

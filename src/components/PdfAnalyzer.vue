@@ -355,8 +355,6 @@ const analysisResult = ref<{
 
 // Initialize Gemini AI with proper error handling
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-console.log('PdfAnalyzer - API Key presente:', !!apiKey);
-console.log('PdfAnalyzer - API Key (primeros 10 caracteres):', apiKey.substring(0, 10) + '...');
 
 if (!apiKey) {
   throw new Error('API Key no definida. Configura VITE_GEMINI_API_KEY en tus variables de entorno.');
