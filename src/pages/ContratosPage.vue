@@ -452,8 +452,9 @@ const loadPDFPreview = async () => {
   textoHtml.value = ''
 
   try {
-    const pdfUrl = await store.getPDFUrl(currentTemplate.value.storage_path)
-    const pdf = await getDocument({ url: pdfUrl }).promise
+    const blob = await store.downloadOriginalPDF(currentTemplate.value.id)
+    const arrayBuffer = await blob.arrayBuffer()
+    const pdf = await getDocument({ data: arrayBuffer }).promise
 
     pdfDoc.value = pdf
     numPages.value = pdf.numPages
@@ -583,8 +584,9 @@ const selectFirebaseContrato = async (contrato: ContratoFirebase) => {
   fbLoadingPdf.value = true
   fbPdfError.value = null
   try {
-    const pdfUrl = await store.getFirebaseContratoURL(contrato.storagePath)
-    const pdf = await getDocument({ url: pdfUrl }).promise
+    const blob = await store.downloadFirebaseContrato(contrato.storagePath)
+    const arrayBuffer = await blob.arrayBuffer()
+    const pdf = await getDocument({ data: arrayBuffer }).promise
     fbPdfDoc.value = pdf
     fbNumPages.value = pdf.numPages
     fbCurrentPage.value = 1
