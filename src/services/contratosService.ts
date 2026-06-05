@@ -4,9 +4,13 @@ import {
   onSnapshot,
   query,
   orderBy,
+  addDoc,
+  deleteDoc,
+  doc,
+  serverTimestamp,
   type Unsubscribe
 } from 'firebase/firestore'
-import { ref, getDownloadURL, getBlob } from 'firebase/storage'
+import { ref, getDownloadURL, getBlob, uploadBytes, deleteObject } from 'firebase/storage'
 
 /**
  * Interfaz que define la estructura de un contrato almacenado en Firestore
@@ -78,6 +82,48 @@ export async function downloadContrato(storagePath: string): Promise<Blob> {
     const error = err as Error
     console.error('❌ Error descargando contrato:', error)
     throw new Error(`No se pudo descargar el archivo: ${error.message}`)
+  }
+}
+
+/**
+ * [ADMIN] Sube una nueva plantilla: archivo a Storage + documento a Firestore
+ */
+export async function uploadTemplate(
+  file: File,
+  name: string,
+  type: string,
+  description?: string
+): Promise<string> {
+  const timestamp = Date.now()
+  const safeName = file.name.replace(/\s+/g, '_')
+  const storagePath = `contract_templates/${timestamp}_${safeName}`
+
+  const fileRef = ref(storage, storagePath)
+  await uploadBytes(fileRef, file)
+
+  const docRef = await addDoc(collection(db, 'contract_templates'), {
+    name,
+    type,
+    description: description || '',
+    storage_path: storagePath,
+    createdAt: serverTimestamp()
+  })
+
+  return docRef.id
+}
+
+/**
+ * [ADMIN] Elimina una plantilla: documento de Firestore + archivo de Storage
+ */
+export async function deleteTemplate(templateId: string, storagePath: string): Promise<void> {
+  await deleteDoc(doc(db, 'contract_templates', templateId))
+
+  if (storagePath) {
+    try {
+      await deleteObject(ref(storage, storagePath))
+    } catch {
+      // El archivo ya no existe en Storage; el doc de Firestore ya fue eliminado
+    }
   }
 }
 

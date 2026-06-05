@@ -7,6 +7,7 @@ import {
 } from 'vue-router';
 import routes from './routes';
 import { useAuthStore } from '../stores/auth';
+import { useUserProfileStore } from '../stores/userProfile';
 
 /*
  * If not building with SSR mode, you can
@@ -49,16 +50,21 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     }
 
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
+    const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin);
     const isAuthenticated = authStore.isAuthenticated;
 
     if (requiresAuth && !isAuthenticated) {
-      // Si la ruta requiere autenticación y no está autenticado, redirigir al landing
       next('/');
     } else if (isAuthenticated && to.path === '/') {
-      // Si está autenticado y trata de acceder al landing, redirigir al analizador
       next('/app/analizador');
+    } else if (requiresAdmin) {
+      const profileStore = useUserProfileStore();
+      if (!profileStore.isAdmin) {
+        next('/app/analizador');
+      } else {
+        next();
+      }
     } else {
-      // Permitir la navegación
       next();
     }
   });

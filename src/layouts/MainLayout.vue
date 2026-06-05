@@ -91,6 +91,21 @@
           </div>
         </div>
 
+        <!-- Admin button -->
+        <q-btn
+          v-if="profileStore.isAdmin"
+          flat
+          no-caps
+          :class="{ 'nav-btn-active': $route.path === '/app/admin' }"
+          to="/app/admin"
+          class="nav-btn q-ml-sm"
+          icon="admin_panel_settings"
+          label="ADMIN"
+          color="deep-orange"
+        >
+          <q-tooltip>Panel de administración</q-tooltip>
+        </q-btn>
+
         <!-- Auth -->
         <q-space />
         <auth-buttons />
@@ -166,6 +181,22 @@
           <q-item-section>Normas</q-item-section>
         </q-item>
 
+        <q-separator v-if="profileStore.isAdmin" class="q-my-sm" />
+
+        <q-item
+          v-if="profileStore.isAdmin"
+          clickable
+          v-ripple
+          to="/app/admin"
+          @click="drawerOpen = false"
+          active-class="nav-drawer-active"
+        >
+          <q-item-section avatar>
+            <q-icon name="admin_panel_settings" color="deep-orange" />
+          </q-item-section>
+          <q-item-section class="text-deep-orange text-weight-bold">Administración</q-item-section>
+        </q-item>
+
       </q-list>
     </q-drawer>
 
@@ -196,6 +227,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import AuthButtons from '../components/Auth/AuthButtons.vue'
+import { useUserProfileStore } from '../stores/userProfile'
+
+const profileStore = useUserProfileStore()
 
 // Estado para el scroll
 const scrolled = ref(false);

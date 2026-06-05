@@ -42,6 +42,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/SubirContrato.vue'),
         meta: { requiresAuth: true },
       },
+
+      {
+        path: 'admin',
+        component: () => import('pages/AdminPage.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true },
+      },
     ],
   },
 

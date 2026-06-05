@@ -19,6 +19,7 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     const displayName = computed(() => profile.value?.displayName || 'Usuario');
     const photoURL = computed(() => profile.value?.photoURL || null);
     const userEmail = computed(() => profile.value?.email || '');
+    const isAdmin = computed(() => profile.value?.role === 'admin');
 
     /**
      * Carga el perfil del usuario desde Firestore
@@ -143,6 +144,7 @@ export const useUserProfileStore = defineStore('userProfile', () => {
         displayName,
         photoURL,
         userEmail,
+        isAdmin,
 
         // Acciones
         loadProfile,
