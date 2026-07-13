@@ -12,8 +12,8 @@
               </div>
             </div>
 
-            <!-- Action Buttons -->
-            <div class="header-actions">
+            <!-- Botones de diagnostico: solo visibles para administradores -->
+            <div v-if="isAdmin" class="header-actions">
               <q-btn
                 color="primary"
                 icon="verified"
@@ -51,7 +51,6 @@
               <p class="upload-description">Selecciona o arrastra un archivo PDF para comenzar el análisis inteligente</p>
 
               <q-uploader
-                ref="uploaderRef"
                 :url="''"
                 label="Seleccionar archivo PDF"
                 accept=".pdf"
@@ -146,7 +145,7 @@
                   color="primary"
                   icon="analytics"
                   label="ANALIZAR CONTRATO CON IA"
-                  @click="analyzeContract(extractedText)"
+                  @click="runAnalysis(extractedText)"
                   :loading="loading"
                   :disable="!extractedText.trim()"
                   class="analyze-button"
@@ -170,76 +169,149 @@
                 <h3 class="section-title">RESULTADOS DEL ANÁLISIS</h3>
               </div>
 
-              <!-- Summary -->
+              <!-- Puntuacion -->
+              <div class="result-item-card modern-card">
+                <q-card-section>
+                  <div class="result-header">
+                    <q-icon name="speed" class="result-icon q-mr-sm" />
+                    <h4 class="result-title">PUNTUACIÓN DEL CONTRATO</h4>
+                  </div>
+                  <div class="score-container">
+                    <div class="score-number" :class="`text-${scoreColor}`">
+                      {{ analysisResult.puntuacion }}<span class="score-max">/100</span>
+                    </div>
+                    <q-linear-progress
+                      :value="analysisResult.puntuacion / 100"
+                      :color="scoreColor"
+                      class="score-bar q-mt-sm"
+                      size="10px"
+                      rounded
+                    />
+                  </div>
+                </q-card-section>
+              </div>
+
+              <!-- Resumen -->
               <div class="result-item-card modern-card">
                 <q-card-section>
                   <div class="result-header">
                     <q-icon name="summarize" class="result-icon q-mr-sm" />
                     <h4 class="result-title">RESUMEN DEL CONTRATO</h4>
                   </div>
-                  <div class="formatted-content result-content" v-html="formatText(analysisResult.summary)"></div>
+                  <p class="result-content">{{ analysisResult.resumen }}</p>
                 </q-card-section>
               </div>
 
-              <!-- Main Clauses -->
-              <div class="result-item-card modern-card">
+              <!-- Partes -->
+              <div v-if="Object.keys(analysisResult.partes).length > 0" class="result-item-card modern-card">
                 <q-card-section>
                   <div class="result-header">
-                    <q-icon name="list" class="result-icon q-mr-sm" />
-                    <h4 class="result-title">CLÁUSULAS PRINCIPALES</h4>
+                    <q-icon name="people" class="result-icon q-mr-sm" />
+                    <h4 class="result-title">PARTES DEL CONTRATO</h4>
                   </div>
-                  <q-list class="clauses-list">
-                    <q-item
-                      v-for="(clause, index) in analysisResult.mainClauses"
-                      :key="index"
-                      class="clause-item"
-                    >
-                      <q-item-section avatar>
-                        <q-icon name="article" color="primary" class="clause-icon" />
-                      </q-item-section>
-                      <q-item-section>
-                        <q-item-label class="clause-number">
-                          CLÁUSULA {{ index + 1 }}
-                        </q-item-label>
-                        <q-item-label caption class="formatted-content clause-content">
-                          {{ clause }}
-                        </q-item-label>
-                      </q-item-section>
-                    </q-item>
-                  </q-list>
+                  <div class="partes-list">
+                    <div v-for="(nombre, rol) in analysisResult.partes" :key="rol" class="parte-item">
+                      <q-chip color="primary" text-color="white" size="sm" class="parte-chip">{{ rol }}</q-chip>
+                      <span class="parte-nombre">{{ nombre }}</span>
+                    </div>
+                  </div>
                 </q-card-section>
               </div>
 
-              <!-- Risks and Ambiguities -->
-              <div v-if="analysisResult.risks.length > 0" class="result-item-card risk-card modern-card">
+              <!-- Fechas importantes -->
+              <div v-if="analysisResult.fechas_importantes.length > 0" class="result-item-card modern-card">
+                <q-card-section>
+                  <div class="result-header">
+                    <q-icon name="event" class="result-icon q-mr-sm" />
+                    <h4 class="result-title">FECHAS IMPORTANTES</h4>
+                  </div>
+                  <div class="fechas-chips">
+                    <q-chip
+                      v-for="fecha in analysisResult.fechas_importantes"
+                      :key="fecha"
+                      color="secondary"
+                      text-color="white"
+                      icon="calendar_today"
+                      size="sm"
+                    >{{ fecha }}</q-chip>
+                  </div>
+                </q-card-section>
+              </div>
+
+              <!-- Obligaciones -->
+              <div v-if="Object.keys(analysisResult.obligaciones).length > 0" class="result-item-card modern-card">
+                <q-card-section>
+                  <div class="result-header">
+                    <q-icon name="assignment" class="result-icon q-mr-sm" />
+                    <h4 class="result-title">OBLIGACIONES POR PARTE</h4>
+                  </div>
+                  <div v-for="(lista, parte) in analysisResult.obligaciones" :key="parte" class="obligaciones-grupo q-mb-md">
+                    <div class="obligaciones-parte q-mb-xs">{{ parte }}</div>
+                    <q-list dense>
+                      <q-item v-for="(ob, i) in lista" :key="i" class="obligacion-item">
+                        <q-item-section avatar>
+                          <q-icon name="check_circle" color="positive" size="16px" />
+                        </q-item-section>
+                        <q-item-section>{{ ob }}</q-item-section>
+                      </q-item>
+                    </q-list>
+                  </div>
+                </q-card-section>
+              </div>
+
+              <!-- Riesgos -->
+              <div v-if="analysisResult.riesgos.length > 0" class="result-item-card risk-card modern-card">
                 <q-card-section>
                   <div class="result-header risk-header">
                     <q-icon name="warning" class="result-icon q-mr-sm" />
-                    <h4 class="result-title">RIESGOS Y AMBIGÜEDADES DETECTADAS</h4>
+                    <h4 class="result-title">RIESGOS DETECTADOS</h4>
                   </div>
                   <q-list class="risks-list">
                     <q-item
-                      v-for="(risk, index) in analysisResult.risks"
+                      v-for="(riesgo, index) in analysisResult.riesgos"
                       :key="index"
-                      class="risk-item"
+                      class="risk-item riesgo-detalle"
                     >
-                      <q-item-section avatar>
-                        <q-icon name="error_outline" color="negative" class="risk-icon" />
-                      </q-item-section>
                       <q-item-section>
-                        <q-item-label class="risk-number">
-                          RIESGO {{ index + 1 }}
-                        </q-item-label>
-                        <q-item-label caption class="risk-content">
-                          {{ risk }}
-                        </q-item-label>
+                        <div class="riesgo-header q-mb-xs">
+                          <span class="riesgo-clausula">{{ riesgo.clausula }}</span>
+                          <q-badge :color="nivelColor(riesgo.nivel)" class="riesgo-nivel q-ml-sm">
+                            {{ riesgo.nivel.toUpperCase() }}
+                          </q-badge>
+                        </div>
+                        <div class="riesgo-descripcion q-mb-xs">{{ riesgo.descripcion }}</div>
+                        <div class="riesgo-sugerencia">
+                          <q-icon name="lightbulb" size="14px" color="warning" class="q-mr-xs" />
+                          {{ riesgo.sugerencia }}
+                        </div>
                       </q-item-section>
                     </q-item>
                   </q-list>
                 </q-card-section>
               </div>
 
-              <!-- File Info -->
+              <!-- Mejoras -->
+              <div v-if="analysisResult.mejoras.length > 0" class="result-item-card modern-card">
+                <q-card-section>
+                  <div class="result-header">
+                    <q-icon name="auto_fix_high" class="result-icon q-mr-sm" />
+                    <h4 class="result-title">MEJORAS SUGERIDAS</h4>
+                  </div>
+                  <q-list>
+                    <q-item v-for="(mejora, i) in analysisResult.mejoras" :key="i" class="mejora-item">
+                      <q-item-section avatar>
+                        <q-icon name="tips_and_updates" color="primary" size="20px" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label class="mejora-titulo">{{ mejora.titulo }}</q-item-label>
+                        <q-item-label caption>{{ mejora.descripcion }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-card-section>
+              </div>
+
+              <!-- Informacion del archivo -->
               <div class="result-item-card modern-card">
                 <q-card-section>
                   <div class="result-header">
@@ -247,31 +319,13 @@
                     <h4 class="result-title">INFORMACIÓN DEL ARCHIVO</h4>
                   </div>
                   <div class="file-info-chips">
-                    <q-chip
-                      icon="picture_as_pdf"
-                      color="primary"
-                      text-color="white"
-                      class="info-chip"
-                      size="sm"
-                    >
+                    <q-chip icon="picture_as_pdf" color="primary" text-color="white" class="info-chip" size="sm">
                       {{ fileName }}
                     </q-chip>
-                    <q-chip
-                      icon="data_usage"
-                      color="secondary"
-                      text-color="white"
-                      class="info-chip"
-                      size="sm"
-                    >
+                    <q-chip icon="data_usage" color="secondary" text-color="white" class="info-chip" size="sm">
                       {{ (fileSize / 1024).toFixed(1) }} KB
                     </q-chip>
-                    <q-chip
-                      icon="text_snippet"
-                      color="positive"
-                      text-color="white"
-                      class="info-chip"
-                      size="sm"
-                    >
+                    <q-chip icon="text_snippet" color="positive" text-color="white" class="info-chip" size="sm">
                       {{ extractedText.length }} caracteres
                     </q-chip>
                   </div>
@@ -286,23 +340,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useQuasar } from 'quasar';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GEMINI_MODEL_FAST } from '../constants/gemini';
 import * as pdfjsLib from "pdfjs-dist";
+import { extractTextFromPDF, diagnosticarPDF } from '../services/pdfService';
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.js?url";
+import { analizarContrato } from '../services/geminiService';
+import { useUserProfileStore } from '../stores/userProfile';
+import { storeToRefs } from 'pinia';
 
-// ✅ Configurar el worker de PDF.js con import ?url (método más estable en Vite)
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
-console.log('✅ Worker de PDF.js configurado con import ?url:', pdfjsWorker);
 
-// Ensure $q is properly initialized
 const $q = useQuasar();
-if (!$q) {
-  console.error('Quasar $q is not available');
-}
+const profileStore = useUserProfileStore();
+const { isAdmin } = storeToRefs(profileStore);
 
-// Fallback notification function
 interface NotificationOptions {
   message: string;
   color?: 'positive' | 'negative' | 'warning' | 'info';
@@ -311,23 +365,9 @@ interface NotificationOptions {
 }
 
 const showNotification = (options: NotificationOptions) => {
-  if ($q && $q.notify) {
-    $q.notify(options);
-  } else {
-    // Fallback to console.log and alert
-    console.log('Notification:', options);
-    if (options.color === 'negative') {
-      alert('❌ Error: ' + options.message);
-    } else if (options.color === 'positive') {
-      alert('✅ ' + options.message);
-    } else {
-      alert(options.message);
-    }
-  }
+  $q.notify(options);
 };
 
-
-// Type definitions
 interface RejectedEntry {
   failedPropValidation: string;
   file?: File;
@@ -339,21 +379,66 @@ interface ApiError {
   message?: string;
 }
 
-// Reactive data with proper typing
-const uploaderRef = ref<HTMLElement | null>(null);
+interface RiesgoContrato {
+  clausula: string;
+  descripcion: string;
+  nivel: 'alto' | 'medio' | 'bajo';
+  sugerencia: string;
+}
+
+interface MejoraContrato {
+  titulo: string;
+  descripcion: string;
+}
+
+interface AnalisisContratoResult {
+  resumen: string;
+  puntuacion: number;
+  riesgos: RiesgoContrato[];
+  mejoras: MejoraContrato[];
+  partes: Record<string, string>;
+  fechas_importantes: string[];
+  obligaciones: Record<string, string[]>;
+}
+
 const loading = ref<boolean>(false);
 const loadingMessage = ref<string>('');
 const error = ref<string>('');
 const fileName = ref<string>('');
 const fileSize = ref<number>(0);
 const extractedText = ref<string>('');
-const analysisResult = ref<{
-  summary: string;
-  mainClauses: string[];
-  risks: string[];
-} | null>(null);
+const analysisResult = ref<AnalisisContratoResult | null>(null);
 
-// Initialize Gemini AI with proper error handling
+const scoreColor = computed(() => {
+  if (!analysisResult.value) return 'grey';
+  const p = analysisResult.value.puntuacion;
+  if (p >= 71) return 'positive';
+  if (p >= 41) return 'warning';
+  return 'negative';
+});
+
+const nivelColor = (nivel: string): string => {
+  if (nivel === 'alto') return 'negative';
+  if (nivel === 'medio') return 'warning';
+  return 'positive';
+};
+
+const classifyGeminiError = (err: unknown): string => {
+  const apiError = err as ApiError;
+  if (apiError?.message?.includes('RATE_LIMIT_EXCEEDED') || apiError?.message?.includes('Quota exceeded')) {
+    return 'Limite de cuota excedido. Espera unos minutos e intenta nuevamente.';
+  }
+  if (apiError?.message?.includes('API Key not found') || apiError?.message?.includes('API_KEY_INVALID')) {
+    return 'API Key no valida. Verifica que la clave tenga permisos para Gemini.';
+  }
+  if (err instanceof SyntaxError || apiError?.message?.includes('JSON')) {
+    return 'La IA devolvio un formato inesperado. Intenta nuevamente.';
+  }
+  if (apiError?.status === 403) return 'Acceso denegado: la API key no tiene permisos suficientes.';
+  if (apiError?.status === 500) return 'Error interno del servidor de Google. Intenta en unos momentos.';
+  return 'Error al analizar el contrato con la IA. Verifica tu conexion e intenta nuevamente.';
+};
+
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
 if (!apiKey) {
@@ -362,21 +447,16 @@ if (!apiKey) {
 
 const genAI = new GoogleGenerativeAI(apiKey);
 
-// Methods
 const onFileAdded = async (files: File[]) => {
   const file = files[0];
   if (!file) return;
 
-  // Validate file type
   if (file.type !== 'application/pdf') {
     showError('Por favor, selecciona un archivo PDF válido.');
     return;
   }
 
-  // Reset previous results
   resetAnalysis();
-
-  // Set file info
   fileName.value = file.name;
   fileSize.value = file.size;
 
@@ -384,57 +464,49 @@ const onFileAdded = async (files: File[]) => {
     loading.value = true;
     loadingMessage.value = 'Analizando el PDF...';
 
-    // Diagnosticar el PDF primero
     const diagnostico = await diagnosticarPDF(file);
-    console.log('📋 Resultado del diagnóstico:', diagnostico);
 
     if (!diagnostico.isValidPDF) {
       throw new Error(`El archivo no es un PDF válido: ${diagnostico.error}`);
     }
 
-    // Verificar si el PDF tiene texto extraíble
     if (!diagnostico.hasText) {
-      throw new Error(`❌ El PDF no contiene texto extraíble
+      throw new Error(`El PDF no contiene texto extraíble.
 
-🔍 **Posibles causas:**
-• El PDF está escaneado o es una imagen
-• El PDF está compuesto solo de imágenes
-• El PDF tiene texto como imagen (OCR)
+**Posibles causas:**
+- El PDF está escaneado o es una imagen
+- El PDF está compuesto solo de imágenes
+- El PDF tiene texto como imagen (OCR)
 
-📋 **Solución:**
+**Solucion:**
 Para analizar contratos, necesitas un PDF con texto real (no escaneado) que se pueda seleccionar y copiar.
 
-💡 **Alternativas:**
-• Convierte el PDF escaneado usando OCR (Optical Character Recognition)
-• Solicita una versión digital del contrato en formato PDF con texto
-• Usa herramientas como Adobe Acrobat para reconocer texto en PDFs escaneados`);
+**Alternativas:**
+- Convierte el PDF escaneado usando OCR (Optical Character Recognition)
+- Solicita una versión digital del contrato en formato PDF con texto
+- Usa herramientas como Adobe Acrobat para reconocer texto en PDFs escaneados`);
     }
 
-    // Verificar si hay problemas con el worker de PDF.js
     if (diagnostico.workerError) {
-      throw new Error(`❌ Error con el procesador de PDF
+      throw new Error(`Error con el procesador de PDF.
 
-🔧 **Problema detectado:**
-• No se pudo cargar el worker de PDF.js
-• Error específico: ${diagnostico.error}
+**Problema detectado:**
+- No se pudo cargar el worker de PDF.js
+- Error especifico: ${diagnostico.error}
 
-🔍 **Posibles causas:**
-• Error en la configuración del worker
-• Problemas con el bundler de Vite
-• Configuración del navegador o servidor de desarrollo
+**Posibles causas:**
+- Error en la configuracion del worker
+- Problemas con el bundler de Vite
+- Configuracion del navegador o servidor de desarrollo
 
-📋 **Soluciones:**
-• Verifica que el worker se esté importando correctamente
-• Asegúrate de que Vite esté configurado para manejar imports ?url
-• Intenta recargar la página
-• Si persiste, contacta al administrador del sistema
-
-💡 **Nota:** Se está usando import ?url para el worker (método más estable en Vite)`);
+**Soluciones:**
+- Verifica que el worker se este importando correctamente
+- Asegurate de que Vite este configurado para manejar imports ?url
+- Intenta recargar la pagina
+- Si persiste, contacta al administrador del sistema`);
     }
 
     loadingMessage.value = 'Extrayendo texto del PDF...';
-
-    // Extract text from PDF
     const text = await extractTextFromPDF(file);
     extractedText.value = text;
 
@@ -444,21 +516,43 @@ Para analizar contratos, necesitas un PDF con texto real (no escaneado) que se p
 
     loadingMessage.value = 'Analizando contrato con IA...';
 
-    // Analyze with Gemini
-    const result = await analyzeContract(text);
-    analysisResult.value = result;
+    try {
+      const result = await analizarContrato(text);
+      analysisResult.value = result as AnalisisContratoResult;
+      showNotification({
+        message: 'Análisis completado exitosamente',
+        color: 'positive',
+        position: 'top',
+        icon: 'check_circle'
+      });
+    } catch (geminiErr: unknown) {
+      throw new Error(classifyGeminiError(geminiErr));
+    }
 
-    // Show success notification
+  } catch (err) {
+    console.error('Error procesando PDF:', err);
+    showError(err instanceof Error ? err.message : 'Error desconocido al procesar el PDF');
+  } finally {
+    loading.value = false;
+    loadingMessage.value = '';
+  }
+};
+
+const runAnalysis = async (text: string) => {
+  loading.value = true;
+  loadingMessage.value = 'Analizando contrato con IA...';
+  error.value = '';
+  try {
+    const result = await analizarContrato(text);
+    analysisResult.value = result as AnalisisContratoResult;
     showNotification({
       message: 'Análisis completado exitosamente',
       color: 'positive',
       position: 'top',
       icon: 'check_circle'
     });
-
-  } catch (err) {
-    console.error('Error processing PDF:', err);
-    showError(err instanceof Error ? err.message : 'Error desconocido al procesar el PDF');
+  } catch (err: unknown) {
+    showError(classifyGeminiError(err));
   } finally {
     loading.value = false;
     loadingMessage.value = '';
@@ -474,194 +568,6 @@ const onRejected = (rejectedEntries: RejectedEntry[]) => {
   } else {
     showError('Error al seleccionar el archivo.');
   }
-};
-
-const extractTextFromPDF = async (file: File): Promise<string> => {
-  try {
-    console.log('🔍 Iniciando extracción de texto del PDF:', file.name);
-    console.log('📊 Tamaño del archivo:', file.size, 'bytes');
-
-    const arrayBuffer = await file.arrayBuffer();
-    console.log('📋 ArrayBuffer creado, tamaño:', arrayBuffer.byteLength);
-
-    // Verificar si el archivo está corrupto o vacío
-    if (arrayBuffer.byteLength === 0) {
-      throw new Error('El archivo PDF está vacío o corrupto');
-    }
-
-    console.log('📖 Cargando documento PDF...');
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    console.log('✅ PDF cargado exitosamente, número de páginas:', pdf.numPages);
-
-    // Verificar si el PDF tiene páginas
-    if (pdf.numPages === 0) {
-      throw new Error('El PDF no contiene páginas');
-    }
-
-    let fullText = '';
-    let totalItems = 0;
-
-    for (let i = 1; i <= pdf.numPages; i++) {
-      console.log(`📄 Procesando página ${i}/${pdf.numPages}`);
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-
-      console.log(`📝 Página ${i}: ${textContent.items.length} elementos de texto encontrados`);
-
-      const pageText = textContent.items
-        .map((item, index) => {
-          // Handle both TextItem and TextMarkedContent types
-          if ('str' in item) {
-            const text = item.str || '';
-            if (text.trim()) {
-              console.log(`  Item ${index}: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
-            }
-            return text;
-          }
-          return '';
-        })
-        .join(' ');
-
-      fullText += pageText + '\n';
-      totalItems += textContent.items.length;
-    }
-
-    console.log('📊 Total de elementos de texto procesados:', totalItems);
-    console.log('📝 Longitud del texto extraído:', fullText.length);
-
-    // Verificar si se extrajo texto
-    if (fullText.trim().length === 0) {
-      throw new Error('No se pudo extraer texto del PDF. El documento podría estar escaneado, ser una imagen, o estar protegido.');
-    }
-
-    console.log('✅ Texto extraído exitosamente');
-    return fullText;
-  } catch (error) {
-    console.error('❌ Error al extraer texto del PDF:', error);
-
-    // Proporcionar mensajes de error más específicos
-    if (error instanceof Error) {
-      if (error.message.includes('Invalid PDF')) {
-        throw new Error('El archivo no es un PDF válido o está corrupto');
-      } else if (error.message.includes('Password')) {
-        throw new Error('El PDF está protegido con contraseña');
-      } else if (error.message.includes('encrypted')) {
-        throw new Error('El PDF está encriptado y no se puede procesar');
-      } else {
-        throw new Error(`Error al extraer texto del PDF: ${error.message}`);
-      }
-    } else {
-      throw new Error('Error desconocido al procesar el PDF');
-    }
-  }
-};
-
-const analyzeContract = async (text: string) => {
-  try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash-lite",
-      generationConfig: {
-        temperature: 0.3,
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 4096,
-      },
-    });
-
-    const prompt = `
-Analiza el siguiente contrato y proporciona un análisis estructurado:
-
-CONTRATO:
-${text}
-
-INSTRUCCIONES:
-1. Haz un resumen claro y conciso del contrato en lenguaje simple.
-2. Lista las cláusulas principales del contrato (máximo 10).
-3. Identifica riesgos, ambigüedades o cláusulas problemáticas.
-
-FORMATO DE RESPUESTA:
-## RESUMEN
-[Resumen en lenguaje simple]
-
-## CLÁUSULAS PRINCIPALES
-1. [Cláusula 1]
-2. [Cláusula 2]
-...
-
-## RIESGOS Y AMBIGÜEDADES
-- [Riesgo 1]
-- [Riesgo 2]
-...
-
-IMPORTANTE:
-- Sé específico y detallado
-- Usa lenguaje claro y profesional
-- Identifica claramente cualquier riesgo potencial
-    `.trim();
-
-    const result = await model.generateContent(prompt);
-    const response = result.response.text();
-
-    // Parse the response
-    const summary = extractSection(response, '## RESUMEN');
-    const mainClauses = extractSection(response, '## CLÁUSULAS PRINCIPALES')
-      .split('\n')
-      .map(line => line.replace(/^\d+\.\s*/, '').trim())
-      .filter(line => line.length > 0);
-    const risks = extractSection(response, '## RIESGOS Y AMBIGÜEDADES')
-      .split('\n')
-      .map(line => line.replace(/^-\s*/, '').trim())
-      .filter(line => line.length > 0);
-
-    return {
-      summary,
-      mainClauses,
-      risks
-    };
-  } catch (error: unknown) {
-    console.error('Error analyzing contract:', error);
-
-    // Type guard to check if error has the expected properties
-    const apiError = error as ApiError;
-
-    // Handle specific API errors
-    if (apiError?.status === 429 || apiError?.message?.includes('RATE_LIMIT_EXCEEDED') || apiError?.message?.includes('Quota exceeded')) {
-      throw new Error('⚠️ Límite de cuota excedido: Has alcanzado el límite de uso de la API.\n\n🔧 Soluciones:\n1. Espera unos minutos antes de intentar nuevamente\n2. Verifica tu plan de facturación en Google Cloud Console\n3. Considera actualizar tu plan si necesitas más uso');
-    } else if (apiError?.status === 400 || apiError?.message?.includes('API Key not found') || apiError?.message?.includes('API_KEY_INVALID')) {
-      throw new Error(`❌ Error de API Key: La clave API no es válida para Google Generative AI.
-
-🔧 Soluciones:
-1. Verifica que tienes habilitada la API de Generative Language en Google Cloud Console
-2. Asegúrate de que la API key tenga permisos para usar Gemini
-3. Si usas una API key de Google Maps, necesitas una específica para AI
-
-📋 Tu API key actual: ${apiKey.substring(0, 10)}...
-
-💡 Para obtener una API key válida:
-- Ve a https://makersuite.google.com/app/apikey
-- Crea una nueva API key
-- Asegúrate de que tenga habilitada la facturación (necesario para usar Gemini)`);
-    } else if (apiError?.status === 403) {
-      throw new Error('🚫 Acceso denegado: La API key no tiene permisos suficientes o está restringida.');
-    } else if (apiError?.status === 500) {
-      throw new Error('🔧 Error interno del servidor de Google. Por favor, intenta nuevamente en unos momentos.');
-    } else {
-      throw new Error('❌ Error al analizar el contrato con la IA. Por favor, verifica tu conexión a internet e intenta nuevamente.');
-    }
-  }
-};
-
-const extractSection = (text: string, sectionHeader: string): string => {
-  const regex = new RegExp(`${sectionHeader}\\s*\\n([^#]*)`, 'i');
-  const match = text.match(regex);
-  return match && match[1] ? match[1].trim() : '';
-};
-
-const formatText = (text: string): string => {
-  return text
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/\n/g, '<br>');
 };
 
 const showError = (message: string) => {
@@ -680,84 +586,6 @@ const resetAnalysis = () => {
   extractedText.value = '';
 };
 
-// Función para diagnosticar el PDF
-const diagnosticarPDF = async (file: File) => {
-  console.log('🔍 Diagnóstico del PDF:', file.name);
-  console.log('📊 Tamaño:', file.size, 'bytes');
-  console.log('📋 Tipo MIME:', file.type);
-
-  try {
-    const arrayBuffer = await file.arrayBuffer();
-
-    // Verificar si es un PDF válido
-    const uint8Array = new Uint8Array(arrayBuffer);
-    const header = uint8Array.slice(0, 8);
-
-    // PDF header should be %PDF-
-    const headerString = String.fromCharCode(...header);
-    console.log('📄 Header del archivo:', headerString);
-
-    if (!headerString.includes('%PDF-')) {
-      throw new Error('El archivo no tiene el formato PDF válido');
-    }
-
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    console.log('📖 Número de páginas:', pdf.numPages);
-
-    // Verificar si tiene texto
-    let hasText = false;
-    let totalItems = 0;
-
-    for (let i = 1; i <= Math.min(pdf.numPages, 3); i++) { // Solo verificar primeras 3 páginas
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      totalItems += textContent.items.length;
-
-      if (textContent.items.length > 0) {
-        hasText = true;
-        break;
-      }
-    }
-
-    console.log('📝 Tiene texto extraíble:', hasText);
-    console.log('📊 Total de elementos de texto en primeras páginas:', totalItems);
-
-    return {
-      isValidPDF: true,
-      hasText: hasText,
-      pageCount: pdf.numPages,
-      header: headerString,
-      textItems: totalItems,
-      workerError: false
-    };
-
-  } catch (error) {
-    console.error('❌ Error en diagnóstico:', error);
-
-    // Detectar si es un error relacionado con el worker de PDF.js
-    const isWorkerError = error instanceof Error && (
-      error.message.includes('worker') ||
-      error.message.includes('Worker') ||
-      error.message.includes('Loading worker') ||
-      error.message.includes('Failed to load') ||
-      error.message.includes('Setting up fake worker failed') ||
-      error.message.includes('Failed to fetch dynamically imported module') ||
-      error.message.includes('dynamically imported') ||
-      error.message.includes('pdf.worker') ||
-      error.message.includes('module not found') ||
-      error.message.includes('import') ||
-      error.message.includes('url')
-    );
-
-    return {
-      isValidPDF: false,
-      hasText: false,
-      error: error instanceof Error ? error.message : 'Error desconocido',
-      workerError: isWorkerError
-    };
-  }
-};
-
 const probarAPIKey = async () => {
   try {
     loading.value = true;
@@ -765,7 +593,7 @@ const probarAPIKey = async () => {
     error.value = '';
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash-lite",
+      model: GEMINI_MODEL_FAST,
       generationConfig: {
         temperature: 0.1,
         topK: 1,
@@ -782,25 +610,22 @@ const probarAPIKey = async () => {
     });
 
     if (result.response) {
-      const respuesta = result.response.text();
-      console.log('✅ API Key funciona correctamente en PdfAnalyzer. Respuesta:', respuesta);
-
       showNotification({
-        message: '✅ API Key válida - Puedes analizar PDFs',
+        message: 'API Key valida - Puedes analizar PDFs',
         color: 'positive',
         position: 'top',
         icon: 'check_circle'
       });
     } else {
-      throw new Error('No se recibió respuesta de la API');
+      throw new Error('No se recibio respuesta de la API');
     }
 
   } catch (err) {
-    console.error('❌ Error al probar API key en PdfAnalyzer:', err);
+    console.error('Error al probar API key:', err);
     const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
 
     showNotification({
-      message: `❌ Error de API Key: ${errorMessage}`,
+      message: `Error de API Key: ${errorMessage}`,
       color: 'negative',
       position: 'top',
       icon: 'error'
@@ -819,11 +644,6 @@ const probarWorkerPDF = async () => {
     loadingMessage.value = 'Probando worker de PDF.js...';
     error.value = '';
 
-    console.log('🔍 Probando configuración del worker de PDF.js...');
-    console.log('📋 Worker actual:', pdfjsLib.GlobalWorkerOptions.workerSrc);
-    console.log('📋 Método de importación: import ?url');
-
-    // Verificar que el worker esté configurado correctamente
     if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
       throw new Error('Worker de PDF.js no está configurado');
     }
@@ -835,24 +655,21 @@ const probarWorkerPDF = async () => {
 
     // Intentar cargar el PDF de prueba
     const arrayBuffer = await testFile.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-
-    console.log('✅ Worker de PDF.js funciona correctamente con import ?url');
-    console.log('📖 PDF de prueba cargado:', pdf.numPages, 'páginas');
+    await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
     showNotification({
-      message: '✅ Worker de PDF.js funciona correctamente',
+      message: 'Worker de PDF.js funciona correctamente',
       color: 'positive',
       position: 'top',
       icon: 'check_circle'
     });
 
   } catch (err) {
-    console.error('❌ Error al probar worker de PDF.js:', err);
+    console.error('Error al probar worker de PDF.js:', err);
     const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
 
     showNotification({
-      message: `❌ Error con worker de PDF.js: ${errorMessage}`,
+      message: `Error con worker de PDF.js: ${errorMessage}`,
       color: 'negative',
       position: 'top',
       icon: 'error'
@@ -1307,32 +1124,133 @@ const probarWorkerPDF = async () => {
   letter-spacing: 0.3px;
 }
 
-/* Formatted Content */
-.formatted-content {
-  line-height: 1.6;
+/* Score */
+.score-container {
+  padding: 8px 0;
+}
+
+.score-number {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.score-max {
+  font-size: 1.2rem;
+  font-weight: 400;
+  opacity: 0.6;
+}
+
+.score-bar {
+  max-width: 400px;
+}
+
+/* Partes */
+.partes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.parte-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.parte-chip {
+  flex-shrink: 0;
+  text-transform: capitalize;
+}
+
+.parte-nombre {
   font-size: 0.95rem;
 }
 
-.formatted-content :deep(strong) {
-  font-weight: 700;
+/* Fechas */
+.fechas-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Obligaciones */
+.obligaciones-grupo {
+  border-left: 3px solid rgba(102, 126, 234, 0.4);
+  padding-left: 12px;
+}
+
+.obligaciones-parte {
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
   color: #667eea;
 }
 
-.formatted-content :deep(em) {
-  font-style: italic;
-  color: #764ba2;
-}
-
-.formatted-content :deep(br) {
-  margin-bottom: 0.5em;
-}
-
-:deep(.q-dark) .formatted-content {
-  color: #e0e0e0;
-}
-
-:deep(.q-dark) .formatted-content strong {
+:deep(.q-dark) .obligaciones-parte {
   color: #90caf9;
+}
+
+.obligacion-item {
+  padding: 2px 0;
+  min-height: 0;
+}
+
+/* Riesgos detallados */
+.riesgo-detalle {
+  border-radius: 8px;
+  margin-bottom: 10px;
+  background: rgba(102, 126, 234, 0.04);
+  border: 1px solid rgba(102, 126, 234, 0.1);
+  padding: 12px;
+}
+
+.riesgo-header {
+  display: flex;
+  align-items: center;
+}
+
+.riesgo-clausula {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.riesgo-nivel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.riesgo-descripcion {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #555;
+}
+
+:deep(.q-dark) .riesgo-descripcion {
+  color: #ccc;
+}
+
+.riesgo-sugerencia {
+  font-size: 0.85rem;
+  color: #666;
+  font-style: italic;
+}
+
+:deep(.q-dark) .riesgo-sugerencia {
+  color: #bbb;
+}
+
+/* Mejoras */
+.mejora-item {
+  border-radius: 6px;
+  margin-bottom: 4px;
+}
+
+.mejora-titulo {
+  font-weight: 600;
+  font-size: 0.9rem;
 }
 
 :deep(.q-dark) .formatted-content em {

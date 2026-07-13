@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import type { ArchivoPDF, AnalisisContrato } from '../components/models';
+import type { ArchivoPDF, AnalisisContrato } from '../types/contracts';
+import { GEMINI_MODEL_STANDARD } from '../constants/gemini'
+import { getErrorMessage } from '../utils/errors'
 
 interface Mensaje {
   contenido: string;
@@ -27,9 +29,7 @@ if (!API_KEY) {
 }
 
 const genAI = new GoogleGenerativeAI(API_KEY);
-
-// ✅ Modelo actualizado en un solo lugar
-const MODELO = 'gemini-2.5-flash'
+const MODELO = GEMINI_MODEL_STANDARD
 
 
 const PROMPT_BASE = [
@@ -120,17 +120,17 @@ export const useConsultasStore = defineStore('consultas', {
         }
 
       } catch (err) {
-        const error = err as Error
-        console.error('Error completo:', error);
+        const message = getErrorMessage(err)
+        console.error('Error al consultar la IA:', err);
 
         this.mensajes.push({
-          contenido: `❌ **Error al consultar la IA jurídica**\n\n${error.message}`,
+          contenido: `**Error al consultar la IA juridica**\n\n${message}`,
           esIA: true,
           timestamp: new Date(),
           referencias: []
         });
         this.mensajes = [...this.mensajes];
-        this.error = `Error al consultar la IA jurídica: ${error.message}`;
+        this.error = `Error al consultar la IA juridica: ${message}`;
       } finally {
         this.loading = false;
       }
@@ -205,17 +205,17 @@ export const useConsultasStore = defineStore('consultas', {
         this.mensajes = [...this.mensajes];
 
       } catch (err) {
-        const error = err as Error
-        console.error('Error completo en análisis PDF:', error);
+        const message = getErrorMessage(err)
+        console.error('Error en analisis PDF:', err);
 
         this.mensajes.push({
-          contenido: `❌ **Error al analizar el contrato**\n\n${error.message}`,
+          contenido: `**Error al analizar el contrato**\n\n${message}`,
           esIA: true,
           timestamp: new Date(),
           referencias: []
         });
         this.mensajes = [...this.mensajes];
-        this.error = `Error al analizar el PDF: ${error.message}`;
+        this.error = `Error al analizar el PDF: ${message}`;
       } finally {
         this.loading = false;
       }
@@ -319,10 +319,10 @@ export const useConsultasStore = defineStore('consultas', {
         }
 
       } catch (err) {
-        const error = err as Error
-        this.error = `❌ Error al probar API key: ${error.message}`;
+        const message = getErrorMessage(err)
+        this.error = `Error al probar API key: ${message}`;
         this.mensajes.push({
-          contenido: `❌ **API Key no válida**\n\nError: ${error.message}`,
+          contenido: `**API Key no valida**\n\nError: ${message}`,
           esIA: true,
           timestamp: new Date(),
           referencias: []

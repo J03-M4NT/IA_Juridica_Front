@@ -299,10 +299,9 @@ import type { ContratoFirebase } from '../services/contratosService'
 import type { ContractTemplate } from '../stores/contratos-store'
 import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy } from 'pdfjs-dist'
 import { modificarPlantilla } from '../services/geminiService'
-import { exportarWord, exportarPDF } from '../services/documentService'
+import { exportToWord, exportToPDF } from '../utils/documentExport'
 import EditorContrato from '../components/EditorContrato.vue'
 
-// ✅ Worker local que ya funciona
 GlobalWorkerOptions.workerSrc = `${import.meta.env.BASE_URL}pdf.worker.min.js`
 
 // =========================
@@ -469,7 +468,7 @@ const loadPDFPreview = async () => {
     textoHtml.value = textoAHtml(texto)
 
   } catch (err) {
-    console.error('❌ Error cargando PDF:', err)
+    console.error('Error cargando PDF:', err)
     pdfError.value = 'No se pudo cargar el PDF'
     loadingPdf.value = false
   }
@@ -540,22 +539,37 @@ const modificarConIA = async () => {
     textoHtml.value = textoAHtml(resultado)
     instruccionIA.value = ''
   } catch (err) {
-    console.error('❌ Error IA:', err)
+    console.error('Error IA:', err)
   } finally {
     cargandoIA.value = false
   }
 }
 
 // =========================
+// HELPER DESCARGA
+// =========================
+const triggerDownload = (blob: Blob, fileName: string) => {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = fileName
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+// =========================
 // DESCARGAR WORD
 // =========================
 const descargarWord = async () => {
-  if (!textoEditado.value) return
+  if (!textoHtml.value) return
   descargandoWord.value = true
   try {
-    await exportarWord(textoEditado.value, currentTemplate.value?.name || 'contrato')
+    const blob = await exportToWord(textoHtml.value, currentTemplate.value?.name || 'contrato')
+    triggerDownload(blob, `${currentTemplate.value?.name || 'contrato'}.docx`)
   } catch (err) {
-    console.error('❌ Error exportando Word:', err)
+    console.error('Error exportando Word:', err)
   } finally {
     descargandoWord.value = false
   }
@@ -564,13 +578,14 @@ const descargarWord = async () => {
 // =========================
 // DESCARGAR PDF
 // =========================
-const descargarPDF = () => {
-  if (!textoEditado.value) return
+const descargarPDF = async () => {
+  if (!textoHtml.value) return
   descargandoPDF.value = true
   try {
-    exportarPDF(textoEditado.value, currentTemplate.value?.name || 'contrato')
+    const blob = await exportToPDF(textoHtml.value, currentTemplate.value?.name || 'contrato')
+    triggerDownload(blob, `${currentTemplate.value?.name || 'contrato'}.pdf`)
   } catch (err) {
-    console.error('❌ Error exportando PDF:', err)
+    console.error('Error exportando PDF:', err)
   } finally {
     descargandoPDF.value = false
   }
@@ -645,7 +660,7 @@ const downloadFirebaseContrato = async () => {
     a.click()
     URL.revokeObjectURL(url)
   } catch (err) {
-    console.error('❌ Error descargando:', err)
+    console.error('Error descargando:', err)
   } finally {
     fbDownloading.value = false
   }

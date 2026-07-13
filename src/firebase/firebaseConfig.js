@@ -21,5 +21,3 @@ export const auth = getAuth(app)
 auth.useDeviceLanguage()
 
 export default app
-
-console.log('when eres un commit para actualizar el .env xdddddddddd')
