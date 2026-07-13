@@ -7,8 +7,6 @@ import {
     updateUserProfile,
     updateUserPhotoFromFile
 } from '../services/userService';
-import { useAuthStore } from './auth';
-
 export const useUserProfileStore = defineStore('userProfile', () => {
     // Estado
     const profile = ref<UserProfile | null>(null);

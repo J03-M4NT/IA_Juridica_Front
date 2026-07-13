@@ -73,7 +73,7 @@
                 <q-tooltip>Gestión de contratos</q-tooltip>
               </q-btn>
 
-              <!-- ✅ NUEVO BOTÓN NORMAS -->
+              <!-- Boton Normas -->
               <q-btn
                 flat
                 no-caps

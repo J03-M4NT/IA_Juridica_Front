@@ -15,8 +15,8 @@ export default defineConfig((/* ctx */) => {
       'axios',
       'dark',
       'firebase',
-      'notify',
-      'pinia'
+      'auth-sync',
+      'notify'
     ],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css

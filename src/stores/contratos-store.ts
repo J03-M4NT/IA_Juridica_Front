@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { exportToWord, exportToPDF } from '../utils/documentExport'
+import { getErrorMessage } from '../utils/errors'
 import {
   listenContratos,
   getContratoDownloadURL,
@@ -79,11 +80,9 @@ export const useContratosStore = defineStore('contratos', {
         })
 
         this.templates = templates
-        console.log('📋 Templates cargados desde Firebase:', templates.length)
       } catch (err) {
-        const error = err as Error
-        console.error('❌ Error cargando templates:', error)
-        this.error = error.message || 'Error cargando plantillas'
+        console.error('Error cargando templates:', err)
+        this.error = getErrorMessage(err) || 'Error cargando plantillas'
       } finally {
         this.isLoading = false
       }
@@ -140,9 +139,8 @@ export const useContratosStore = defineStore('contratos', {
 
         return await exportToWord(contract.modifiedContent, template.name)
       } catch (err) {
-        const error = err as Error
-        console.error('Error en exportToWord:', error)
-        throw error
+        console.error('Error en exportToWord:', err)
+        throw err
       }
     },
 
@@ -160,9 +158,8 @@ export const useContratosStore = defineStore('contratos', {
 
         return await exportToPDF(contract.modifiedContent, template.name)
       } catch (err) {
-        const error = err as Error
-        console.error('Error en exportToPDF:', error)
-        throw error
+        console.error('Error en exportToPDF:', err)
+        throw err
       }
     },
 
@@ -178,9 +175,8 @@ export const useContratosStore = defineStore('contratos', {
         const url = await getTemplateDownloadURL(storagePath)
         return url
       } catch (err) {
-        const error = err as Error
-        console.error('❌ Error obteniendo URL del PDF:', error)
-        throw error
+        console.error('Error obteniendo URL del PDF:', err)
+        throw err
       }
     },
 
@@ -197,9 +193,8 @@ export const useContratosStore = defineStore('contratos', {
 
         return await downloadContrato(template.storage_path)
       } catch (err) {
-        const error = err as Error
-        console.error('Error en downloadOriginalPDF:', error)
-        throw error
+        console.error('Error en downloadOriginalPDF:', err)
+        throw err
       }
     },
 
@@ -208,7 +203,6 @@ export const useContratosStore = defineStore('contratos', {
     // ================================
     startListeningFirebaseContratos() {
       if (this._unsubscribeContratos) {
-        console.log('⚠️ Ya existe una suscripción activa')
         return
       }
 
@@ -220,19 +214,17 @@ export const useContratosStore = defineStore('contratos', {
           (contratos) => {
             this.firebaseContratos = contratos
             this.firebaseLoading = false
-            console.log('🔥 Contratos Firebase actualizados:', contratos.length)
           },
           (error) => {
             this.firebaseError = error.message
             this.firebaseLoading = false
-            console.error('❌ Error escuchando contratos:', error)
+            console.error('Error escuchando contratos:', error)
           }
         )
       } catch (err) {
-        const error = err as Error
-        this.firebaseError = error.message
+        this.firebaseError = getErrorMessage(err)
         this.firebaseLoading = false
-        console.error('❌ Error iniciando listener:', error)
+        console.error('Error iniciando listener:', err)
       }
     },
 
@@ -240,7 +232,6 @@ export const useContratosStore = defineStore('contratos', {
       if (this._unsubscribeContratos) {
         this._unsubscribeContratos()
         this._unsubscribeContratos = null
-        console.log('🛑 Listener de contratos detenido')
       }
     },
 
@@ -252,9 +243,8 @@ export const useContratosStore = defineStore('contratos', {
       try {
         return await getContratoDownloadURL(storagePath)
       } catch (err) {
-        const error = err as Error
-        console.error('❌ Error obteniendo URL del contrato:', error)
-        throw error
+        console.error('Error obteniendo URL del contrato:', err)
+        throw err
       }
     },
 
@@ -262,9 +252,8 @@ export const useContratosStore = defineStore('contratos', {
       try {
         return await downloadContrato(storagePath)
       } catch (err) {
-        const error = err as Error
-        console.error('❌ Error descargando contrato:', error)
-        throw error
+        console.error('Error descargando contrato:', err)
+        throw err
       }
     },
   }

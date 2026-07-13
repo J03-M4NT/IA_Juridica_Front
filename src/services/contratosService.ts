@@ -1,4 +1,5 @@
 import { db, storage } from '../firebase/firebaseConfig'
+import { getErrorMessage } from '../utils/errors'
 import {
   collection,
   onSnapshot,
@@ -50,7 +51,7 @@ export function listenContratos(
       callback(contratos)
     },
     (error) => {
-      console.error('❌ Error escuchando contratos:', error)
+      console.error('Error escuchando contratos:', error)
       onError(error)
     }
   )
@@ -66,9 +67,8 @@ export async function getContratoDownloadURL(storagePath: string): Promise<strin
     const fileRef = ref(storage, storagePath)
     return await getDownloadURL(fileRef)
   } catch (err) {
-  const error = err as Error
-  throw new Error(`No se pudo obtener la URL: ${error.message}`)
-}
+    throw new Error(`No se pudo obtener la URL: ${getErrorMessage(err)}`)
+  }
 }
 
 /**
@@ -79,9 +79,8 @@ export async function downloadContrato(storagePath: string): Promise<Blob> {
     const fileRef = ref(storage, storagePath)
     return await getBlob(fileRef)
   } catch (err) {
-    const error = err as Error
-    console.error('❌ Error descargando contrato:', error)
-    throw new Error(`No se pudo descargar el archivo: ${error.message}`)
+    console.error('Error descargando contrato:', err)
+    throw new Error(`No se pudo descargar el archivo: ${getErrorMessage(err)}`)
   }
 }
 
@@ -128,8 +127,7 @@ export async function deleteTemplate(templateId: string, storagePath: string): P
 }
 
 /**
- * ⭐ NUEVA FUNCIÓN: Obtiene la URL de descarga de una plantilla (template)
- * Esta es la que faltaba para cargar los PDFs en ContratosPage
+ * Obtiene la URL de descarga de una plantilla desde Firebase Storage
  */
 export async function getTemplateDownloadURL(storagePath: string): Promise<string> {
   try {
@@ -140,13 +138,9 @@ export async function getTemplateDownloadURL(storagePath: string): Promise<strin
 
     const fileRef = ref(storage, storagePath)
     const url = await getDownloadURL(fileRef)
-
-    console.log('✅ URL obtenida para template:', storagePath)
     return url
   } catch (err) {
-    const error = err as Error
-    console.error('❌ Error obteniendo URL del template:', error)
-    console.error('📍 Ruta intentada:', storagePath)
-    throw new Error(`No se pudo obtener la URL del template: ${error.message}`)
+    console.error('Error obteniendo URL del template:', err)
+    throw new Error(`No se pudo obtener la URL del template: ${getErrorMessage(err)}`)
   }
 }

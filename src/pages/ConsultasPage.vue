@@ -182,7 +182,6 @@ function formatMessage(content: string): string {
 }
 
 async function enviarConsulta() {
-  console.log('Enviando consulta:', pregunta.value); // Debug log
   if (pregunta.value.trim()) {
     try {
       await store.enviarConsulta(pregunta.value);
