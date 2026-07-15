@@ -1,20 +1,35 @@
 <template>
-  <q-page class="q-pa-md">
+  <q-page class="contratos-page">
+
+    <!-- Section header -->
+    <div class="page-header">
+      <div class="section-icon-wrap icon-purple">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7c47e0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 7h18"/><path d="M3 7l2-3h14l2 3"/><path d="M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/><path d="M9 12h6"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="page-title">Gestión de Contratos</h1>
+        <p class="page-subtitle">Biblioteca de plantillas · previsualiza, edita y descarga</p>
+      </div>
+    </div>
+
     <div class="row q-col-gutter-md">
       <!-- Columna Izquierda: Templates -->
       <div class="col-12 col-md-4">
-        <q-card class="templates-card">
-          <q-card-section class="templates-header q-pa-md">
-            <div class="text-h6 text-weight-bold text-dark">
-              <q-icon name="description" size="sm" class="q-mr-sm" color="grey-9" />
-              Plantillas de Contratos
+        <div class="lx-card">
+          <div class="lx-card-header">
+            <div class="lx-card-header-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c47e0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <path d="M14 2v6h6"/>
+              </svg>
+              Plantillas
             </div>
-            <q-btn flat round dense icon="refresh" color="grey-9" @click="store.fetchTemplates()" :loading="isLoading" />
-          </q-card-section>
+            <q-btn flat round dense icon="refresh" color="grey-6" @click="store.fetchTemplates()" :loading="isLoading" size="sm" />
+          </div>
 
-          <q-separator />
-
-          <q-card-section class="q-pa-none">
+          <div class="lx-card-body q-pa-none">
             <q-list class="templates-list">
               <q-item
                 v-for="template in templates"
@@ -25,53 +40,59 @@
                 @click="selectTemplate(template)"
               >
                 <q-item-section avatar>
-                  <q-avatar color="orange" text-color="white" icon="article" />
+                  <div class="template-icon-wrap">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/>
+                    </svg>
+                  </div>
                 </q-item-section>
                 <q-item-section>
-                  <q-item-label class="text-weight-medium text-dark">{{ template.name }}</q-item-label>
-                  <q-item-label caption lines="2" class="text-grey-8">{{ template.description }}</q-item-label>
+                  <q-item-label class="text-weight-medium" style="color:#16161a">{{ template.name }}</q-item-label>
+                  <q-item-label caption lines="2" style="color:#8a8a92">{{ template.description }}</q-item-label>
                 </q-item-section>
                 <q-item-section side>
-                  <q-icon name="chevron_right" color="grey" />
+                  <q-icon name="chevron_right" color="grey-4" />
                 </q-item-section>
               </q-item>
 
               <q-item v-if="templates.length === 0 && !isLoading">
-                <q-item-section class="text-center text-grey">
+                <q-item-section class="text-center" style="color:#9a9aa2">
                   No hay plantillas disponibles
                 </q-item-section>
               </q-item>
             </q-list>
-          </q-card-section>
-        </q-card>
+          </div>
+        </div>
       </div>
 
       <!-- Columna Derecha -->
       <div class="col-12 col-md-8">
 
         <!-- VISTA PREVIA DEL PDF -->
-        <q-card class="editor-card" v-if="!modoEdicion">
-          <q-card-section class="editor-header q-pa-md">
-            <div class="row items-center justify-between">
-              <div class="text-h6 text-weight-bold text-dark">
-                <q-icon name="preview" size="sm" class="q-mr-sm" color="grey-9" />
-                Vista Previa del Contrato
-              </div>
-              <q-btn
-                v-if="pdfDoc"
-                color="orange"
-                icon="edit"
-                label="Editar Contrato"
-                @click="abrirEditor"
-                unelevated
-                :loading="extrayendoTexto"
-              />
+        <div class="lx-card" v-if="!modoEdicion">
+          <div class="lx-card-header">
+            <div class="lx-card-header-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c47e0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+              Vista Previa del Contrato
             </div>
-          </q-card-section>
+            <q-btn
+              v-if="pdfDoc"
+              color="deep-orange"
+              icon="edit"
+              label="Editar Contrato"
+              @click="abrirEditor"
+              unelevated no-caps
+              :loading="extrayendoTexto"
+              class="lx-action-btn"
+            />
+          </div>
 
-          <q-separator />
+          <div style="height:1px;background:rgba(27,27,30,0.07)"></div>
 
-          <q-card-section class="editor-content">
+          <div class="lx-card-body editor-content">
             <div v-if="!currentTemplate" class="pdf-canvas-container">
               <q-icon name="touch_app" size="64px" color="grey-5" />
               <p class="text-grey-6 q-mt-md text-center">
@@ -102,22 +123,23 @@
                   :disable="currentPage >= numPages || isRendering" @click="nextPage" />
               </div>
             </div>
-          </q-card-section>
-        </q-card>
+          </div>
+        </div>
 
         <!-- EDITOR DE CONTRATO -->
-        <q-card class="editor-card" v-if="modoEdicion">
-          <q-card-section class="editor-header q-pa-md">
-            <div class="row items-center justify-between">
-              <div class="text-h6 text-weight-bold text-dark">
-                <q-icon name="edit_document" size="sm" class="q-mr-sm" color="grey-9" />
-                Editando: {{ currentTemplate?.name }}
-              </div>
-              <q-btn flat icon="arrow_back" label="Volver" color="grey-9" @click="modoEdicion = false" />
+        <div class="lx-card" v-if="modoEdicion">
+          <div class="lx-card-header">
+            <div class="lx-card-header-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c47e0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/>
+              </svg>
+              Editando: {{ currentTemplate?.name }}
             </div>
-          </q-card-section>
+            <q-btn flat no-caps icon="arrow_back" label="Volver" color="grey-7" @click="modoEdicion = false" />
+          </div>
 
-          <q-separator />
+          <div style="height:1px;background:rgba(27,27,30,0.07)"></div>
 
           <!-- Tabs: Manual / IA -->
           <q-tabs v-model="tabEdicion" color="orange" active-color="orange" class="q-px-md q-pt-sm text-dark" align="left">
@@ -125,9 +147,7 @@
             <q-tab name="ia" icon="auto_awesome" label="Modificar con IA" />
           </q-tabs>
 
-          <q-separator />
-
-          <q-card-section>
+          <div class="lx-card-body">
 
             <!-- TAB MANUAL -->
             <div v-if="tabEdicion === 'manual'">
@@ -179,12 +199,12 @@
               </div>
             </div>
 
-          </q-card-section>
+          </div>
 
-          <q-separator />
+          <div style="height:1px;background:rgba(27,27,30,0.07)"></div>
 
           <!-- Botones de descarga -->
-          <q-card-section class="row q-gutter-sm items-center">
+          <div class="lx-card-body row q-gutter-sm items-center">
             <div class="text-grey-7 text-caption">Descargar como:</div>
             <q-btn
               color="blue-8"
@@ -202,16 +222,20 @@
               :loading="descargandoPDF"
               unelevated
             />
-          </q-card-section>
-        </q-card>
+          </div>
+        </div>
 
         <!-- Sección Firebase Contratos -->
-        <q-card class="firebase-section q-mt-md">
-          <q-card-section>
-            <div class="text-h6 text-weight-bold q-mb-md text-dark">
-              <q-icon name="cloud" size="sm" class="q-mr-sm" color="grey-9" />
+        <div class="lx-card lx-card--mt">
+          <div class="lx-card-header">
+            <div class="lx-card-header-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c47e0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
+              </svg>
               Contratos Generados
             </div>
+          </div>
+          <div class="lx-card-body">
 
             <q-list bordered separator>
               <q-item
@@ -264,8 +288,8 @@
                 </div>
               </div>
             </div>
-          </q-card-section>
-        </q-card>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -675,6 +699,181 @@ watch(currentTemplate, async (newTemplate) => {
 </script>
 
 <style scoped>
+/* ==============================
+   Page
+   ============================== */
+.contratos-page {
+  animation: floatUp 0.5s ease-out both;
+}
+
+@keyframes floatUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ==============================
+   Section header
+   ============================== */
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.section-icon-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.icon-purple { background: rgba(139, 92, 246, 0.13); }
+
+.page-title {
+  font-family: 'EB Garamond', serif;
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0;
+  color: #16161a;
+}
+
+.page-subtitle {
+  margin: 2px 0 0;
+  color: #6a6a72;
+  font-size: 1rem;
+}
+
+/* ==============================
+   Card system
+   ============================== */
+.lx-card {
+  background: #fff;
+  border: 1px solid rgba(27, 27, 30, 0.08);
+  border-radius: 18px;
+  box-shadow: 0 1px 3px rgba(27, 27, 30, 0.04);
+  overflow: hidden;
+}
+
+.lx-card--mt { margin-top: 18px; }
+
+.lx-card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(27, 27, 30, 0.07);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lx-card-header-title {
+  font-family: 'EB Garamond', serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #16161a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lx-card-body {
+  padding: 20px;
+}
+
+.lx-action-btn {
+  font-family: 'Figtree', sans-serif !important;
+}
+
+/* ==============================
+   Templates list
+   ============================== */
+.templates-list {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.template-icon-wrap {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(255, 155, 106, 0.15);
+  color: #d97a3e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.template-item {
+  border-radius: 12px;
+  transition: background 0.2s;
+  margin: 2px 6px;
+}
+
+.template-item:hover { background: rgba(139, 92, 246, 0.05); }
+
+.template-item.q-item--active {
+  background: rgba(139, 92, 246, 0.10);
+}
+
+.template-item.q-item--active .template-icon-wrap {
+  background: rgba(139, 92, 246, 0.15);
+  color: #7c47e0;
+}
+
+/* ==============================
+   PDF viewer
+   ============================== */
+.editor-content { padding: 2rem 1.5rem; }
+
+.pdf-canvas-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #f4f4f0, #fafaf7);
+  border: 1px solid rgba(27, 27, 30, 0.08);
+  border-radius: 12px;
+  padding: 2rem 1rem;
+  min-height: 500px;
+}
+
+.pdf-canvas {
+  max-width: 100%;
+  max-height: 600px;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(27, 27, 30, 0.12);
+  background: white !important;
+}
+
+canvas {
+  max-width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  background: white !important;
+}
+
+.pdf-loading, .pdf-error {
+  min-height: 400px;
+  background: #fafaf7;
+  border-radius: 8px;
+  border: 1px solid rgba(27, 27, 30, 0.08);
+}
+
+/* ==============================
+   IA panel
+   ============================== */
+.ia-panel {
+  background: rgba(255, 152, 0, 0.04);
+  border: 1px solid rgba(255, 152, 0, 0.18);
+  border-radius: 14px;
+  padding: 1.5rem;
+}
+
+/* ==============================
+   Document preview
+   ============================== */
 .document-preview {
   font-family: 'Times New Roman', Times, serif;
   font-size: 12pt;
@@ -685,98 +884,5 @@ watch(currentTemplate, async (newTemplate) => {
 .document-preview p {
   margin: 0 0 6px 0;
   text-align: justify;
-}
-
-.ia-panel {
-  background: rgba(255, 152, 0, 0.05);
-  border: 1px solid rgba(255, 152, 0, 0.2);
-  border-radius: 12px;
-  padding: 1.5rem;
-}
-
-canvas {
-  max-width: 100%;
-  border-radius: 8px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-  background: white !important;
-}
-
-.pdf-canvas-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%);
-  border: 2px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 2rem 1rem;
-  min-height: 500px;
-}
-
-.pdf-canvas {
-  max-height: 600px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-  border-radius: 8px;
-}
-
-.pdf-loading, .pdf-error {
-  min-height: 400px;
-  background: #fafafa;
-  border-radius: 8px;
-  border: 2px solid #e0e0e0;
-}
-
-.editor-card {
-  border: 1px solid rgba(255, 152, 0, 0.2);
-  border-radius: 12px;
-  background: rgba(255, 152, 0, 0.02);
-}
-
-.editor-header {
-  border-bottom: 1px solid rgba(255, 152, 0, 0.15);
-  background: rgba(255, 152, 0, 0.05);
-  border-radius: 12px 12px 0 0;
-}
-
-.editor-content { padding: 2rem 1.5rem; }
-
-.firebase-section {
-  padding: 1rem;
-  background: rgba(255, 152, 0, 0.03);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 152, 0, 0.15);
-}
-
-.templates-card {
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 12px;
-}
-
-.templates-header {
-  background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.05) 100%);
-  border-bottom: 2px solid rgba(255, 152, 0, 0.2);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.templates-list { max-height: 600px; overflow-y: auto; }
-
-.template-item { border-radius: 8px; transition: all 0.3s ease; }
-.template-item:hover { background: rgba(255, 152, 0, 0.05); }
-.template-item.q-item--active {
-  background: rgba(255, 152, 0, 0.15);
-  border-left: 3px solid #ff9800;
-}
-
-.templates-header,
-.editor-header,
-.firebase-section {
-  color: #212529;
-}
-
-.templates-list .q-item,
-.firebase-section .q-list .q-item {
-  color: #212529;
 }
 </style>

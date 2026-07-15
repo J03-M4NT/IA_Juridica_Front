@@ -89,14 +89,20 @@ export function iniciarChatJuridico(): ChatSession {
     generationConfig: {
       maxOutputTokens: 2000,
     },
-    systemInstruction: `
-      Eres Letsy, una IA jurídica especializada en derecho peruano.
-      - Respondes consultas legales de manera clara y precisa
-      - Citas artículos y normas legales peruanas cuando es relevante
-      - Si no sabes algo, lo dices honestamente
-      - Usas lenguaje accesible, no solo jerga legal
-      - Siempre recomiendas consultar un abogado para casos complejos
-    `
+    systemInstruction: {
+      role: 'user',
+      parts: [{
+        text: [
+          'Eres Letsy, una IA jurídica especializada en derecho peruano.',
+          '- Respondes consultas legales de manera clara y precisa.',
+          '- Citas artículos y normas legales peruanas cuando es relevante.',
+          '- Si no sabes algo, lo dices honestamente.',
+          '- Usas lenguaje accesible, no solo jerga legal.',
+          '- Siempre recomiendas consultar un abogado para casos complejos.',
+          '- Respondes en formato markdown cuando sea útil (listas, negritas).',
+        ].join('\n')
+      }]
+    }
   })
   return chat
 }
