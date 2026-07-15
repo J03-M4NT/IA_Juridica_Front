@@ -212,10 +212,12 @@ watch(mensajes, async () => {
    ============================== */
 .page-header {
   display: flex;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 16px;
   margin-bottom: 22px;
-  text-align: left;
+  text-align: center;
 }
 
 .section-icon-wrap {
