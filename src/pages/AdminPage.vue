@@ -559,4 +559,13 @@ onMounted(loadTemplates)
   line-height: 1.6;
   margin: 0;
 }
+
+:deep(.q-table tbody td){
+  color: #3a3a40;
+}
+
+:deep(.q-table thead th) {
+  color: #6a6a72;
+}
+
 </style>
