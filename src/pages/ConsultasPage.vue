@@ -1,136 +1,120 @@
 <template>
-  <q-page class="consultas-page flex flex-center column fade-in">
-    <!-- Background gradient -->
-    <div class="page-background"></div>
+  <q-page class="consultas-page">
 
-    <!-- Centered Content -->
-    <div class="content-wrapper flex flex-center column q-pa-lg">
-      <!-- Title Section -->
-      <div class="title-section text-center q-mb-xl">
-        <h1 class="main-title text-h4 text-weight-bold q-mb-md">CONSULTAS JURÍDICAS</h1>
-        <p class="subtitle text-body1 text-grey-7">Haz preguntas sobre leyes y contratos</p>
+    <!-- Section header -->
+    <div class="page-header">
+      <div class="section-icon-wrap icon-blue">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3f6fc9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
       </div>
-
-      <!-- Action Buttons Card (compact, transparent; button aligned to right of chat) -->
-      <q-card class="actions-card modern-card q-pa-sm">
-        <div class="actions-inner">
-          <q-btn
-            color="grey-8"
-            icon="help"
-            label="CENTRO DE AYUDA"
-            @click="showHelp = true"
-            class="action-button help-button"
-            unelevated
-            rounded
-            size="md"
-            style="min-width: 140px;"
-          >
-            <q-tooltip>Centro de ayuda</q-tooltip>
-          </q-btn>
-        </div>
-      </q-card>
-
-      <!-- Chat Section -->
-      <div class="chat-section q-mt-xl">
-        <q-card class="chat-card modern-card">
-          <q-card-section class="chat-header">
-            <h3 class="chat-title text-h6 text-weight-medium">Chat de Consultas</h3>
-          </q-card-section>
-
-          <!-- Messages Box -->
-          <q-card-section class="messages-container">
-            <div class="messages-box" ref="messagesBox">
-              <div v-for="(mensaje, index) in mensajes" :key="index" class="message-wrapper q-mb-lg fade-in">
-                <!-- AI Message -->
-                <div v-if="mensaje.esIA" class="ai-message">
-                  <div class="avatar ai-avatar">
-                    <img :src="aiLogo" alt="LEXIT AI" class="ai-logo" />
-                  </div>
-                  <div class="message-bubble ai-bubble">
-                    <div class="message-meta">
-                      <span class="sender">LEXIT AI</span>
-                      <small class="timestamp">{{ formatTimestamp(mensaje.timestamp) }}</small>
-                    </div>
-                    <div class="message-content formatted-message" v-html="formatMessage(mensaje.contenido)"></div>
-                    <div v-if="mensaje.referencias?.length" class="references text-caption text-grey-7 q-mt-sm">
-                      <strong>Referencias:</strong>
-                      <div v-for="(ref, idx) in mensaje.referencias" :key="idx" class="q-mt-xs">{{ ref }}</div>
-                    </div>
-                  </div>
-                </div>
-                <!-- User Message -->
-                <div v-else class="user-message">
-                  <div class="message-bubble user-bubble">
-                    <div class="message-meta">
-                      <small class="timestamp">{{ formatTimestamp(mensaje.timestamp) }}</small>
-                    </div>
-                    <div class="message-content">{{ mensaje.contenido }}</div>
-                  </div>
-                  <div class="avatar user-avatar">
-                    <q-icon name="person" size="20px" />
-                  </div>
-                </div>
-              </div>
-
-              <!-- Typing indicator when loading -->
-              <div v-if="store.loading" class="message-wrapper q-mb-lg typing-row">
-                <div class="ai-message">
-                  <div class="avatar ai-avatar">
-                    <img :src="aiLogo" alt="LEXIT AI" class="ai-logo" />
-                  </div>
-                  <div class="message-bubble ai-bubble typing-bubble">
-                    <div class="typing-dots">
-                      <span></span><span></span><span></span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Quick suggestions -->
-            <div class="quick-suggestions q-mt-sm">
-              <span class="hint">Sugerencias rápidas:</span>
-              <q-chip v-for="(s, i) in suggestions" :key="i" class="q-ml-sm suggestion-chip" clickable @click="useSuggestion(s)">{{ s }}</q-chip>
-            </div>
-          </q-card-section>
-
-          <!-- Input Area -->
-          <q-card-section class="input-section">
-            <q-form @submit.prevent="enviarConsulta" class="input-form">
-              <q-input
-                v-model="pregunta"
-                placeholder="Escribe tu consulta legal aquí..."
-                type="textarea"
-                autogrow
-                outlined
-                :disable="store.loading"
-                :max-height="120"
-                class="chat-input"
-                hide-bottom-space
-              >
-                <template v-slot:append>
-                  <q-btn
-                    round
-                    flat
-                    icon="send"
-                    type="submit"
-                    :loading="store.loading"
-                    color="primary"
-                    size="md"
-                    class="send-btn"
-                    @click="enviarConsulta"
-                  />
-                </template>
-              </q-input>
-            </q-form>
-            <div v-if="store.error" class="error-message q-mt-md text-center">
-              <q-icon name="error" color="negative" class="q-mr-xs" />
-              <span class="text-negative text-body2">{{ store.error }}</span>
-            </div>
-          </q-card-section>
-        </q-card>
+      <div>
+        <h1 class="page-title">Consultas Jurídicas</h1>
+        <p class="page-subtitle">Haz preguntas sobre leyes y contratos</p>
       </div>
     </div>
+
+    <!-- Chat wrapper -->
+    <div class="chat-wrapper">
+
+      <!-- Chat card -->
+      <div class="chat-card">
+
+        <!-- Chat header -->
+        <div class="chat-header">
+          <span class="chat-header-title">Chat de Consultas</span>
+          <button class="help-btn" @click="showHelp = true">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>
+            </svg>
+            Centro de ayuda
+          </button>
+        </div>
+
+        <!-- Messages area -->
+        <div class="messages-area" ref="messagesBox">
+          <div v-for="(mensaje, index) in mensajes" :key="index" class="message-wrapper">
+
+            <!-- AI message -->
+            <div v-if="mensaje.esIA" class="msg-row msg-row--ai">
+              <img :src="aiLogo" alt="LEXIT AI" class="msg-avatar" />
+              <div class="msg-bubble msg-bubble--ai">
+                <div class="msg-meta msg-meta--ai">LEXIT AI · {{ formatTimestamp(mensaje.timestamp) }}</div>
+                <div class="msg-content formatted-message" v-html="formatMessage(mensaje.contenido)"></div>
+                <div v-if="mensaje.referencias?.length" class="msg-refs">
+                  <strong>Referencias:</strong>
+                  <div v-for="(ref, idx) in mensaje.referencias" :key="idx" class="q-mt-xs">{{ ref }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- User message -->
+            <div v-else class="msg-row msg-row--user">
+              <div class="msg-bubble msg-bubble--user">
+                <div class="msg-meta msg-meta--user">{{ formatTimestamp(mensaje.timestamp) }}</div>
+                <div class="msg-content">{{ mensaje.contenido }}</div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Typing indicator -->
+          <div v-if="store.loading" class="msg-row msg-row--ai">
+            <img :src="aiLogo" alt="LEXIT AI" class="msg-avatar" />
+            <div class="msg-bubble msg-bubble--ai typing-bubble">
+              <div class="typing-dots">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Suggestions -->
+        <div class="suggestions-row">
+          <span class="suggestions-label">Sugerencias:</span>
+          <button
+            v-for="(s, i) in suggestions"
+            :key="i"
+            class="suggestion-chip"
+            @click="useSuggestion(s)"
+          >{{ s }}</button>
+        </div>
+
+        <!-- Input area -->
+        <div class="input-area">
+          <div class="input-wrap">
+            <q-input
+              v-model="pregunta"
+              placeholder="Escribe tu consulta legal aquí..."
+              type="textarea"
+              autogrow
+              borderless
+              :disable="store.loading"
+              :max-height="120"
+              class="chat-input"
+              hide-bottom-space
+              @keydown.enter.exact.prevent="enviarConsulta"
+            />
+            <button
+              class="send-btn"
+              :disabled="store.loading || !pregunta.trim()"
+              @click="enviarConsulta"
+            >
+              <svg v-if="!store.loading" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+              </svg>
+              <q-spinner v-else size="18px" color="white" />
+            </button>
+          </div>
+          <div v-if="store.error" class="error-row">
+            <q-icon name="error" color="negative" size="18px" />
+            <span class="error-text">{{ store.error }}</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
   </q-page>
 </template>
 
@@ -143,13 +127,11 @@ const store = useConsultasStore();
 const pregunta = ref('');
 const showHelp = ref(false);
 
-// usa el logo SVG que está en src/assets/logo.svg
 const aiLogo: string = new URL('../assets/logo.svg', import.meta.url).href;
 
 const { mensajes } = storeToRefs(store);
 const messagesBox = ref<HTMLElement | null>(null);
 
-// Quick suggestion chips
 const suggestions = [
   '¿Cuáles son mis obligaciones en este contrato?',
   '¿Qué cláusulas representan mayor riesgo?',
@@ -171,7 +153,6 @@ function formatTimestamp(ts: Date | string): string {
 }
 
 function formatMessage(content: string): string {
-  // Simple markdown-like formatting
   return content
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
@@ -186,13 +167,8 @@ async function enviarConsulta() {
     try {
       await store.enviarConsulta(pregunta.value);
       pregunta.value = '';
-
-      // Scroll al final
       await nextTick();
-      // scroll bottom
-      if (messagesBox.value) {
-        messagesBox.value.scrollTop = messagesBox.value.scrollHeight;
-      }
+      if (messagesBox.value) messagesBox.value.scrollTop = messagesBox.value.scrollHeight;
     } catch (error) {
       console.error('Error al enviar consulta:', error);
     }
@@ -200,14 +176,12 @@ async function enviarConsulta() {
 }
 
 onMounted(() => {
-  store.limpiar();
-  // ensure scroll to bottom on mount
+  store.iniciarSesion();
   void nextTick().then(() => {
     if (messagesBox.value) messagesBox.value.scrollTop = messagesBox.value.scrollHeight;
   });
 });
 
-// watch mensajes to auto scroll when new messages arrive
 import { watch } from 'vue';
 watch(mensajes, async () => {
   await nextTick();
@@ -217,188 +191,202 @@ watch(mensajes, async () => {
 
 <style scoped>
 .consultas-page {
-  min-height: 100vh;
-  position: relative;
-  overflow-x: hidden;
-  background: var(--background-color) !important;
+  max-width: 860px;
+  margin: 0 auto;
+  animation: floatUp 0.5s ease-out both;
 }
 
-/* selection styling: highlighted text should show black letters */
-.consultas-page ::selection {
-  background: rgba(0, 123, 255, 0.2);
-  color: var(--text-color);
+@keyframes floatUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-.page-background {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  z-index: -1;
+@keyframes blink {
+  0%   { opacity: 0.2; transform: translateY(0); }
+  50%  { opacity: 1;   transform: translateY(-3px); }
+  100% { opacity: 0.2; transform: translateY(0); }
 }
 
-.chat-header {
-  background: var(--card-background) !important;
-  border-bottom: 1px solid var(--border-color);
-  padding: 1.5rem 0;
+/* ==============================
+   Section header
+   ============================== */
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 22px;
+  text-align: left;
+}
+
+.section-icon-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow-light);
+  flex-shrink: 0;
 }
 
-.chat-title {
-  font-size: 1.75rem !important;
-  font-weight: 700 !important;
-  color: var(--primary-color) !important;
+.icon-blue { background: rgba(79, 127, 214, 0.13); }
+
+.page-title {
+  font-family: 'EB Garamond', serif;
+  font-size: 2rem;
+  font-weight: 600;
   margin: 0;
-  letter-spacing: -0.025em;
+  color: #16161a;
 }
 
-/* Action Buttons Card */
-.actions-card {
-  border-radius: var(--border-radius);
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  background: transparent;
-  border: none;
-  width: auto;
-  padding: 0.25rem 0.5rem;
-  display: block;
-  margin: 0 0 12px 0;
-  text-align: left;
-  position: static;
-  z-index: 999;
+.page-subtitle {
+  margin: 2px 0 0;
+  color: #6a6a72;
+  font-size: 1rem;
 }
 
-.help-button {
-  z-index: 1000;
-  border-radius: var(--border-radius-small) !important;
-  transition: all 0.3s ease;
-}
-
-.help-button:hover {
-  background: rgba(0, 123, 255, 0.1) !important;
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-light) !important;
-}
-
-.actions-inner {
-  max-width: 800px;
-  margin: 0 auto;
+/* ==============================
+   Chat card
+   ============================== */
+.chat-wrapper {
   display: flex;
-  justify-content: flex-end;
-  align-items: center;
+  flex-direction: column;
 }
 
 .chat-card {
-  border-radius: var(--border-radius);
-  box-shadow: var(--shadow-medium);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  background: var(--card-background);
-  border: 1px solid var(--border-color);
+  background: #fff;
+  border: 1px solid rgba(27, 27, 30, 0.08);
+  border-radius: 20px;
+  box-shadow: 0 4px 18px rgba(27, 27, 30, 0.06);
   overflow: hidden;
-  position: relative;
-  z-index: 1;
-  margin-top: 0.5rem;
-  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  height: 580px;
 }
 
-.chat-card:hover {
-  box-shadow: var(--shadow-heavy);
-}
-
+/* ==============================
+   Chat header
+   ============================== */
 .chat-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff;
-  padding: 1rem 1.5rem;
+  padding: 16px 22px;
+  border-bottom: 1px solid rgba(27, 27, 30, 0.07);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
 }
 
-.avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+.chat-header-title {
+  font-family: 'EB Garamond', serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #16161a;
+}
+
+.help-btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  background: var(--card-background);
-  border: 1px solid var(--border-color);
+  gap: 7px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #55555c;
+  background: #FAFAF7;
+  border: 1px solid rgba(27, 27, 30, 0.08);
+  padding: 7px 13px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: 'Figtree', sans-serif;
+  transition: background 0.2s;
 }
 
-.ai-avatar { margin-right: 12px; }
-.user-avatar { margin-left: 12px; }
+.help-btn:hover { background: rgba(27, 27, 30, 0.05); }
 
-.ai-logo {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  object-fit: cover;
-  display: block;
+/* ==============================
+   Messages area
+   ============================== */
+.messages-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(27,27,30,0.14) transparent;
 }
 
-.ai-message {
+.msg-row {
   display: flex;
   align-items: flex-start;
-  justify-content: flex-start;
-  margin-right: 18%;
+  gap: 11px;
 }
 
-.user-message {
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  margin-left: 18%;
+.msg-row--ai  { max-width: 82%; margin-right: auto; }
+.msg-row--user { max-width: 78%; margin-left: auto; flex-direction: row-reverse; }
+
+.msg-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(27, 27, 30, 0.08);
+  padding: 3px;
+  background: #fff;
+  flex-shrink: 0;
+  object-fit: cover;
 }
 
-.ai-bubble {
-  background: #f8f9fa !important;
-  color: #212529 !important;
-  border: 1px solid #e9ecef !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
-  border-radius: var(--border-radius-small);
-  padding: 1rem;
-  margin: 0.5rem 0;
-  transition: all 0.3s ease;
+.msg-bubble {
+  padding: 13px 16px;
+  border-radius: 4px 16px 16px 16px;
 }
 
-.ai-bubble:hover {
-  box-shadow: var(--shadow-medium);
+.msg-bubble--ai {
+  background: #FAFAF7;
+  border: 1px solid rgba(27, 27, 30, 0.07);
 }
 
-.message-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
+.msg-bubble--user {
+  background: #4f7fd6;
+  border-radius: 16px 4px 16px 16px;
 }
 
-.sender {
-  font-weight: 600;
-  font-size: 0.85rem;
-  color: var(--secondary-color);
-}
-
-.timestamp {
-  color: var(--secondary-color);
+.msg-meta {
   font-size: 0.72rem;
+  font-weight: 600;
+  margin-bottom: 4px;
 }
 
-.user-bubble {
-  background: var(--primary-color);
-  color: white;
-  box-shadow: var(--shadow-medium);
-  border-radius: var(--border-radius-small);
-  padding: 1rem;
-  margin: 0.5rem 0;
+.msg-meta--ai   { color: #9a9aa2; }
+.msg-meta--user { color: rgba(255, 255, 255, 0.85); }
+
+.msg-content {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #3a3a40;
 }
 
-.typing-bubble {
-  padding: 10px 14px;
+.msg-bubble--user .msg-content { color: #fff; }
+
+.msg-refs {
+  font-size: 0.8rem;
+  color: #9a9aa2;
+  margin-top: 8px;
 }
+
+/* Formatted markdown */
+.formatted-message :deep(h1),
+.formatted-message :deep(h2),
+.formatted-message :deep(h3) {
+  font-family: 'EB Garamond', serif;
+  font-weight: 600;
+  margin: 8px 0 4px;
+  color: #16161a;
+}
+
+.formatted-message :deep(strong) { font-weight: 600; }
+.formatted-message :deep(em)     { font-style: italic; }
+
+/* Typing dots */
+.typing-bubble { padding: 13px 16px; }
 
 .typing-dots {
   display: inline-flex;
@@ -408,220 +396,133 @@ watch(mensajes, async () => {
 .typing-dots span {
   width: 8px;
   height: 8px;
-  background: var(--primary-color);
+  background: #4f7fd6;
   border-radius: 50%;
   display: inline-block;
   opacity: 0.6;
   animation: blink 1s infinite;
 }
 
-.typing-dots span:nth-child(2) {
-  animation-delay: 0.15s;
-}
+.typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.30s; }
 
-.typing-dots span:nth-child(3) {
-  animation-delay: 0.3s;
-}
-
-@keyframes blink {
-  0% { opacity: 0.2; transform: translateY(0); }
-  50% { opacity: 1; transform: translateY(-3px); }
-  100% { opacity: 0.2; transform: translateY(0); }
-}
-
-.message-content {
-  line-height: 1.6;
-  font-size: 1rem;
-  color: var(--text-color) !important;
-  font-weight: 400;
-  min-height: 20px;
-}
-
-.quick-suggestions {
+/* ==============================
+   Suggestions
+   ============================== */
+.suggestions-row {
+  padding: 12px 22px 6px;
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
-.quick-suggestions .hint {
-  color: var(--secondary-color);
-  font-size: 0.9rem;
+.suggestions-label {
+  font-size: 0.82rem;
+  color: #9a9aa2;
   font-weight: 500;
 }
 
 .suggestion-chip {
-  background: rgba(0, 123, 255, 0.1);
-  border: 1px solid rgba(0, 123, 255, 0.2);
-  color: var(--primary-color);
-  transition: all 0.3s ease;
+  font-size: 0.82rem;
+  color: #3f6fc9;
+  background: rgba(79, 127, 214, 0.10);
+  border: 1px solid rgba(79, 127, 214, 0.24);
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: 'Figtree', sans-serif;
+  transition: background 0.2s, color 0.2s;
 }
 
 .suggestion-chip:hover {
-  background: var(--primary-color) !important;
-  color: white !important;
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-light);
+  background: #4f7fd6;
+  color: #fff;
 }
 
-.input-section {
-  background: var(--card-background);
-  border-top: 1px solid var(--border-color);
-  padding: 1.5rem;
-  box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+/* ==============================
+   Input area
+   ============================== */
+.input-area {
+  padding: 14px 22px 18px;
+  border-top: 1px solid rgba(27, 27, 30, 0.07);
+  flex-shrink: 0;
 }
 
-.input-form {
-  max-width: 800px;
-  margin: 0 auto;
+.input-wrap {
   display: flex;
-  gap: 0.75rem;
   align-items: flex-end;
+  gap: 10px;
+  background: #FAFAF7;
+  border: 1px solid rgba(27, 27, 30, 0.12);
+  border-radius: 14px;
+  padding: 8px 8px 8px 15px;
 }
 
 .chat-input {
   flex: 1;
-  background: var(--card-background) !important;
-  border-color: var(--border-color) !important;
-  color: var(--text-color) !important;
 }
 
-.chat-input :deep(.q-field__control) {
-  background: var(--card-background) !important;
-  border-color: var(--border-color) !important;
-  color: var(--text-color) !important;
-}
-
-.chat-input :deep(.q-field__native) {
-  color: var(--text-color) !important;
+:deep(.chat-input .q-field__control) {
   background: transparent !important;
+  padding: 0 !important;
+  min-height: unset !important;
 }
 
-.chat-input :deep(.q-field__label) {
-  color: var(--secondary-color) !important;
+:deep(.chat-input .q-field__native) {
+  color: #1b1b1e !important;
+  font-family: 'Figtree', sans-serif !important;
+  font-size: 0.98rem !important;
+  padding: 7px 0 !important;
+  line-height: 1.4 !important;
+  resize: none !important;
 }
 
-.chat-input :deep(.q-field__control:focus) {
-  border-color: var(--primary-color) !important;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1) !important;
-}
+:deep(.chat-input .q-field__bottom) { display: none !important; }
 
 .send-btn {
-  background: var(--primary-color) !important;
-  color: white !important;
-  width: 44px !important;
-  height: 44px !important;
-  border-radius: 50% !important;
-  box-shadow: var(--shadow-medium) !important;
-  transition: all 0.3s ease !important;
-  margin-left: 8px !important;
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: #4f7fd6;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 3px 10px rgba(79, 127, 214, 0.40);
+  transition: transform 0.18s;
 }
 
-.send-btn:hover {
-  transform: scale(1.05) !important;
-  box-shadow: var(--shadow-heavy) !important;
-  background: var(--hover-color) !important;
+.send-btn:hover:not(:disabled) { transform: scale(1.05); }
+.send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.error-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  justify-content: center;
 }
 
-.send-btn .q-icon {
-  font-size: 20px !important;
+.error-text {
+  font-size: 0.88rem;
+  color: var(--q-negative);
 }
 
-/* Dark mode adjustments */
-:deep(.q-dark) {
-  .actions-card,
+/* ==============================
+   Responsive
+   ============================== */
+@media (max-width: 600px) {
   .chat-card {
-    background: linear-gradient(180deg, rgba(90,55,140,0.08), rgba(60,30,90,0.08));
-    border: 1px solid rgba(118, 75, 162, 0.18);
-    box-shadow: 0 10px 34px rgba(8,6,20,0.5);
+    height: 520px;
+    border-radius: 16px;
   }
 
-  .chat-header {
-    background: linear-gradient(135deg, rgba(96,71,230,0.9), rgba(111,77,184,0.9));
-  }
-
-  .ai-bubble {
-    background: rgba(48, 40, 60, 0.94);
-    color: #e9e7ff;
-    border-color: rgba(118,75,162,0.22);
-    box-shadow: 0 6px 18px rgba(32,20,70,0.45);
-  }
-
-  .references {
-    border-color: rgba(118,75,162,0.18);
-    color: #cfc6ee;
-  }
-
-  .input-section {
-    border-color: rgba(118,75,162,0.18);
-  }
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .chat-container {
-    padding: 0 0.5rem;
-  }
-
-  .messages-wrapper {
-    padding: 0 0.5rem;
-  }
-
-  .message-row {
-    gap: 0.75rem;
-  }
-
-  .avatar {
-    width: 36px;
-    height: 36px;
-    font-size: 1rem;
-  }
-
-  .message-content-wrapper {
-    max-width: calc(100% - 3rem);
-  }
-
-  .q-card-section {
-    padding: 0.875rem 1rem !important;
-  }
-
-  .message-content {
-    font-size: 0.95rem;
-  }
-
-  .input-area {
-    padding: 1rem 0.5rem;
-  }
-
-  .input-form {
-    gap: 0.5rem;
-  }
-
-  .send-btn {
-    width: 40px !important;
-    height: 40px !important;
-  }
-
-  .chat-title {
-    font-size: 1.5rem;
-  }
-
-  .welcome-message {
-    padding: 2rem 0.5rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .message-row {
-    gap: 0.5rem;
-  }
-
-  .message-content-wrapper {
-    max-width: calc(100% - 2.5rem);
-  }
-
-  .chat-header {
-    padding: 1rem 0;
-  }
+  .msg-row--ai  { max-width: 92%; }
+  .msg-row--user { max-width: 88%; }
 }
 </style>
