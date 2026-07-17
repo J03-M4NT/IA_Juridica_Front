@@ -37,16 +37,19 @@ export default defineRouter(function (/* { store, ssrContext } */) {
   Router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore();
 
-    // Esperar a que se resuelva el estado de autenticación
+    // Esperar a que se resuelva el estado de autenticación (máximo 5 segundos)
     if (authStore.loading) {
-      await new Promise(resolve => {
-        const unsubscribe = authStore.$subscribe(() => {
-          if (!authStore.loading) {
-            unsubscribe();
-            resolve(void 0);
-          }
-        });
-      });
+      await Promise.race([
+        new Promise<void>(resolve => {
+          const unsubscribe = authStore.$subscribe(() => {
+            if (!authStore.loading) {
+              unsubscribe()
+              resolve()
+            }
+          })
+        }),
+        new Promise<void>(resolve => setTimeout(resolve, 5000))
+      ])
     }
 
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth);

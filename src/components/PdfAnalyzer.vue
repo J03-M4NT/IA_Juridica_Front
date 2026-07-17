@@ -1,308 +1,327 @@
 <template>
-  <div class="pdf-analyzer-container">
-    <div class="analyzer-card-wrapper">
-      <q-card class="analyzer-main-card modern-card">
-        <q-card-section class="card-header-section">
-          <div class="header-content">
-            <div class="title-section">
-              <q-icon name="gavel" size="32px" class="title-icon q-mr-md" />
-              <div>
-                <h1 class="main-title">ANALIZADOR DE CONTRATOS PDF</h1>
-                <p class="subtitle-text">Herramienta inteligente de análisis legal</p>
-              </div>
+  <div class="pdf-analyzer">
+
+    <!-- Herramientas de diagnostico: solo para administradores -->
+    <div v-if="isAdmin" class="admin-tools">
+      <button class="admin-btn" @click="probarAPIKey" :disabled="loading">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        Probar API Key
+      </button>
+      <button class="admin-btn" @click="probarWorkerPDF" :disabled="loading">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+        </svg>
+        Probar PDF Worker
+      </button>
+    </div>
+
+    <!-- Zona de carga -->
+    <div class="lx-card upload-card">
+      <!-- Input nativo oculto para el selector de archivos -->
+      <input
+        ref="fileInputRef"
+        type="file"
+        accept=".pdf"
+        style="display:none"
+        @change="onNativeFileChange"
+      />
+
+      <div
+        class="upload-drop-area"
+        :class="{ 'upload-drop-area--drag': isDragging }"
+        @dragover.prevent="isDragging = true"
+        @dragleave.prevent="isDragging = false"
+        @drop.prevent="onDrop"
+        @click.self="!loading && fileInputRef?.click()"
+      >
+        <div class="upload-icon-wrap">
+          <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#1fa8bb" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <div class="upload-text-wrap">
+          <div class="upload-title">{{ isDragging ? 'Suelta aquí el PDF' : 'Selecciona o arrastra un PDF' }}</div>
+          <div class="upload-subtitle">Archivos PDF · máximo 20 MB</div>
+        </div>
+        <button
+          type="button"
+          class="upload-pick-btn"
+          :disabled="loading"
+          @click.stop="fileInputRef?.click()"
+        >
+          Elegir archivo
+        </button>
+      </div>
+
+      <!-- Fila con info del archivo seleccionado -->
+      <div v-if="fileName" class="file-info-row">
+        <div class="file-icon-wrap">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#e05252" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+        </div>
+        <span class="file-name text-grey-9">{{ fileName }}</span>
+        <span class="file-status" v-if="analysisResult">Analizado</span>
+        <span class="file-meta text-grey-6">{{ (fileSize / 1024).toFixed(1) }} KB</span>
+        <button class="file-clear-btn" @click="clearFile" title="Quitar archivo">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Estado de carga -->
+    <div v-if="loading" class="lx-card loading-state">
+      <q-spinner color="teal" size="30px" />
+      <span class="loading-msg text-grey-7">{{ loadingMessage || 'Procesando...' }}</span>
+      <q-linear-progress indeterminate color="teal" class="loading-bar" />
+    </div>
+
+    <!-- Banner de error -->
+    <div v-if="error" class="error-banner">
+      <div class="error-banner-head">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span>Error</span>
+        <button class="error-close" @click="error = ''">×</button>
+      </div>
+      <pre class="error-body">{{ error }}</pre>
+    </div>
+
+    <!-- Texto extraido + boton de re-analisis -->
+    <div v-if="extractedText && !analysisResult" class="lx-card extracted-card">
+      <div class="lx-section-label">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1fa8bb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/>
+        </svg>
+        Texto extraído del PDF
+      </div>
+      <div class="extracted-text-box">
+        <pre class="extracted-pre text-grey-9">{{ extractedText }}</pre>
+      </div>
+      <div class="analyze-btn-wrap">
+        <button
+          class="analyze-btn"
+          @click="runAnalysis(extractedText)"
+          :disabled="loading || !extractedText.trim()"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          Analizar contrato con IA
+        </button>
+      </div>
+    </div>
+
+    <!-- Resultados del analisis -->
+    <div v-if="analysisResult" class="results-section">
+      <h2 class="results-heading">Resultados del análisis</h2>
+
+      <!-- Puntuacion + Resumen en grid -->
+      <div class="score-resumen-grid">
+
+        <div class="lx-card score-card">
+          <div class="score-label-top text-grey-6">Puntuación</div>
+          <div
+            class="score-big"
+            :style="{
+              color: scoreColor === 'positive' ? '#16a34a'
+                   : scoreColor === 'warning'  ? '#d97706'
+                   : scoreColor === 'negative' ? '#dc2626'
+                   : '#9ca3af'
+            }"
+          >
+            {{ analysisResult.puntuacion }}<span class="score-denom">/100</span>
+          </div>
+          <q-linear-progress
+            :value="analysisResult.puntuacion / 100"
+            :color="scoreColor"
+            size="7px"
+            rounded
+            class="score-bar"
+          />
+        </div>
+
+        <div class="lx-card resumen-card">
+          <div class="result-card-label">Resumen</div>
+          <p class="resumen-text text-grey-9">{{ analysisResult.resumen }}</p>
+        </div>
+
+      </div>
+
+      <!-- Partes -->
+      <div v-if="Object.keys(analysisResult.partes).length > 0" class="lx-card result-card">
+        <div class="result-card-label">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7c47e0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          Partes del contrato
+        </div>
+        <div class="partes-list">
+          <div v-for="(nombre, rol) in analysisResult.partes" :key="rol" class="parte-row">
+            <span class="parte-chip">{{ rol }}</span>
+            <span class="parte-nombre text-grey-9">{{ nombre }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fechas importantes -->
+      <div v-if="analysisResult.fechas_importantes.length > 0" class="lx-card result-card">
+        <div class="result-card-label">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1fa8bb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          Fechas importantes
+        </div>
+        <div class="fechas-chips">
+          <span v-for="fecha in analysisResult.fechas_importantes" :key="fecha" class="fecha-chip">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            {{ fecha }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Obligaciones -->
+      <div v-if="Object.keys(analysisResult.obligaciones).length > 0" class="lx-card result-card">
+        <div class="result-card-label">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3f6fc9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+          </svg>
+          Obligaciones por parte
+        </div>
+        <div v-for="(lista, parte) in analysisResult.obligaciones" :key="parte" class="obligaciones-grupo">
+          <div class="obligaciones-parte">{{ parte }}</div>
+          <ul class="obligaciones-list">
+            <li v-for="(ob, i) in lista" :key="i" class="obligacion-item text-grey-9">{{ ob }}</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Riesgos detectados -->
+      <div v-if="analysisResult.riesgos.length > 0" class="lx-card result-card risk-card">
+        <div class="result-card-label risk-label">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#e05252" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          Riesgos detectados
+        </div>
+        <div class="riesgos-list">
+          <div v-for="(riesgo, index) in analysisResult.riesgos" :key="index" class="riesgo-item">
+            <div class="riesgo-row">
+              <span class="riesgo-clausula text-grey-9">{{ riesgo.clausula }}</span>
+              <q-badge :color="nivelColor(riesgo.nivel)" class="nivel-badge">{{ riesgo.nivel }}</q-badge>
             </div>
-
-            <!-- Action Buttons -->
-            <div class="header-actions">
-              <q-btn
-                color="primary"
-                icon="verified"
-                label="PROBAR API KEY"
-                @click="probarAPIKey"
-                :loading="loading"
-                class="action-button q-mr-sm"
-                size="sm"
-                unelevated
-                rounded
-              />
-              <q-btn
-                color="secondary"
-                icon="build"
-                label="PROBAR PDF WORKER"
-                @click="probarWorkerPDF"
-                :loading="loading"
-                class="action-button"
-                size="sm"
-                unelevated
-                rounded
-              />
+            <p class="riesgo-desc text-grey-7">{{ riesgo.descripcion }}</p>
+            <div class="riesgo-sug">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/>
+                <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/>
+              </svg>
+              <span class="text-grey-7">{{ riesgo.sugerencia }}</span>
             </div>
           </div>
-        </q-card-section>
+        </div>
+      </div>
 
-        <!-- File Upload Section -->
-        <q-card-section class="upload-section">
-          <div class="upload-card modern-card">
-            <q-card-section>
-              <div class="upload-header">
-                <q-icon name="upload_file" size="24px" class="upload-icon q-mr-sm" />
-                <h3 class="section-title">CARGA TU CONTRATO PDF</h3>
-              </div>
-              <p class="upload-description">Selecciona o arrastra un archivo PDF para comenzar el análisis inteligente</p>
+      <!-- Boton corregir automaticamente -->
+      <div v-if="analysisResult.riesgos.length > 0" class="corregir-wrap">
+        <button class="corregir-btn" @click="runCorrection" :disabled="corrigiendo">
+          <svg v-if="!corrigiendo" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+          </svg>
+          <q-spinner v-else size="15px" color="white" />
+          Corregir automáticamente
+        </button>
+      </div>
 
-              <q-uploader
-                ref="uploaderRef"
-                :url="''"
-                label="Seleccionar archivo PDF"
-                accept=".pdf"
-                :max-file-size="20971520"
-                @added="(files: readonly any[]) => onFileAdded(files as File[])"
-                @rejected="onRejected"
-                :disable="loading"
-                flat
-                bordered
-                class="modern-uploader"
-              >
-                <template v-slot:header="scope">
-                  <div class="uploader-header-content">
-                    <q-icon name="attach_file" size="20px" class="uploader-icon q-mr-sm" />
-                    <div class="uploader-text">
-                      <div class="uploader-title">
-                        {{ scope.isUploading ? 'Procesando archivo...' : 'Seleccionar archivo PDF' }}
-                      </div>
-                      <div class="uploader-subtitle">
-                        {{ scope.isUploading ? 'Analizando documento...' : 'Arrastra y suelta o haz clic para seleccionar' }}
-                      </div>
-                    </div>
-                    <q-btn
-                      v-if="scope.canUpload"
-                      icon="cloud_upload"
-                      @click="scope.upload"
-                      :loading="scope.isUploading"
-                      color="primary"
-                      round
-                      unelevated
-                      class="upload-btn"
-                    />
-                  </div>
-                </template>
-              </q-uploader>
-            </q-card-section>
+      <!-- Contrato corregido -->
+      <div v-if="contratoCorregido" class="lx-card result-card corregido-card">
+        <div class="result-card-label corregido-label">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+          Contrato corregido por IA
+          <div class="corregido-actions">
+            <button class="icon-action-btn" @click="copiarCorregido" title="Copiar al portapapeles">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </button>
+            <button class="icon-action-btn" @click="descargarCorregido" title="Descargar como .txt">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+            </button>
           </div>
-        </q-card-section>
+        </div>
+        <div class="corregido-text-box">
+          <pre class="corregido-pre text-grey-9">{{ contratoCorregido }}</pre>
+        </div>
+      </div>
 
-        <!-- Loading State -->
-        <q-card-section v-if="loading" class="loading-section">
-          <div class="loading-card modern-card">
-            <q-card-section class="text-center">
-              <q-icon name="hourglass_empty" size="48px" class="loading-icon q-mb-md" />
-              <h3 class="loading-title">PROCESANDO DOCUMENTO</h3>
-              <p class="loading-message">{{ loadingMessage }}</p>
-              <q-linear-progress indeterminate color="primary" class="loading-progress q-mt-md" />
-            </q-card-section>
-          </div>
-        </q-card-section>
-
-        <!-- Error Notification -->
-        <q-card-section v-if="error" class="error-section">
-          <q-banner class="error-banner modern-banner" rounded>
-            <template v-slot:avatar>
-              <q-icon name="error" size="24px" />
-            </template>
-            <div class="error-content">
-              <h4 class="error-title">ERROR DETECTADO</h4>
-              <p class="error-message">{{ error }}</p>
+      <!-- Mejoras sugeridas -->
+      <div v-if="analysisResult.mejoras.length > 0" class="lx-card result-card">
+        <div class="result-card-label">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1fa8bb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/>
+            <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/>
+          </svg>
+          Mejoras sugeridas
+        </div>
+        <div class="mejoras-list">
+          <div v-for="(mejora, i) in analysisResult.mejoras" :key="i" class="mejora-item">
+            <div class="mejora-icon-wrap">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1fa8bb" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/>
+                <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/>
+              </svg>
             </div>
-            <template v-slot:action>
-              <q-btn flat label="Cerrar" @click="error = ''" class="error-close-btn" />
-            </template>
-          </q-banner>
-        </q-card-section>
-
-        <!-- Extracted Text Section -->
-        <q-card-section v-if="extractedText" class="extracted-section">
-          <div class="extracted-card modern-card">
-            <q-card-section>
-              <div class="section-header">
-                <q-icon name="text_snippet" size="24px" class="section-icon q-mr-sm" />
-                <h3 class="section-title">TEXTO EXTRAÍDO DEL PDF</h3>
-              </div>
-
-              <div class="text-content-card modern-card">
-                <q-card-section>
-                  <div class="content-header">
-                    <q-icon name="description" class="content-icon q-mr-sm" />
-                    <span class="content-title">CONTENIDO DEL DOCUMENTO</span>
-                  </div>
-                  <div class="extracted-text-container">
-                    <pre class="extracted-text">{{ extractedText }}</pre>
-                  </div>
-                </q-card-section>
-              </div>
-
-              <!-- Analyze Contract Button -->
-              <div class="analyze-button-container">
-                <q-btn
-                  color="primary"
-                  icon="analytics"
-                  label="ANALIZAR CONTRATO CON IA"
-                  @click="analyzeContract(extractedText)"
-                  :loading="loading"
-                  :disable="!extractedText.trim()"
-                  class="analyze-button"
-                  size="lg"
-                  unelevated
-                  rounded
-                >
-                  <q-tooltip>Realizar análisis inteligente del contrato</q-tooltip>
-                </q-btn>
-              </div>
-            </q-card-section>
+            <div>
+              <div class="mejora-titulo text-grey-9">{{ mejora.titulo }}</div>
+              <div class="mejora-desc text-grey-7">{{ mejora.descripcion }}</div>
+            </div>
           </div>
-        </q-card-section>
+        </div>
+      </div>
 
-        <!-- Results Section -->
-        <q-card-section v-if="analysisResult" class="results-section">
-          <div class="results-card modern-card">
-            <q-card-section>
-              <div class="section-header">
-                <q-icon name="analytics" size="24px" class="section-icon q-mr-sm" />
-                <h3 class="section-title">RESULTADOS DEL ANÁLISIS</h3>
-              </div>
-
-              <!-- Summary -->
-              <div class="result-item-card modern-card">
-                <q-card-section>
-                  <div class="result-header">
-                    <q-icon name="summarize" class="result-icon q-mr-sm" />
-                    <h4 class="result-title">RESUMEN DEL CONTRATO</h4>
-                  </div>
-                  <div class="formatted-content result-content" v-html="formatText(analysisResult.summary)"></div>
-                </q-card-section>
-              </div>
-
-              <!-- Main Clauses -->
-              <div class="result-item-card modern-card">
-                <q-card-section>
-                  <div class="result-header">
-                    <q-icon name="list" class="result-icon q-mr-sm" />
-                    <h4 class="result-title">CLÁUSULAS PRINCIPALES</h4>
-                  </div>
-                  <q-list class="clauses-list">
-                    <q-item
-                      v-for="(clause, index) in analysisResult.mainClauses"
-                      :key="index"
-                      class="clause-item"
-                    >
-                      <q-item-section avatar>
-                        <q-icon name="article" color="primary" class="clause-icon" />
-                      </q-item-section>
-                      <q-item-section>
-                        <q-item-label class="clause-number">
-                          CLÁUSULA {{ index + 1 }}
-                        </q-item-label>
-                        <q-item-label caption class="formatted-content clause-content">
-                          {{ clause }}
-                        </q-item-label>
-                      </q-item-section>
-                    </q-item>
-                  </q-list>
-                </q-card-section>
-              </div>
-
-              <!-- Risks and Ambiguities -->
-              <div v-if="analysisResult.risks.length > 0" class="result-item-card risk-card modern-card">
-                <q-card-section>
-                  <div class="result-header risk-header">
-                    <q-icon name="warning" class="result-icon q-mr-sm" />
-                    <h4 class="result-title">RIESGOS Y AMBIGÜEDADES DETECTADAS</h4>
-                  </div>
-                  <q-list class="risks-list">
-                    <q-item
-                      v-for="(risk, index) in analysisResult.risks"
-                      :key="index"
-                      class="risk-item"
-                    >
-                      <q-item-section avatar>
-                        <q-icon name="error_outline" color="negative" class="risk-icon" />
-                      </q-item-section>
-                      <q-item-section>
-                        <q-item-label class="risk-number">
-                          RIESGO {{ index + 1 }}
-                        </q-item-label>
-                        <q-item-label caption class="risk-content">
-                          {{ risk }}
-                        </q-item-label>
-                      </q-item-section>
-                    </q-item>
-                  </q-list>
-                </q-card-section>
-              </div>
-
-              <!-- File Info -->
-              <div class="result-item-card modern-card">
-                <q-card-section>
-                  <div class="result-header">
-                    <q-icon name="info" class="result-icon q-mr-sm" />
-                    <h4 class="result-title">INFORMACIÓN DEL ARCHIVO</h4>
-                  </div>
-                  <div class="file-info-chips">
-                    <q-chip
-                      icon="picture_as_pdf"
-                      color="primary"
-                      text-color="white"
-                      class="info-chip"
-                      size="sm"
-                    >
-                      {{ fileName }}
-                    </q-chip>
-                    <q-chip
-                      icon="data_usage"
-                      color="secondary"
-                      text-color="white"
-                      class="info-chip"
-                      size="sm"
-                    >
-                      {{ (fileSize / 1024).toFixed(1) }} KB
-                    </q-chip>
-                    <q-chip
-                      icon="text_snippet"
-                      color="positive"
-                      text-color="white"
-                      class="info-chip"
-                      size="sm"
-                    >
-                      {{ extractedText.length }} caracteres
-                    </q-chip>
-                  </div>
-                </q-card-section>
-              </div>
-            </q-card-section>
-          </div>
-        </q-card-section>
-      </q-card>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useQuasar } from 'quasar';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GEMINI_MODEL_FAST } from '../constants/gemini';
 import * as pdfjsLib from "pdfjs-dist";
+import { extractTextFromPDF, diagnosticarPDF } from '../services/pdfService';
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.js?url";
+import { analizarContrato, corregirContrato } from '../services/geminiService';
+import { useUserProfileStore } from '../stores/userProfile';
+import { storeToRefs } from 'pinia';
 
-// ✅ Configurar el worker de PDF.js con import ?url (método más estable en Vite)
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
-console.log('✅ Worker de PDF.js configurado con import ?url:', pdfjsWorker);
 
-// Ensure $q is properly initialized
 const $q = useQuasar();
-if (!$q) {
-  console.error('Quasar $q is not available');
-}
+const profileStore = useUserProfileStore();
+const { isAdmin } = storeToRefs(profileStore);
 
-// Fallback notification function
 interface NotificationOptions {
   message: string;
   color?: 'positive' | 'negative' | 'warning' | 'info';
@@ -311,23 +330,9 @@ interface NotificationOptions {
 }
 
 const showNotification = (options: NotificationOptions) => {
-  if ($q && $q.notify) {
-    $q.notify(options);
-  } else {
-    // Fallback to console.log and alert
-    console.log('Notification:', options);
-    if (options.color === 'negative') {
-      alert('❌ Error: ' + options.message);
-    } else if (options.color === 'positive') {
-      alert('✅ ' + options.message);
-    } else {
-      alert(options.message);
-    }
-  }
+  $q.notify(options);
 };
 
-
-// Type definitions
 interface RejectedEntry {
   failedPropValidation: string;
   file?: File;
@@ -339,21 +344,70 @@ interface ApiError {
   message?: string;
 }
 
-// Reactive data with proper typing
-const uploaderRef = ref<HTMLElement | null>(null);
+interface RiesgoContrato {
+  clausula: string;
+  descripcion: string;
+  nivel: 'alto' | 'medio' | 'bajo';
+  sugerencia: string;
+}
+
+interface MejoraContrato {
+  titulo: string;
+  descripcion: string;
+}
+
+interface AnalisisContratoResult {
+  resumen: string;
+  puntuacion: number;
+  riesgos: RiesgoContrato[];
+  mejoras: MejoraContrato[];
+  partes: Record<string, string>;
+  fechas_importantes: string[];
+  obligaciones: Record<string, string[]>;
+}
+
 const loading = ref<boolean>(false);
 const loadingMessage = ref<string>('');
 const error = ref<string>('');
 const fileName = ref<string>('');
 const fileSize = ref<number>(0);
 const extractedText = ref<string>('');
-const analysisResult = ref<{
-  summary: string;
-  mainClauses: string[];
-  risks: string[];
-} | null>(null);
+const analysisResult = ref<AnalisisContratoResult | null>(null);
+const contratoCorregido = ref<string>('');
+const corrigiendo = ref<boolean>(false);
+const fileInputRef = ref<HTMLInputElement | null>(null);
+const isDragging = ref<boolean>(false);
 
-// Initialize Gemini AI with proper error handling
+const scoreColor = computed(() => {
+  if (!analysisResult.value) return 'grey';
+  const p = analysisResult.value.puntuacion;
+  if (p >= 71) return 'positive';
+  if (p >= 41) return 'warning';
+  return 'negative';
+});
+
+const nivelColor = (nivel: string): string => {
+  if (nivel === 'alto') return 'negative';
+  if (nivel === 'medio') return 'warning';
+  return 'positive';
+};
+
+const classifyGeminiError = (err: unknown): string => {
+  const apiError = err as ApiError;
+  if (apiError?.message?.includes('RATE_LIMIT_EXCEEDED') || apiError?.message?.includes('Quota exceeded')) {
+    return 'Limite de cuota excedido. Espera unos minutos e intenta nuevamente.';
+  }
+  if (apiError?.message?.includes('API Key not found') || apiError?.message?.includes('API_KEY_INVALID')) {
+    return 'API Key no valida. Verifica que la clave tenga permisos para Gemini.';
+  }
+  if (err instanceof SyntaxError || apiError?.message?.includes('JSON')) {
+    return 'La IA devolvio un formato inesperado. Intenta nuevamente.';
+  }
+  if (apiError?.status === 403) return 'Acceso denegado: la API key no tiene permisos suficientes.';
+  if (apiError?.status === 500) return 'Error interno del servidor de Google. Intenta en unos momentos.';
+  return 'Error al analizar el contrato con la IA. Verifica tu conexion e intenta nuevamente.';
+};
+
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
 if (!apiKey) {
@@ -362,21 +416,16 @@ if (!apiKey) {
 
 const genAI = new GoogleGenerativeAI(apiKey);
 
-// Methods
 const onFileAdded = async (files: File[]) => {
   const file = files[0];
   if (!file) return;
 
-  // Validate file type
   if (file.type !== 'application/pdf') {
     showError('Por favor, selecciona un archivo PDF válido.');
     return;
   }
 
-  // Reset previous results
   resetAnalysis();
-
-  // Set file info
   fileName.value = file.name;
   fileSize.value = file.size;
 
@@ -384,57 +433,49 @@ const onFileAdded = async (files: File[]) => {
     loading.value = true;
     loadingMessage.value = 'Analizando el PDF...';
 
-    // Diagnosticar el PDF primero
     const diagnostico = await diagnosticarPDF(file);
-    console.log('📋 Resultado del diagnóstico:', diagnostico);
 
     if (!diagnostico.isValidPDF) {
       throw new Error(`El archivo no es un PDF válido: ${diagnostico.error}`);
     }
 
-    // Verificar si el PDF tiene texto extraíble
     if (!diagnostico.hasText) {
-      throw new Error(`❌ El PDF no contiene texto extraíble
+      throw new Error(`El PDF no contiene texto extraíble.
 
-🔍 **Posibles causas:**
-• El PDF está escaneado o es una imagen
-• El PDF está compuesto solo de imágenes
-• El PDF tiene texto como imagen (OCR)
+**Posibles causas:**
+- El PDF está escaneado o es una imagen
+- El PDF está compuesto solo de imágenes
+- El PDF tiene texto como imagen (OCR)
 
-📋 **Solución:**
+**Solucion:**
 Para analizar contratos, necesitas un PDF con texto real (no escaneado) que se pueda seleccionar y copiar.
 
-💡 **Alternativas:**
-• Convierte el PDF escaneado usando OCR (Optical Character Recognition)
-• Solicita una versión digital del contrato en formato PDF con texto
-• Usa herramientas como Adobe Acrobat para reconocer texto en PDFs escaneados`);
+**Alternativas:**
+- Convierte el PDF escaneado usando OCR (Optical Character Recognition)
+- Solicita una versión digital del contrato en formato PDF con texto
+- Usa herramientas como Adobe Acrobat para reconocer texto en PDFs escaneados`);
     }
 
-    // Verificar si hay problemas con el worker de PDF.js
     if (diagnostico.workerError) {
-      throw new Error(`❌ Error con el procesador de PDF
+      throw new Error(`Error con el procesador de PDF.
 
-🔧 **Problema detectado:**
-• No se pudo cargar el worker de PDF.js
-• Error específico: ${diagnostico.error}
+**Problema detectado:**
+- No se pudo cargar el worker de PDF.js
+- Error especifico: ${diagnostico.error}
 
-🔍 **Posibles causas:**
-• Error en la configuración del worker
-• Problemas con el bundler de Vite
-• Configuración del navegador o servidor de desarrollo
+**Posibles causas:**
+- Error en la configuracion del worker
+- Problemas con el bundler de Vite
+- Configuracion del navegador o servidor de desarrollo
 
-📋 **Soluciones:**
-• Verifica que el worker se esté importando correctamente
-• Asegúrate de que Vite esté configurado para manejar imports ?url
-• Intenta recargar la página
-• Si persiste, contacta al administrador del sistema
-
-💡 **Nota:** Se está usando import ?url para el worker (método más estable en Vite)`);
+**Soluciones:**
+- Verifica que el worker se este importando correctamente
+- Asegurate de que Vite este configurado para manejar imports ?url
+- Intenta recargar la pagina
+- Si persiste, contacta al administrador del sistema`);
     }
 
     loadingMessage.value = 'Extrayendo texto del PDF...';
-
-    // Extract text from PDF
     const text = await extractTextFromPDF(file);
     extractedText.value = text;
 
@@ -444,24 +485,77 @@ Para analizar contratos, necesitas un PDF con texto real (no escaneado) que se p
 
     loadingMessage.value = 'Analizando contrato con IA...';
 
-    // Analyze with Gemini
-    const result = await analyzeContract(text);
-    analysisResult.value = result;
+    try {
+      const result = await analizarContrato(text);
+      analysisResult.value = result as AnalisisContratoResult;
+      showNotification({
+        message: 'Análisis completado exitosamente',
+        color: 'positive',
+        position: 'top',
+        icon: 'check_circle'
+      });
+    } catch (geminiErr: unknown) {
+      throw new Error(classifyGeminiError(geminiErr));
+    }
 
-    // Show success notification
+  } catch (err) {
+    console.error('Error procesando PDF:', err);
+    showError(err instanceof Error ? err.message : 'Error desconocido al procesar el PDF');
+  } finally {
+    loading.value = false;
+    loadingMessage.value = '';
+  }
+};
+
+const runAnalysis = async (text: string) => {
+  loading.value = true;
+  loadingMessage.value = 'Analizando contrato con IA...';
+  error.value = '';
+  try {
+    const result = await analizarContrato(text);
+    analysisResult.value = result as AnalisisContratoResult;
     showNotification({
       message: 'Análisis completado exitosamente',
       color: 'positive',
       position: 'top',
       icon: 'check_circle'
     });
-
-  } catch (err) {
-    console.error('Error processing PDF:', err);
-    showError(err instanceof Error ? err.message : 'Error desconocido al procesar el PDF');
+  } catch (err: unknown) {
+    showError(classifyGeminiError(err));
   } finally {
     loading.value = false;
     loadingMessage.value = '';
+  }
+};
+
+const copiarCorregido = async () => {
+  if (!contratoCorregido.value) return;
+  await navigator.clipboard.writeText(contratoCorregido.value);
+  showNotification({ message: 'Copiado al portapapeles', color: 'positive', position: 'top', icon: 'check_circle' });
+};
+
+const descargarCorregido = () => {
+  if (!contratoCorregido.value) return;
+  const blob = new Blob([contratoCorregido.value], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${fileName.value.replace('.pdf', '')}_corregido.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+const runCorrection = async () => {
+  if (!analysisResult.value || !extractedText.value) return;
+  corrigiendo.value = true;
+  contratoCorregido.value = '';
+  try {
+    const riesgos = analysisResult.value.riesgos.map(r => `${r.clausula}: ${r.descripcion}`);
+    contratoCorregido.value = await corregirContrato(extractedText.value, riesgos);
+  } catch (err) {
+    showError(classifyGeminiError(err));
+  } finally {
+    corrigiendo.value = false;
   }
 };
 
@@ -476,194 +570,6 @@ const onRejected = (rejectedEntries: RejectedEntry[]) => {
   }
 };
 
-const extractTextFromPDF = async (file: File): Promise<string> => {
-  try {
-    console.log('🔍 Iniciando extracción de texto del PDF:', file.name);
-    console.log('📊 Tamaño del archivo:', file.size, 'bytes');
-
-    const arrayBuffer = await file.arrayBuffer();
-    console.log('📋 ArrayBuffer creado, tamaño:', arrayBuffer.byteLength);
-
-    // Verificar si el archivo está corrupto o vacío
-    if (arrayBuffer.byteLength === 0) {
-      throw new Error('El archivo PDF está vacío o corrupto');
-    }
-
-    console.log('📖 Cargando documento PDF...');
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    console.log('✅ PDF cargado exitosamente, número de páginas:', pdf.numPages);
-
-    // Verificar si el PDF tiene páginas
-    if (pdf.numPages === 0) {
-      throw new Error('El PDF no contiene páginas');
-    }
-
-    let fullText = '';
-    let totalItems = 0;
-
-    for (let i = 1; i <= pdf.numPages; i++) {
-      console.log(`📄 Procesando página ${i}/${pdf.numPages}`);
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-
-      console.log(`📝 Página ${i}: ${textContent.items.length} elementos de texto encontrados`);
-
-      const pageText = textContent.items
-        .map((item, index) => {
-          // Handle both TextItem and TextMarkedContent types
-          if ('str' in item) {
-            const text = item.str || '';
-            if (text.trim()) {
-              console.log(`  Item ${index}: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
-            }
-            return text;
-          }
-          return '';
-        })
-        .join(' ');
-
-      fullText += pageText + '\n';
-      totalItems += textContent.items.length;
-    }
-
-    console.log('📊 Total de elementos de texto procesados:', totalItems);
-    console.log('📝 Longitud del texto extraído:', fullText.length);
-
-    // Verificar si se extrajo texto
-    if (fullText.trim().length === 0) {
-      throw new Error('No se pudo extraer texto del PDF. El documento podría estar escaneado, ser una imagen, o estar protegido.');
-    }
-
-    console.log('✅ Texto extraído exitosamente');
-    return fullText;
-  } catch (error) {
-    console.error('❌ Error al extraer texto del PDF:', error);
-
-    // Proporcionar mensajes de error más específicos
-    if (error instanceof Error) {
-      if (error.message.includes('Invalid PDF')) {
-        throw new Error('El archivo no es un PDF válido o está corrupto');
-      } else if (error.message.includes('Password')) {
-        throw new Error('El PDF está protegido con contraseña');
-      } else if (error.message.includes('encrypted')) {
-        throw new Error('El PDF está encriptado y no se puede procesar');
-      } else {
-        throw new Error(`Error al extraer texto del PDF: ${error.message}`);
-      }
-    } else {
-      throw new Error('Error desconocido al procesar el PDF');
-    }
-  }
-};
-
-const analyzeContract = async (text: string) => {
-  try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash-lite",
-      generationConfig: {
-        temperature: 0.3,
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 4096,
-      },
-    });
-
-    const prompt = `
-Analiza el siguiente contrato y proporciona un análisis estructurado:
-
-CONTRATO:
-${text}
-
-INSTRUCCIONES:
-1. Haz un resumen claro y conciso del contrato en lenguaje simple.
-2. Lista las cláusulas principales del contrato (máximo 10).
-3. Identifica riesgos, ambigüedades o cláusulas problemáticas.
-
-FORMATO DE RESPUESTA:
-## RESUMEN
-[Resumen en lenguaje simple]
-
-## CLÁUSULAS PRINCIPALES
-1. [Cláusula 1]
-2. [Cláusula 2]
-...
-
-## RIESGOS Y AMBIGÜEDADES
-- [Riesgo 1]
-- [Riesgo 2]
-...
-
-IMPORTANTE:
-- Sé específico y detallado
-- Usa lenguaje claro y profesional
-- Identifica claramente cualquier riesgo potencial
-    `.trim();
-
-    const result = await model.generateContent(prompt);
-    const response = result.response.text();
-
-    // Parse the response
-    const summary = extractSection(response, '## RESUMEN');
-    const mainClauses = extractSection(response, '## CLÁUSULAS PRINCIPALES')
-      .split('\n')
-      .map(line => line.replace(/^\d+\.\s*/, '').trim())
-      .filter(line => line.length > 0);
-    const risks = extractSection(response, '## RIESGOS Y AMBIGÜEDADES')
-      .split('\n')
-      .map(line => line.replace(/^-\s*/, '').trim())
-      .filter(line => line.length > 0);
-
-    return {
-      summary,
-      mainClauses,
-      risks
-    };
-  } catch (error: unknown) {
-    console.error('Error analyzing contract:', error);
-
-    // Type guard to check if error has the expected properties
-    const apiError = error as ApiError;
-
-    // Handle specific API errors
-    if (apiError?.status === 429 || apiError?.message?.includes('RATE_LIMIT_EXCEEDED') || apiError?.message?.includes('Quota exceeded')) {
-      throw new Error('⚠️ Límite de cuota excedido: Has alcanzado el límite de uso de la API.\n\n🔧 Soluciones:\n1. Espera unos minutos antes de intentar nuevamente\n2. Verifica tu plan de facturación en Google Cloud Console\n3. Considera actualizar tu plan si necesitas más uso');
-    } else if (apiError?.status === 400 || apiError?.message?.includes('API Key not found') || apiError?.message?.includes('API_KEY_INVALID')) {
-      throw new Error(`❌ Error de API Key: La clave API no es válida para Google Generative AI.
-
-🔧 Soluciones:
-1. Verifica que tienes habilitada la API de Generative Language en Google Cloud Console
-2. Asegúrate de que la API key tenga permisos para usar Gemini
-3. Si usas una API key de Google Maps, necesitas una específica para AI
-
-📋 Tu API key actual: ${apiKey.substring(0, 10)}...
-
-💡 Para obtener una API key válida:
-- Ve a https://makersuite.google.com/app/apikey
-- Crea una nueva API key
-- Asegúrate de que tenga habilitada la facturación (necesario para usar Gemini)`);
-    } else if (apiError?.status === 403) {
-      throw new Error('🚫 Acceso denegado: La API key no tiene permisos suficientes o está restringida.');
-    } else if (apiError?.status === 500) {
-      throw new Error('🔧 Error interno del servidor de Google. Por favor, intenta nuevamente en unos momentos.');
-    } else {
-      throw new Error('❌ Error al analizar el contrato con la IA. Por favor, verifica tu conexión a internet e intenta nuevamente.');
-    }
-  }
-};
-
-const extractSection = (text: string, sectionHeader: string): string => {
-  const regex = new RegExp(`${sectionHeader}\\s*\\n([^#]*)`, 'i');
-  const match = text.match(regex);
-  return match && match[1] ? match[1].trim() : '';
-};
-
-const formatText = (text: string): string => {
-  return text
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/\n/g, '<br>');
-};
-
 const showError = (message: string) => {
   error.value = message;
   showNotification({
@@ -676,86 +582,31 @@ const showError = (message: string) => {
 
 const resetAnalysis = () => {
   analysisResult.value = null;
+  contratoCorregido.value = '';
   error.value = '';
   extractedText.value = '';
 };
 
-// Función para diagnosticar el PDF
-const diagnosticarPDF = async (file: File) => {
-  console.log('🔍 Diagnóstico del PDF:', file.name);
-  console.log('📊 Tamaño:', file.size, 'bytes');
-  console.log('📋 Tipo MIME:', file.type);
-
-  try {
-    const arrayBuffer = await file.arrayBuffer();
-
-    // Verificar si es un PDF válido
-    const uint8Array = new Uint8Array(arrayBuffer);
-    const header = uint8Array.slice(0, 8);
-
-    // PDF header should be %PDF-
-    const headerString = String.fromCharCode(...header);
-    console.log('📄 Header del archivo:', headerString);
-
-    if (!headerString.includes('%PDF-')) {
-      throw new Error('El archivo no tiene el formato PDF válido');
-    }
-
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    console.log('📖 Número de páginas:', pdf.numPages);
-
-    // Verificar si tiene texto
-    let hasText = false;
-    let totalItems = 0;
-
-    for (let i = 1; i <= Math.min(pdf.numPages, 3); i++) { // Solo verificar primeras 3 páginas
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      totalItems += textContent.items.length;
-
-      if (textContent.items.length > 0) {
-        hasText = true;
-        break;
-      }
-    }
-
-    console.log('📝 Tiene texto extraíble:', hasText);
-    console.log('📊 Total de elementos de texto en primeras páginas:', totalItems);
-
-    return {
-      isValidPDF: true,
-      hasText: hasText,
-      pageCount: pdf.numPages,
-      header: headerString,
-      textItems: totalItems,
-      workerError: false
-    };
-
-  } catch (error) {
-    console.error('❌ Error en diagnóstico:', error);
-
-    // Detectar si es un error relacionado con el worker de PDF.js
-    const isWorkerError = error instanceof Error && (
-      error.message.includes('worker') ||
-      error.message.includes('Worker') ||
-      error.message.includes('Loading worker') ||
-      error.message.includes('Failed to load') ||
-      error.message.includes('Setting up fake worker failed') ||
-      error.message.includes('Failed to fetch dynamically imported module') ||
-      error.message.includes('dynamically imported') ||
-      error.message.includes('pdf.worker') ||
-      error.message.includes('module not found') ||
-      error.message.includes('import') ||
-      error.message.includes('url')
-    );
-
-    return {
-      isValidPDF: false,
-      hasText: false,
-      error: error instanceof Error ? error.message : 'Error desconocido',
-      workerError: isWorkerError
-    };
+const onNativeFileChange = (e: Event) => {
+  const input = e.target as HTMLInputElement;
+  if (input.files?.length) {
+    void onFileAdded(Array.from(input.files));
   }
+};
+
+const onDrop = (e: DragEvent) => {
+  isDragging.value = false;
+  const files = e.dataTransfer?.files;
+  if (files?.length) {
+    void onFileAdded(Array.from(files));
+  }
+};
+
+const clearFile = () => {
+  resetAnalysis();
+  fileName.value = '';
+  fileSize.value = 0;
+  if (fileInputRef.value) fileInputRef.value.value = '';
 };
 
 const probarAPIKey = async () => {
@@ -765,7 +616,7 @@ const probarAPIKey = async () => {
     error.value = '';
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash-lite",
+      model: GEMINI_MODEL_FAST,
       generationConfig: {
         temperature: 0.1,
         topK: 1,
@@ -782,25 +633,22 @@ const probarAPIKey = async () => {
     });
 
     if (result.response) {
-      const respuesta = result.response.text();
-      console.log('✅ API Key funciona correctamente en PdfAnalyzer. Respuesta:', respuesta);
-
       showNotification({
-        message: '✅ API Key válida - Puedes analizar PDFs',
+        message: 'API Key valida - Puedes analizar PDFs',
         color: 'positive',
         position: 'top',
         icon: 'check_circle'
       });
     } else {
-      throw new Error('No se recibió respuesta de la API');
+      throw new Error('No se recibio respuesta de la API');
     }
 
   } catch (err) {
-    console.error('❌ Error al probar API key en PdfAnalyzer:', err);
+    console.error('Error al probar API key:', err);
     const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
 
     showNotification({
-      message: `❌ Error de API Key: ${errorMessage}`,
+      message: `Error de API Key: ${errorMessage}`,
       color: 'negative',
       position: 'top',
       icon: 'error'
@@ -819,11 +667,6 @@ const probarWorkerPDF = async () => {
     loadingMessage.value = 'Probando worker de PDF.js...';
     error.value = '';
 
-    console.log('🔍 Probando configuración del worker de PDF.js...');
-    console.log('📋 Worker actual:', pdfjsLib.GlobalWorkerOptions.workerSrc);
-    console.log('📋 Método de importación: import ?url');
-
-    // Verificar que el worker esté configurado correctamente
     if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
       throw new Error('Worker de PDF.js no está configurado');
     }
@@ -835,24 +678,21 @@ const probarWorkerPDF = async () => {
 
     // Intentar cargar el PDF de prueba
     const arrayBuffer = await testFile.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-
-    console.log('✅ Worker de PDF.js funciona correctamente con import ?url');
-    console.log('📖 PDF de prueba cargado:', pdf.numPages, 'páginas');
+    await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
     showNotification({
-      message: '✅ Worker de PDF.js funciona correctamente',
+      message: 'Worker de PDF.js funciona correctamente',
       color: 'positive',
       position: 'top',
       icon: 'check_circle'
     });
 
   } catch (err) {
-    console.error('❌ Error al probar worker de PDF.js:', err);
+    console.error('Error al probar worker de PDF.js:', err);
     const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
 
     showNotification({
-      message: `❌ Error con worker de PDF.js: ${errorMessage}`,
+      message: `Error con worker de PDF.js: ${errorMessage}`,
       color: 'negative',
       position: 'top',
       icon: 'error'
@@ -867,545 +707,685 @@ const probarWorkerPDF = async () => {
 </script>
 
 <style scoped>
-.pdf-analyzer-container {
+/* ==============================
+   Contenedor raiz
+   ============================== */
+.pdf-analyzer {
   width: 100%;
-  max-width: 900px;
+  max-width: 860px;
   margin: 0 auto;
-  padding: 0 16px;
-}
-
-.analyzer-card-wrapper {
-  width: 100%;
-}
-
-.analyzer-main-card {
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-:deep(.q-dark) .analyzer-main-card {
-  background: rgba(18, 18, 18, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* Header Section */
-.card-header-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 32px;
-}
-
-.header-content {
   display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ==============================
+   Tarjeta base
+   ============================== */
+.lx-card {
+  background: #fff;
+  border: 1px solid rgba(27, 27, 30, 0.08);
+  border-radius: 18px;
+  box-shadow: 0 1px 3px rgba(27, 27, 30, 0.04);
+}
+
+/* ==============================
+   Herramientas de admin
+   ============================== */
+.admin-tools {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-btn {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-}
-
-.title-section {
-  display: flex;
-  align-items: center;
-  flex: 1;
-}
-
-.title-icon {
-  color: #ffffff;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
-}
-
-.main-title {
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 0 0 4px 0;
-  letter-spacing: 1px;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.subtitle-text {
-  font-size: 0.9rem;
-  opacity: 0.9;
-  font-weight: 400;
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.action-button {
+  gap: 7px;
+  font-size: 0.82rem;
   font-weight: 600;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  font-size: 0.75rem;
-  padding: 8px 16px;
-  border-radius: 25px;
-  transition: all 0.3s ease;
+  color: #55555c;
+  background: #fff;
+  border: 1px solid rgba(27, 27, 30, 0.12);
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: 'Figtree', sans-serif;
+  transition: background 0.18s;
 }
 
-.action-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-}
+.admin-btn:hover:not(:disabled) { background: #FAFAF7; }
+.admin-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* Modern Cards */
-.modern-card {
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: all 0.3s ease;
-}
-
-.modern-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-}
-
-:deep(.q-dark) .modern-card {
-  background: rgba(30, 30, 30, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* Upload Section */
+/* ==============================
+   Zona de carga
+   ============================== */
 .upload-card {
-  margin-bottom: 24px;
-  padding: 12px 16px;
+  overflow: hidden;
+  padding: 0;
 }
 
-.upload-header {
+.upload-drop-area {
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
+  gap: 18px;
+  padding: 28px 26px;
+  border: 2px dashed rgba(31, 168, 187, 0.35);
+  border-radius: 16px;
+  background: rgba(57, 199, 216, 0.04);
+  margin: 18px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
 }
 
-.upload-icon {
-  color: #667eea;
+.upload-drop-area:hover {
+  background: rgba(57, 199, 216, 0.08);
+  border-color: rgba(31, 168, 187, 0.55);
 }
 
-.section-title {
+.upload-drop-area--drag {
+  background: rgba(57, 199, 216, 0.13);
+  border-color: #1fa8bb;
+  border-style: solid;
+}
+
+.upload-icon-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: rgba(57, 199, 216, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.upload-text-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.upload-title {
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: #1b1b1e;
+  margin-bottom: 3px;
+}
+
+.upload-subtitle {
+  font-size: 0.85rem;
+  color: #9a9aa2;
+}
+
+.upload-pick-btn {
+  flex-shrink: 0;
+  padding: 9px 18px;
+  background: #1fa8bb;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.15s;
+}
+
+.upload-pick-btn:hover:not(:disabled) {
+  background: #178fa0;
+  transform: translateY(-1px);
+}
+
+.upload-pick-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Fila de info del archivo */
+.file-info-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 22px;
+  border-top: 1px solid rgba(27, 27, 30, 0.07);
+  background: #FAFAF7;
+}
+
+.file-icon-wrap {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: rgba(224, 82, 82, 0.10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.file-name {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-status {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #16a34a;
+  background: rgba(22, 163, 74, 0.10);
+  padding: 3px 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.file-meta {
+  font-size: 0.82rem;
+  flex-shrink: 0;
+}
+
+.file-clear-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(27, 27, 30, 0.12);
+  background: #FAFAF7;
+  color: #9a9aa2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  padding: 0;
+}
+
+.file-clear-btn:hover {
+  background: rgba(224, 82, 82, 0.10);
+  color: #e05252;
+  border-color: rgba(224, 82, 82, 0.25);
+}
+
+/* ==============================
+   Estado de carga
+   ============================== */
+.loading-state {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 24px;
+}
+
+.loading-msg {
+  flex: 1;
+  font-size: 0.92rem;
+}
+
+.loading-bar {
+  width: 100px;
+  flex-shrink: 0;
+}
+
+/* ==============================
+   Error
+   ============================== */
+.error-banner {
+  background: #fff5f5;
+  border: 1px solid rgba(224, 82, 82, 0.25);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.error-banner-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 16px;
+  background: rgba(224, 82, 82, 0.08);
+  color: #c0392b;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.error-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: #c0392b;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.error-body {
+  font-size: 0.85rem;
+  color: #7a3535;
+  padding: 14px 16px;
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.55;
+  font-family: 'Figtree', sans-serif;
+}
+
+/* ==============================
+   Texto extraido
+   ============================== */
+.extracted-card {
+  padding: 22px;
+}
+
+.lx-section-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'EB Garamond', serif;
   font-size: 1.1rem;
   font-weight: 600;
-  margin: 0;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
+  color: #16161a;
+  margin-bottom: 14px;
 }
 
-.upload-description {
-  color: #666;
-  font-size: 0.9rem;
-  margin-bottom: 16px;
-}
-
-:deep(.q-dark) .upload-description {
-  color: #ccc;
-}
-
-.modern-uploader {
-  border-radius: 12px;
-  border: 2px dashed rgba(102, 126, 234, 0.3);
-  background: rgba(102, 126, 234, 0.05);
-}
-
-.uploader-header-content {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-}
-
-.uploader-icon {
-  color: #667eea;
-}
-
-.uploader-text {
-  flex: 1;
-}
-
-.uploader-title {
-  font-weight: 600;
-  font-size: 0.95rem;
-  margin-bottom: 2px;
-}
-
-.uploader-subtitle {
-  font-size: 0.85rem;
-  color: #666;
-}
-
-:deep(.q-dark) .uploader-subtitle {
-  color: #ccc;
-}
-
-.upload-btn {
-  transition: all 0.3s ease;
-}
-
-.upload-btn:hover {
-  transform: scale(1.05);
-}
-
-/* Loading Section */
-.loading-card {
-  text-align: center;
-  padding: 32px;
-}
-
-.loading-icon {
-  color: #667eea;
-  animation: pulse 2s infinite;
-}
-
-.loading-title {
-  font-size: 1.2rem;
-  font-weight: 600;
-  margin: 16px 0 8px 0;
-  letter-spacing: 0.5px;
-}
-
-.loading-message {
-  color: #666;
-  font-size: 0.9rem;
-  margin-bottom: 16px;
-}
-
-:deep(.q-dark) .loading-message {
-  color: #ccc;
-}
-
-.loading-progress {
-  max-width: 300px;
-  margin: 0 auto;
-}
-
-/* Error Section */
-.error-banner {
-  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
-  color: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(255, 107, 107, 0.3);
-}
-
-.error-content {
-  flex: 1;
-}
-
-.error-title {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0 0 4px 0;
-  letter-spacing: 0.5px;
-}
-
-.error-message {
-  font-size: 0.9rem;
-  opacity: 0.9;
-  line-height: 1.4;
-}
-
-.error-close-btn {
-  color: white;
-  opacity: 0.8;
-}
-
-.error-close-btn:hover {
-  opacity: 1;
-}
-
-/* Extracted Text Section */
-.extracted-card {
-  margin-bottom: 24px;
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.section-icon {
-  color: #667eea;
-}
-
-.text-content-card {
-  margin-bottom: 20px;
-}
-
-.content-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.content-icon {
-  color: #764ba2;
-}
-
-.content-title {
-  font-weight: 600;
-  font-size: 0.9rem;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-.extracted-text-container {
-  max-height: 500px;
+.extracted-text-box {
+  max-height: 340px;
   overflow-y: auto;
-  border: 1px solid rgba(102, 126, 234, 0.2);
-  border-radius: 8px;
-  padding: 16px;
-  background: rgba(102, 126, 234, 0.02);
+  border: 1px solid rgba(27, 27, 30, 0.08);
+  border-radius: 10px;
+  padding: 14px;
+  background: #FAFAF7;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(27,27,30,0.14) transparent;
 }
 
-.extracted-text {
+.extracted-pre {
   font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 12.5px;
+  line-height: 1.55;
   white-space: pre-wrap;
   word-wrap: break-word;
   margin: 0;
-  color: #2c3e50;
 }
 
-:deep(.q-dark) .extracted-text {
-  color: #ecf0f1;
-}
-
-:deep(.q-dark) .extracted-text-container {
-  border-color: rgba(102, 126, 234, 0.3);
-  background: rgba(102, 126, 234, 0.05);
-}
-
-.analyze-button-container {
+.analyze-btn-wrap {
+  margin-top: 16px;
   text-align: center;
 }
 
-.analyze-button {
+.analyze-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 26px;
+  background: #1fa8bb;
+  color: #fff;
+  border: none;
+  border-radius: 11px;
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.92rem;
   font-weight: 600;
-  letter-spacing: 0.5px;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(31, 168, 187, 0.30);
+  transition: background 0.18s, transform 0.15s;
+}
+
+.analyze-btn:hover:not(:disabled) {
+  background: #178fa0;
+  transform: translateY(-1px);
+}
+
+.analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ==============================
+   Seccion de resultados
+   ============================== */
+.results-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.results-heading {
+  font-family: 'EB Garamond', serif;
+  font-size: 1.55rem;
+  font-weight: 600;
+  color: #16161a;
+  margin: 0 0 4px;
+}
+
+/* Grid puntuacion + resumen */
+.score-resumen-grid {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 640px) {
+  .score-resumen-grid { grid-template-columns: 1fr; }
+}
+
+.score-card {
+  padding: 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.score-label-top {
+  font-size: 0.82rem;
+  font-weight: 600;
   text-transform: uppercase;
-  font-size: 0.9rem;
-  padding: 12px 32px;
-  border-radius: 25px;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+  letter-spacing: 0.04em;
 }
 
-.analyze-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+.score-big {
+  font-family: 'EB Garamond', serif;
+  font-size: 3.2rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
-/* Results Section */
-.results-card {
-  margin-top: 24px;
+.score-denom {
+  font-size: 1.3rem;
+  font-weight: 400;
+  opacity: 0.55;
 }
 
-.result-item-card {
-  margin-bottom: 20px;
+.score-bar {
+  width: 100%;
 }
 
-.result-header {
+.resumen-card {
+  padding: 22px;
+}
+
+/* Tarjetas de resultado individuales */
+.result-card {
+  padding: 20px 22px;
+}
+
+.result-card-label {
   display: flex;
   align-items: center;
-  margin-bottom: 16px;
-}
-
-.result-icon {
-  color: #667eea;
-}
-
-.result-title {
-  font-size: 1rem;
+  gap: 8px;
+  font-family: 'EB Garamond', serif;
+  font-size: 1.05rem;
   font-weight: 600;
-  margin: 0;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
+  color: #16161a;
+  margin-bottom: 14px;
 }
 
-.result-content {
-  line-height: 1.6;
-  font-size: 0.95rem;
+/* Partes */
+.partes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-/* Risk Card */
-.risk-card {
-  border-left: 4px solid #ff6b6b;
+.parte-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.risk-header .result-icon {
-  color: #ff6b6b;
-}
-
-.risk-header .result-title {
-  color: #ff6b6b;
-}
-
-/* Clauses and Risks Lists */
-.clauses-list,
-.risks-list {
-  padding: 0;
-  background: transparent;
-}
-
-.clause-item,
-.risk-item {
-  border-radius: 8px;
-  margin-bottom: 8px;
-  background: rgba(102, 126, 234, 0.05);
-  border: 1px solid rgba(102, 126, 234, 0.1);
-  transition: all 0.3s ease;
-}
-
-.clause-item:hover,
-.risk-item:hover {
-  background: rgba(102, 126, 234, 0.08);
-  transform: translateX(4px);
-}
-
-.clause-icon,
-.risk-icon {
-  background: rgba(102, 126, 234, 0.1);
-  border-radius: 50%;
-  padding: 8px;
-}
-
-.risk-icon {
-  background: rgba(255, 107, 107, 0.1);
-}
-
-.clause-number,
-.risk-number {
+.parte-chip {
+  font-size: 0.78rem;
   font-weight: 600;
-  font-size: 0.85rem;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
+  color: #7c47e0;
+  background: rgba(139, 92, 246, 0.10);
+  border: 1px solid rgba(139, 92, 246, 0.22);
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  text-transform: capitalize;
 }
 
-.clause-content,
-.risk-content {
-  line-height: 1.5;
-  margin-top: 4px;
+.parte-nombre {
+  font-size: 0.93rem;
 }
 
-/* File Info */
-.file-info-chips {
+/* Fechas */
+.fechas-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.info-chip {
+.fecha-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.82rem;
   font-weight: 500;
-  letter-spacing: 0.3px;
+  color: #167f8e;
+  background: rgba(57, 199, 216, 0.10);
+  border: 1px solid rgba(31, 168, 187, 0.22);
+  padding: 5px 11px;
+  border-radius: 999px;
 }
 
-/* Formatted Content */
-.formatted-content {
-  line-height: 1.6;
-  font-size: 0.95rem;
+/* Obligaciones */
+.obligaciones-grupo {
+  margin-bottom: 14px;
 }
 
-.formatted-content :deep(strong) {
+.obligaciones-parte {
+  font-size: 0.84rem;
   font-weight: 700;
-  color: #667eea;
+  color: #3f6fc9;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+  padding-left: 10px;
+  border-left: 3px solid rgba(79, 127, 214, 0.40);
 }
 
-.formatted-content :deep(em) {
-  font-style: italic;
-  color: #764ba2;
+.obligaciones-list {
+  padding-left: 22px;
+  margin: 0;
 }
 
-.formatted-content :deep(br) {
-  margin-bottom: 0.5em;
+.obligacion-item {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  margin-bottom: 3px;
 }
 
-:deep(.q-dark) .formatted-content {
-  color: #e0e0e0;
+/* Riesgos */
+.risk-card {
+  border-left: 3px solid rgba(224, 82, 82, 0.50);
 }
 
-:deep(.q-dark) .formatted-content strong {
-  color: #90caf9;
+.risk-label {
+  color: #c0392b;
 }
 
-:deep(.q-dark) .formatted-content em {
-  color: #ce93d8;
+.riesgos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-/* Animations */
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
+.riesgo-item {
+  background: #FAFAF7;
+  border: 1px solid rgba(27, 27, 30, 0.07);
+  border-radius: 11px;
+  padding: 13px 15px;
+}
+
+.riesgo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.riesgo-clausula {
+  font-size: 0.9rem;
+  font-weight: 600;
+  flex: 1;
+}
+
+.nivel-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.riesgo-desc {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  margin: 0 0 8px;
+}
+
+.riesgo-sug {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  background: rgba(255, 186, 73, 0.12);
+  border: 1px solid rgba(180, 83, 9, 0.15);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.riesgo-sug svg { flex-shrink: 0; margin-top: 1px; }
+
+/* Boton corregir */
+.corregir-wrap {
+  text-align: center;
+}
+
+.corregir-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 26px;
+  background: #ff9b6a;
+  color: #fff;
+  border: none;
+  border-radius: 11px;
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(255, 155, 106, 0.35);
+  transition: background 0.18s, transform 0.15s;
+}
+
+.corregir-btn:hover:not(:disabled) {
+  background: #f07d45;
+  transform: translateY(-1px);
+}
+
+.corregir-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* Contrato corregido */
+.corregido-card {
+  border-left: 3px solid rgba(22, 163, 74, 0.50);
+}
+
+.corregido-label {
+  color: #166534;
+}
+
+.corregido-actions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.icon-action-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(27, 27, 30, 0.10);
+  background: #FAFAF7;
+  color: #55555c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.icon-action-btn:hover { background: rgba(27, 27, 30, 0.07); }
+
+.corregido-text-box {
+  max-height: 500px;
+  overflow-y: auto;
+  border: 1px solid rgba(22, 163, 74, 0.18);
+  border-radius: 10px;
+  padding: 14px;
+  background: #FAFAF7;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(27,27,30,0.12) transparent;
+}
+
+.corregido-pre {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0;
+}
+
+/* Mejoras */
+.mejoras-list {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.mejora-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+}
+
+.mejora-icon-wrap {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(57, 199, 216, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.mejora-titulo {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.mejora-desc {
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+/* ==============================
+   Responsive
+   ============================== */
+@media (max-width: 600px) {
+  .upload-drop-area {
+    flex-wrap: wrap;
+    padding: 20px 16px;
+    margin: 12px;
   }
-  50% {
-    opacity: 0.5;
-  }
-}
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .pdf-analyzer-container {
-    padding: 0 8px;
-  }
-
-  .card-header-section {
-    padding: 24px 16px;
-  }
-
-  .header-content {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 16px;
-  }
-
-  .main-title {
-    font-size: 1.5rem;
-  }
-
-  .header-actions {
+  .upload-pick-btn {
     width: 100%;
     justify-content: center;
   }
 
-  .uploader-header-content {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .file-info-chips {
-    justify-content: center;
-  }
-
-  .analyze-button {
-    width: 100%;
-    max-width: 300px;
-  }
-}
-
-@media (max-width: 480px) {
-  .main-title {
-    font-size: 1.3rem;
-  }
-
-  .section-title {
-    font-size: 1rem;
-  }
-
-  .result-title {
-    font-size: 0.9rem;
-  }
-
-  .action-button {
-    font-size: 0.7rem;
-    padding: 6px 12px;
-  }
+  .file-info-row { flex-wrap: wrap; }
 }
 </style>

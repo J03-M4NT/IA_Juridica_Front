@@ -30,16 +30,9 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true },
       },
 
-      // ✅ NUEVA RUTA DE NORMAS (CORRECTA)
       {
         path: 'normas',
         component: () => import('pages/BibliotecaLegal.vue'),
-        meta: { requiresAuth: true },
-      },
-
-      {
-        path: 'subir-contrato',
-        component: () => import('pages/SubirContrato.vue'),
         meta: { requiresAuth: true },
       },
 

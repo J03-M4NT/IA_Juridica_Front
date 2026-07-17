@@ -1,5 +1,6 @@
 import type { ChatSession} from '@google/generative-ai';
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GEMINI_MODEL_STANDARD } from '../constants/gemini'
 
 const genAI = new GoogleGenerativeAI(
   import.meta.env.VITE_GEMINI_API_KEY
@@ -9,7 +10,7 @@ const genAI = new GoogleGenerativeAI(
 // MODELO
 // ================================
 const model = genAI.getGenerativeModel({
-  model: 'gemini-2.5-flash'
+  model: GEMINI_MODEL_STANDARD
 })
 // ================================
 // 1. ANÁLISIS DE CONTRATOS
@@ -88,14 +89,20 @@ export function iniciarChatJuridico(): ChatSession {
     generationConfig: {
       maxOutputTokens: 2000,
     },
-    systemInstruction: `
-      Eres Letsy, una IA jurídica especializada en derecho peruano.
-      - Respondes consultas legales de manera clara y precisa
-      - Citas artículos y normas legales peruanas cuando es relevante
-      - Si no sabes algo, lo dices honestamente
-      - Usas lenguaje accesible, no solo jerga legal
-      - Siempre recomiendas consultar un abogado para casos complejos
-    `
+    systemInstruction: {
+      role: 'user',
+      parts: [{
+        text: [
+          'Eres Letsy, una IA jurídica especializada en derecho peruano.',
+          '- Respondes consultas legales de manera clara y precisa.',
+          '- Citas artículos y normas legales peruanas cuando es relevante.',
+          '- Si no sabes algo, lo dices honestamente.',
+          '- Usas lenguaje accesible, no solo jerga legal.',
+          '- Siempre recomiendas consultar un abogado para casos complejos.',
+          '- Respondes en formato markdown cuando sea útil (listas, negritas).',
+        ].join('\n')
+      }]
+    }
   })
   return chat
 }

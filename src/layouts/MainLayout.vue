@@ -1,225 +1,122 @@
 <template>
   <q-layout view="hHh Lpr fFf">
 
-    <!-- --------------------------------------------- -->
-
-    <!-- Modern Top Navbar -->
-    <q-header
-      class="modern-navbar navbar-light"
-      height-hint="64"
-      :class="{ 'navbar-scrolled': scrolled }"
-    >
-      <q-toolbar class="navbar-toolbar q-px-lg">
+    <!-- Top Navbar -->
+    <q-header class="app-navbar" height-hint="60">
+      <q-toolbar class="navbar-toolbar">
 
         <!-- Logo -->
-        <div class="brand-section q-mr-lg" @click="$router.push('/')" style="cursor: pointer">
-          <img src="../assets/logo.svg" alt="LEXIT AI" class="brand-logo q-mr-sm" />
-          <span class="brand-text text-h6 text-weight-bold">LEXIT AI</span>
+        <div class="brand-section" @click="$router.push('/')" style="cursor: pointer">
+          <img src="../assets/logo.svg" alt="LEXIT AI" class="brand-logo" />
+          <span class="brand-name">LEXIT AI</span>
         </div>
 
-        <!-- Botón Hamburguesa - Para móvil/tablet -->
+        <!-- Hamburger (mobile) -->
         <q-btn
-          flat
-          dense
-          round
-          icon="menu"
-          class="lt-lg q-mr-sm"
+          flat dense round icon="menu"
+          class="lt-lg q-mr-sm hamburger-btn"
           @click="drawerOpen = !drawerOpen"
           aria-label="Menú de navegación"
         />
 
-        <!-- Navigation Buttons - Centered -->
-        <div class="nav-group q-ml-md">
-          <div class="nav-buttons">
+        <!-- Nav links (desktop) -->
+        <nav class="nav-links gt-md">
 
-            <q-btn-group flat>
+          <q-btn flat no-caps to="/app/analizador" class="nav-btn nav-btn--teal"
+            :class="{ 'nav-btn--active': $route.path === '/app/analizador' }">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="q-mr-xs">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/>
+            </svg>
+            Analizar PDF
+          </q-btn>
 
-              <!-- ANALIZAR PDF -->
-              <q-btn
-                flat
-                no-caps
-                :class="{ 'nav-btn-active': $route.path === '/app/analizador' }"
-                to="/app/analizador"
-                class="nav-btn"
-                icon="analytics"
-                label="ANALIZAR PDF"
-              >
-                <q-tooltip>Analizar contrato PDF</q-tooltip>
-              </q-btn>
+          <q-btn flat no-caps to="/app/consultas" class="nav-btn nav-btn--blue"
+            :class="{ 'nav-btn--active': $route.path === '/app/consultas' }">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="q-mr-xs">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            Consultas
+          </q-btn>
 
-              <!-- CONSULTAS -->
-              <q-btn
-                flat
-                no-caps
-                :class="{ 'nav-btn-active': $route.path === '/app/consultas' }"
-                to="/app/consultas"
-                class="nav-btn"
-                icon="chat"
-                label="CONSULTAS"
-              >
-                <q-tooltip>Consultas legales</q-tooltip>
-              </q-btn>
+          <q-btn flat no-caps to="/app/contratos" class="nav-btn nav-btn--purple"
+            :class="{ 'nav-btn--active': $route.path === '/app/contratos' }">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="q-mr-xs">
+              <path d="M3 7h18"/><path d="M3 7l2-3h14l2 3"/><path d="M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/><path d="M9 12h6"/>
+            </svg>
+            Contratos
+          </q-btn>
 
-              <!-- CONTRATOS -->
-              <q-btn
-                flat
-                no-caps
-                :class="{ 'nav-btn-active': $route.path === '/app/contratos' }"
-                to="/app/contratos"
-                class="nav-btn"
-                icon="gavel"
-                label="CONTRATOS"
-              >
-                <q-tooltip>Gestión de contratos</q-tooltip>
-              </q-btn>
+          <q-btn flat no-caps to="/app/normas" class="nav-btn nav-btn--orange"
+            :class="{ 'nav-btn--active': $route.path === '/app/normas' }">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="q-mr-xs">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            </svg>
+            Normas
+          </q-btn>
 
-              <!-- ✅ NUEVO BOTÓN NORMAS -->
-              <q-btn
-                flat
-                no-caps
-                :class="{ 'nav-btn-active': $route.path === '/app/normas' }"
-                to="/app/normas"
-                class="nav-btn"
-                icon="menu_book"
-                label="NORMAS"
-              >
-                <q-tooltip>Normas del Diario El Peruano</q-tooltip>
-              </q-btn>
+          <q-btn
+            v-if="profileStore.isAdmin"
+            flat no-caps to="/app/admin"
+            class="nav-btn nav-btn--admin"
+            :class="{ 'nav-btn--active': $route.path === '/app/admin' }"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="q-mr-xs">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            Admin
+          </q-btn>
 
-            </q-btn-group>
+        </nav>
 
-          </div>
-        </div>
-
-        <!-- Admin button -->
-        <q-btn
-          v-if="profileStore.isAdmin"
-          flat
-          no-caps
-          :class="{ 'nav-btn-active': $route.path === '/app/admin' }"
-          to="/app/admin"
-          class="nav-btn q-ml-sm"
-          icon="admin_panel_settings"
-          label="ADMIN"
-          color="deep-orange"
-        >
-          <q-tooltip>Panel de administración</q-tooltip>
-        </q-btn>
-
-        <!-- Auth -->
         <q-space />
         <auth-buttons />
 
       </q-toolbar>
     </q-header>
-    
-    <!-- --------------------------------------------- -->
 
-    <!-- Panel lateral de navegación móvil -->
-    <q-drawer
-      v-model="drawerOpen"
-      side="left"
-      overlay
-      behavior="mobile"
-      class="mobile-drawer"
-    >
+    <!-- Mobile drawer -->
+    <q-drawer v-model="drawerOpen" side="left" overlay behavior="mobile" class="mobile-drawer">
       <q-list padding>
+        <q-item-label header class="drawer-header">Navegación</q-item-label>
 
-        <q-item-label header class="text-weight-bold q-pb-md">
-          Navegación
-        </q-item-label>
-
-        <q-item
-          clickable
-          v-ripple
-          to="/app/analizador"
-          @click="drawerOpen = false"
-          active-class="nav-drawer-active"
-        >
-          <q-item-section avatar>
-            <q-icon name="analytics" />
-          </q-item-section>
+        <q-item clickable v-ripple to="/app/analizador" @click="drawerOpen = false" active-class="drawer-item--active">
+          <q-item-section avatar><q-icon name="description" /></q-item-section>
           <q-item-section>Analizar PDF</q-item-section>
         </q-item>
 
-        <q-item
-          clickable
-          v-ripple
-          to="/app/consultas"
-          @click="drawerOpen = false"
-          active-class="nav-drawer-active"
-        >
-          <q-item-section avatar>
-            <q-icon name="chat" />
-          </q-item-section>
+        <q-item clickable v-ripple to="/app/consultas" @click="drawerOpen = false" active-class="drawer-item--active">
+          <q-item-section avatar><q-icon name="chat" /></q-item-section>
           <q-item-section>Consultas</q-item-section>
         </q-item>
 
-        <q-item
-          clickable
-          v-ripple
-          to="/app/contratos"
-          @click="drawerOpen = false"
-          active-class="nav-drawer-active"
-        >
-          <q-item-section avatar>
-            <q-icon name="gavel" />
-          </q-item-section>
+        <q-item clickable v-ripple to="/app/contratos" @click="drawerOpen = false" active-class="drawer-item--active">
+          <q-item-section avatar><q-icon name="gavel" /></q-item-section>
           <q-item-section>Contratos</q-item-section>
         </q-item>
 
-        <q-item
-          clickable
-          v-ripple
-          to="/app/normas"
-          @click="drawerOpen = false"
-          active-class="nav-drawer-active"
-        >
-          <q-item-section avatar>
-            <q-icon name="menu_book" />
-          </q-item-section>
+        <q-item clickable v-ripple to="/app/normas" @click="drawerOpen = false" active-class="drawer-item--active">
+          <q-item-section avatar><q-icon name="menu_book" /></q-item-section>
           <q-item-section>Normas</q-item-section>
         </q-item>
 
         <q-separator v-if="profileStore.isAdmin" class="q-my-sm" />
 
-        <q-item
-          v-if="profileStore.isAdmin"
-          clickable
-          v-ripple
-          to="/app/admin"
-          @click="drawerOpen = false"
-          active-class="nav-drawer-active"
-        >
-          <q-item-section avatar>
-            <q-icon name="admin_panel_settings" color="deep-orange" />
-          </q-item-section>
-          <q-item-section class="text-deep-orange text-weight-bold">Administración</q-item-section>
+        <q-item v-if="profileStore.isAdmin" clickable v-ripple to="/app/admin" @click="drawerOpen = false" active-class="drawer-item--active">
+          <q-item-section avatar><q-icon name="admin_panel_settings" /></q-item-section>
+          <q-item-section>Administración</q-item-section>
         </q-item>
-
       </q-list>
     </q-drawer>
 
-    <!-- --------------------------------------------- -->
-
-    <!-- CONTENIDO -->
-    <q-page-container class="main-container">
-      <div class="page-wrapper">
-        <router-view v-slot="{ Component }">
-          <transition
-            name="fade"
-            mode="out-in"
-            @before-leave="beforeLeave"
-            @enter="enter"
-            @after-enter="afterEnter"
-          >
-            <component :is="Component" class="q-page" />
-          </transition>
-        </router-view>
-      </div>
+    <!-- Page content -->
+    <q-page-container class="page-container">
+      <router-view v-slot="{ Component }">
+        <transition name="fade" mode="out-in" @before-leave="beforeLeave" @enter="enter" @after-enter="afterEnter">
+          <component :is="Component" class="q-page" />
+        </transition>
+      </router-view>
     </q-page-container>
-
-    <!-- --------------------------------------------- -->
 
   </q-layout>
 </template>
@@ -230,204 +127,206 @@ import AuthButtons from '../components/Auth/AuthButtons.vue'
 import { useUserProfileStore } from '../stores/userProfile'
 
 const profileStore = useUserProfileStore()
+const drawerOpen = ref(false)
 
-// Estado para el scroll
-const scrolled = ref(false);
-const drawerOpen = ref(false);
+const beforeLeave = (el: Element) => { el.classList.add('transitioning') }
+const enter = (el: Element) => { el.classList.remove('transitioning') }
+const afterEnter = (el: Element) => { el.classList.remove('transitioning') }
 
-
-const beforeLeave = (el: Element) => {
-  el.classList.add('transitioning')
-}
-
-const enter = (el: Element) => {
-  el.classList.remove('transitioning')
-}
-
-const afterEnter = (el: Element) => {
-  el.classList.remove('transitioning')
-}
-
-const handleScroll = () => {
-  scrolled.value = window.scrollY > 10
-}
-
-onMounted(() => {
-  window.addEventListener('scroll', handleScroll)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll)
-})
+const handleScroll = () => { /* reserved for future scroll effects */ }
+onMounted(() => window.addEventListener('scroll', handleScroll))
+onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Figtree:wght@400;500;600;700&display=swap');
 
-/* TODO tu estilo igual (no lo toqué) */
-/* Gracias mija xd */
-
-.q-page {
-  background: var(--card-background);
-  border-radius: var(--border-radius);
-  box-shadow: var(--shadow-light);
-  padding: 24px;
-  min-height: calc(100vh - 112px);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid var(--border-color);
-  transition: all 0.3s ease;
-}
-
-.q-page:hover {
-  box-shadow: var(--shadow-medium);
-}
-
-/* Modern Navbar Styles */
-.modern-navbar {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border-color);
-  box-shadow: var(--shadow-light);
-  z-index: 2000;
-  transition: all 0.3s ease;
-}
-
-.modern-navbar.navbar-scrolled {
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: var(--shadow-medium);
-}
-
-.navbar-light {
-  background: rgba(255, 255, 255, 0.95);
-  color: var(--text-color);
+/* ==============================
+   Navbar
+   ============================== */
+.app-navbar {
+  background: rgba(250, 250, 247, 0.88) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(27, 27, 30, 0.07) !important;
+  box-shadow: none !important;
 }
 
 .navbar-toolbar {
-  max-width: 1400px;
+  max-width: 1280px;
   margin: 0 auto;
   width: 100%;
+  min-height: 60px;
+  padding: 0 24px;
+  gap: 18px;
+  font-family: 'Figtree', sans-serif;
 }
 
-.nav-buttons {
-  flex: 1;
-  justify-content: center;
-}
-
-.nav-btn {
-  font-weight: 500;
-  padding: 8px 16px;
-  border-radius: var(--border-radius-small);
-  transition: all 0.3s ease;
-  color: var(--text-color);
-}
-
-.nav-btn:hover {
-  background: rgba(0, 123, 255, 0.1);
-  color: var(--primary-color);
-}
-
-.nav-btn-active {
-  background: var(--primary-color);
-  color: white !important;
-  font-weight: 600;
-}
-
-.nav-btn-active:hover {
-  background: var(--hover-color);
-}
-
+/* ==============================
+   Brand
+   ============================== */
 .brand-section {
   display: flex;
   align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .brand-logo {
   height: 32px;
-  width: auto;
+  width: 32px;
 }
 
-.navbar-toolbar {
-  min-height: 64px;
-  padding: 0 24px;
-}
-
-.brand-text {
-  color: var(--primary-color);
+.brand-name {
+  font-family: 'EB Garamond', serif;
+  font-size: 1.35rem;
   font-weight: 600;
-  letter-spacing: 1px;
+  letter-spacing: 0.01em;
+  color: #1b1b1e;
 }
 
-/* Transiciones */
+/* ==============================
+   Nav links
+   ============================== */
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 14px;
+  flex-wrap: wrap;
+}
+
+.nav-btn {
+  font-family: 'Figtree', sans-serif !important;
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  color: #6a6a72 !important;
+  border-radius: 11px !important;
+  padding: 8px 14px !important;
+  transition: background 0.2s, color 0.2s !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+
+.nav-btn:hover {
+  background: rgba(27, 27, 30, 0.05) !important;
+  color: #1b1b1e !important;
+}
+
+/* Per-section active colors */
+.nav-btn--teal.nav-btn--active {
+  background: rgba(57, 199, 216, 0.14) !important;
+  color: #1fa8bb !important;
+  font-weight: 600 !important;
+}
+
+.nav-btn--blue.nav-btn--active {
+  background: rgba(79, 127, 214, 0.13) !important;
+  color: #3f6fc9 !important;
+  font-weight: 600 !important;
+}
+
+.nav-btn--purple.nav-btn--active {
+  background: rgba(139, 92, 246, 0.13) !important;
+  color: #7c47e0 !important;
+  font-weight: 600 !important;
+}
+
+.nav-btn--orange.nav-btn--active,
+.nav-btn--admin.nav-btn--active {
+  background: rgba(255, 155, 106, 0.15) !important;
+  color: #d97a3e !important;
+  font-weight: 600 !important;
+}
+
+.hamburger-btn {
+  color: #3a3a40 !important;
+}
+
+/* ==============================
+   Page content
+   ============================== */
+.page-container {
+  background: #FAFAF7;
+}
+
+.q-page {
+  background: #FAFAF7;
+  min-height: calc(100vh - 60px);
+  padding: 34px 24px 60px;
+  max-width: 1280px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ==============================
+   Page transitions
+   ============================== */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.4s ease, transform 0.4s ease;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .fade-enter-from {
   opacity: 0;
-  transform: translateY(20px);
+  transform: translateY(14px);
 }
 
 .fade-leave-to {
   opacity: 0;
-  transform: translateY(-20px);
+  transform: translateY(-8px);
 }
 
 .transitioning {
   background: transparent !important;
 }
 
-/* Responsive Design */
-@media (max-width: 1024px) {
-  .nav-buttons {
-    display: none;
-  }
+/* ==============================
+   Mobile drawer
+   ============================== */
+.mobile-drawer {
+  padding-top: 60px;
+  background: #fff !important;
+}
 
+.drawer-header {
+  font-family: 'Figtree', sans-serif;
+  font-weight: 600;
+  color: #6a6a72;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.drawer-item--active {
+  color: #8b5cf6 !important;
+  font-weight: 600;
+  background: rgba(139, 92, 246, 0.07);
+  border-radius: 9px;
+}
+
+/* ==============================
+   Responsive
+   ============================== */
+@media (max-width: 1024px) {
   .navbar-toolbar {
     padding: 0 16px;
-  }
-
-  .brand-text {
-    display: none;
   }
 }
 
 @media (max-width: 768px) {
-  .page-wrapper {
-    padding: 16px;
-  }
-
-  .brand-section {
-    margin-right: 16px;
+  .q-page {
+    padding: 20px 16px 40px;
   }
 }
 
 @media (max-width: 480px) {
-  .navbar-toolbar {
-    padding: 0 12px;
-    min-height: 56px;
+  .q-page {
+    padding: 16px 12px 32px;
   }
 
-  .modern-navbar {
-    height: 56px;
-  }
-
-  .page-wrapper {
-    padding: 12px;
+  .brand-name {
+    font-size: 1.1rem;
   }
 }
-
-/* Drawer móvil */
-.mobile-drawer {
-  padding-top: 64px;
-}
-
-.nav-drawer-active {
-  color: var(--primary-color);
-  font-weight: 600;
-  background: rgba(0, 123, 255, 0.08);
-  border-radius: 8px;
-}
-
 </style>

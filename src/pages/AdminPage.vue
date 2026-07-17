@@ -1,47 +1,48 @@
 <template>
   <q-page class="admin-page">
 
-    <!-- Header -->
-    <div class="admin-header q-mb-lg">
-      <div class="row items-center q-gutter-sm">
-        <q-icon name="admin_panel_settings" size="2rem" color="deep-orange" />
+    <!-- Section header -->
+    <div class="page-header">
+      <div class="section-icon-wrap icon-admin">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#d97a3e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="page-title">Panel de Administración</h1>
+        <p class="page-subtitle">Gestión de plantillas de contratos</p>
+      </div>
+    </div>
+
+    <!-- Stat card -->
+    <div class="stats-row q-mb-lg">
+      <div class="stat-card">
+        <div class="stat-icon-wrap icon-teal">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1fa8bb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <path d="M14 2v6h6"/>
+          </svg>
+        </div>
         <div>
-          <h4 class="q-ma-none text-weight-bold text-grey-9">Panel de Administración</h4>
-          <p class="q-ma-none text-grey-7 text-caption">Gestión de plantillas de contratos</p>
+          <div class="stat-number">{{ templates.length }}</div>
+          <div class="stat-label">Plantillas activas</div>
         </div>
       </div>
     </div>
 
-    <!-- Stats -->
-    <div class="row q-col-gutter-md q-mb-lg">
-      <div class="col-12 col-sm-4">
-        <q-card flat bordered class="stat-card">
-          <q-card-section class="row items-center q-gutter-md">
-            <q-icon name="description" size="2rem" color="primary" />
-            <div>
-              <div class="text-h5 text-weight-bold text-grey-9">{{ templates.length }}</div>
-              <div class="text-caption text-grey-7">Plantillas activas</div>
-            </div>
-          </q-card-section>
-        </q-card>
-      </div>
-    </div>
-
     <!-- Actions bar -->
-    <div class="row items-center justify-between q-mb-md">
-      <span class="text-subtitle1 text-weight-medium text-grey-9">Plantillas de contratos</span>
-      <q-btn
-        color="primary"
-        icon="add"
-        label="Nueva plantilla"
-        no-caps
-        @click="uploadDialog = true"
-      />
+    <div class="actions-bar q-mb-md">
+      <span class="section-label">Plantillas de contratos</span>
+      <button class="add-btn" @click="uploadDialog = true">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+        Nueva plantilla
+      </button>
     </div>
 
-    <!-- XDDDDDDDDD  -->
-    <!-- Templates table -->
-    <q-card flat bordered>
+    <!-- Templates table card -->
+    <div class="table-card">
       <q-table
         :rows="templates"
         :columns="columns"
@@ -50,138 +51,120 @@
         flat
         :pagination="{ rowsPerPage: 10 }"
         no-data-label="No hay plantillas cargadas"
+        class="lx-table"
       >
         <template #body-cell-actions="props">
-          <q-td :props="props" class="q-gutter-xs">
-            <q-btn
-              flat
-              dense
-              round
-              icon="download"
-              color="primary"
-              @click="downloadTemplate(props.row)"
-            >
-              <q-tooltip>Descargar PDF</q-tooltip>
-            </q-btn>
-            <q-btn
-              flat
-              dense
-              round
-              icon="delete"
-              color="negative"
-              @click="confirmDelete(props.row)"
-            >
-              <q-tooltip>Eliminar plantilla</q-tooltip>
-            </q-btn>
+          <q-td :props="props">
+            <div class="table-actions">
+              <button class="icon-btn icon-btn--teal" @click="downloadTemplate(props.row)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>
+                </svg>
+              </button>
+              <button class="icon-btn icon-btn--red" @click="confirmDelete(props.row)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                </svg>
+              </button>
+            </div>
           </q-td>
         </template>
 
         <template #body-cell-type="props">
           <q-td :props="props">
-            <q-badge color="blue-grey" :label="props.row.type || 'general'" />
+            <span class="type-badge">{{ props.row.type || 'general' }}</span>
           </q-td>
         </template>
       </q-table>
-    </q-card>
+    </div>
 
     <!-- Upload dialog -->
     <q-dialog v-model="uploadDialog" persistent>
-      <q-card style="min-width: 420px; max-width: 560px; background: white">
-        <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6 text-grey-9">Subir nueva plantilla</div>
-          <q-space />
-          <q-btn icon="close" flat round dense color="grey-7" v-close-popup />
-        </q-card-section>
-
-        <q-card-section class="q-gutter-md">
+      <div class="lx-dialog-card">
+        <div class="lx-dialog-header">
+          <span class="lx-dialog-title">Subir nueva plantilla</span>
+          <button class="lx-dialog-close" type="button" @click="uploadDialog = false">✕</button>
+        </div>
+        <div class="lx-dialog-body">
           <q-input
             v-model="newTemplate.name"
             label="Nombre de la plantilla *"
-            outlined
-            dense
-            label-color="grey-8"
-            color="primary"
-            input-class="text-grey-9"
+            outlined dense
+            label-color="grey-8" color="purple" input-class="text-grey-9"
             :rules="[v => !!v || 'Requerido']"
+            class="lx-input q-mb-sm"
           />
           <q-input
             v-model="newTemplate.type"
             label="Tipo de contrato *"
-            outlined
-            dense
-            label-color="grey-8"
-            color="primary"
-            input-class="text-grey-9"
+            outlined dense
+            label-color="grey-8" color="purple" input-class="text-grey-9"
             hint="Ej: laboral, arrendamiento, compraventa"
             :rules="[v => !!v || 'Requerido']"
+            class="lx-input q-mb-sm"
           />
           <q-input
             v-model="newTemplate.description"
             label="Descripción"
-            outlined
-            dense
-            label-color="grey-8"
-            color="primary"
-            input-class="text-grey-9"
-            type="textarea"
-            autogrow
+            outlined dense
+            label-color="grey-8" color="purple" input-class="text-grey-9"
+            type="textarea" autogrow
+            class="lx-input q-mb-sm"
           />
           <q-file
             v-model="newTemplate.file"
             label="Archivo PDF *"
-            outlined
-            dense
-            label-color="grey-8"
-            color="primary"
-            input-class="text-grey-9"
+            outlined dense
+            label-color="grey-8" color="purple" input-class="text-grey-9"
             accept=".pdf"
             :rules="[v => !!v || 'Selecciona un archivo PDF']"
+            class="lx-input"
           >
             <template #prepend>
               <q-icon name="attach_file" color="grey-7" />
             </template>
           </q-file>
-        </q-card-section>
 
-        <q-card-actions align="right" class="q-px-md q-pb-md">
-          <q-btn flat label="Cancelar" no-caps color="grey-7" v-close-popup />
-          <q-btn
-            color="primary"
-            label="Subir plantilla"
-            no-caps
-            :loading="uploading"
-            :disable="!newTemplate.name || !newTemplate.type || !newTemplate.file"
-            @click="submitUpload"
-          />
-        </q-card-actions>
-      </q-card>
+          <div class="lx-dialog-footer">
+            <button class="lx-btn-ghost" type="button" @click="uploadDialog = false">Cancelar</button>
+            <q-btn
+              color="dark"
+              label="Subir plantilla"
+              no-caps unelevated
+              :loading="uploading"
+              :disable="!newTemplate.name || !newTemplate.type || !newTemplate.file"
+              @click="submitUpload"
+              class="lx-submit-btn"
+            />
+          </div>
+        </div>
+      </div>
     </q-dialog>
 
     <!-- Delete confirmation dialog -->
     <q-dialog v-model="deleteDialog" persistent>
-      <q-card style="min-width: 360px; background: white">
-        <q-card-section class="row items-center q-gutter-sm">
-          <q-avatar icon="warning" color="negative" text-color="white" />
-          <div>
-            <div class="text-h6 text-grey-9">Eliminar plantilla</div>
-            <div class="text-body2 text-grey-7">
-              ¿Seguro que deseas eliminar <strong class="text-grey-9">{{ templateToDelete?.name }}</strong>?
-              Esta acción no se puede deshacer.
-            </div>
+      <div class="lx-dialog-card">
+        <div class="lx-dialog-header">
+          <span class="lx-dialog-title">Eliminar plantilla</span>
+          <button class="lx-dialog-close" type="button" @click="deleteDialog = false">✕</button>
+        </div>
+        <div class="lx-dialog-body">
+          <p class="delete-warning-text">
+            ¿Seguro que deseas eliminar <strong>{{ templateToDelete?.name }}</strong>?
+            Esta acción no se puede deshacer.
+          </p>
+          <div class="lx-dialog-footer">
+            <button class="lx-btn-ghost" type="button" @click="deleteDialog = false">Cancelar</button>
+            <q-btn
+              color="negative"
+              label="Eliminar"
+              no-caps unelevated
+              :loading="deleting"
+              @click="submitDelete"
+            />
           </div>
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn flat label="Cancelar" no-caps color="grey-7" v-close-popup />
-          <q-btn
-            color="negative"
-            label="Eliminar"
-            no-caps
-            :loading="deleting"
-            @click="submitDelete"
-          />
-        </q-card-actions>
-      </q-card>
+        </div>
+      </div>
     </q-dialog>
 
   </q-page>
@@ -303,17 +286,286 @@ onMounted(loadTemplates)
 
 <style scoped>
 .admin-page {
-  max-width: 1100px;
+  max-width: 1080px;
   margin: 0 auto;
+  animation: floatUp 0.5s ease-out both;
 }
 
-.admin-header {
-  border-bottom: 2px solid var(--border-color, #e0e0e0);
-  padding-bottom: 16px;
+@keyframes floatUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ==============================
+   Section header
+   ============================== */
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 26px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(27, 27, 30, 0.08);
+}
+
+.section-icon-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.icon-admin { background: rgba(224, 123, 62, 0.14); }
+.icon-teal  { background: rgba(57, 199, 216, 0.14); }
+
+.page-title {
+  font-family: 'EB Garamond', serif;
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0;
+  color: #16161a;
+}
+
+.page-subtitle {
+  margin: 2px 0 0;
+  color: #6a6a72;
+  font-size: 1rem;
+}
+
+/* ==============================
+   Stat card
+   ============================== */
+.stats-row {
+  display: flex;
+  gap: 16px;
 }
 
 .stat-card {
-  background: var(--card-background, #fff);
-  border-radius: var(--border-radius, 8px);
+  background: #fff;
+  border: 1px solid rgba(27, 27, 30, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(27, 27, 30, 0.04);
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 230px;
 }
+
+.stat-icon-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-number {
+  font-family: 'EB Garamond', serif;
+  font-size: 1.9rem;
+  font-weight: 600;
+  color: #16161a;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: #8a8a92;
+  margin-top: 2px;
+}
+
+/* ==============================
+   Actions bar
+   ============================== */
+.actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-label {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #16161a;
+  font-family: 'Figtree', sans-serif;
+}
+
+.add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #1b1b1e;
+  color: #fff;
+  border: none;
+  border-radius: 11px;
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(27, 27, 30, 0.20);
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+
+.add-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(27, 27, 30, 0.28);
+}
+
+/* ==============================
+   Table
+   ============================== */
+.table-card {
+  background: #fff;
+  border: 1px solid rgba(27, 27, 30, 0.08);
+  border-radius: 18px;
+  box-shadow: 0 1px 3px rgba(27, 27, 30, 0.04);
+  overflow: hidden;
+}
+
+.table-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  border: 1px solid rgba(27, 27, 30, 0.10);
+  background: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.icon-btn--teal { color: #39c7d8; }
+.icon-btn--teal:hover { background: rgba(57, 199, 216, 0.10); }
+.icon-btn--red { color: #d93a30; }
+.icon-btn--red:hover { background: rgba(217, 58, 48, 0.09); }
+
+.type-badge {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #55636a;
+  background: #eef1f3;
+  padding: 4px 10px;
+  border-radius: 7px;
+}
+
+:deep(.lx-table) {
+  background: transparent !important;
+}
+
+:deep(.lx-table .q-table__top),
+:deep(.lx-table thead tr th) {
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #8a8a92;
+  background: transparent;
+}
+
+:deep(.lx-table tbody tr:hover) {
+  background: #FAFAF7 !important;
+}
+
+/* ==============================
+   Dialogs
+   ============================== */
+:deep(.q-dialog__backdrop) {
+  background: rgba(22, 22, 26, 0.45);
+  backdrop-filter: blur(4px);
+}
+
+.lx-dialog-card {
+  width: 480px;
+  max-width: 95vw;
+  background: #fff;
+  border-radius: 22px;
+  box-shadow: 0 30px 80px rgba(22, 22, 26, 0.28);
+  overflow: hidden;
+  font-family: 'Figtree', sans-serif;
+}
+
+.lx-dialog-header {
+  padding: 24px 28px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lx-dialog-title {
+  font-family: 'EB Garamond', serif;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #16161a;
+}
+
+.lx-dialog-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(27, 27, 30, 0.05);
+  color: #55555c;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.lx-dialog-close:hover { background: rgba(27, 27, 30, 0.10); }
+
+.lx-dialog-body {
+  padding: 20px 28px 28px;
+}
+
+.lx-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.lx-btn-ghost {
+  padding: 11px 18px;
+  background: transparent;
+  border: none;
+  color: #7a7a82;
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+
+.lx-btn-ghost:hover { background: rgba(27, 27, 30, 0.05); }
+
+.delete-warning-text {
+  font-size: 0.98rem;
+  color: #55555c;
+  line-height: 1.6;
+  margin: 0;
+}
+
+:deep(.q-table tbody td){
+  color: #3a3a40;
+}
+
+:deep(.q-table thead th) {
+  color: #6a6a72;
+}
+
 </style>
