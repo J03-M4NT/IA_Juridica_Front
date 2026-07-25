@@ -14,6 +14,26 @@
       </div>
     </div>
 
+    <!-- ✅ BOTÓN TEMPORAL PINECONE -->
+    <div class="row justify-center q-mb-md q-gutter-sm">
+      <q-btn
+        color="purple"
+        icon="cloud"
+        label="Probar Conexión Pinecone"
+        @click="probarPinecone"
+        :loading="probandoPinecone"
+        unelevated
+      />
+      <q-chip
+        v-if="estadoPinecone !== null"
+        :color="estadoPinecone ? 'positive' : 'negative'"
+        text-color="white"
+        :icon="estadoPinecone ? 'check_circle' : 'error'"
+      >
+        {{ estadoPinecone ? `✅ Pinecone OK — ${vectoresTotales} vectores` : '❌ Pinecone sin conexión' }}
+      </q-chip>
+    </div>
+
     <!-- Chat wrapper -->
     <div class="chat-wrapper">
 
@@ -119,36 +139,58 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue';
-import { useConsultasStore } from '../stores/consultas-store';
-import { storeToRefs } from 'pinia';
+import { ref, onMounted, nextTick, watch } from 'vue'
+import { useConsultasStore } from '../stores/consultas-store'
+import { storeToRefs } from 'pinia'
+import { verificarConexionPinecone } from '../services/pineconeService'
 
-const store = useConsultasStore();
-const pregunta = ref('');
-const showHelp = ref(false);
+const store = useConsultasStore()
+const pregunta = ref('')
+const showHelp = ref(false)
 
-const aiLogo: string = new URL('../assets/logo.svg', import.meta.url).href;
+// ✅ Estado Pinecone
+const probandoPinecone = ref(false)
+const estadoPinecone = ref<boolean | null>(null)
+const vectoresTotales = ref(0)
 
-const { mensajes } = storeToRefs(store);
-const messagesBox = ref<HTMLElement | null>(null);
+const aiLogo: string = new URL('../assets/logo.svg', import.meta.url).href
+
+const { mensajes } = storeToRefs(store)
+const messagesBox = ref<HTMLElement | null>(null)
 
 const suggestions = [
   '¿Cuáles son mis obligaciones en este contrato?',
   '¿Qué cláusulas representan mayor riesgo?',
   '¿Cómo puedo terminar este contrato anticipadamente?'
-];
+]
+
+// ✅ Función para probar Pinecone
+const probarPinecone = async () => {
+  probandoPinecone.value = true
+  estadoPinecone.value = null
+  try {
+    const resultado = await verificarConexionPinecone()
+    estadoPinecone.value = resultado
+    console.log('🟣 Pinecone estado:', resultado)
+  } catch (err) {
+    estadoPinecone.value = false
+    console.error('❌ Error Pinecone:', err)
+  } finally {
+    probandoPinecone.value = false
+  }
+}
 
 function useSuggestion(s: string) {
-  pregunta.value = s;
-  void enviarConsulta();
+  pregunta.value = s
+  void enviarConsulta()
 }
 
 function formatTimestamp(ts: Date | string): string {
   try {
-    const d = new Date(ts);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const d = new Date(ts)
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   } catch {
-    return '';
+    return ''
   }
 }
 
@@ -159,34 +201,33 @@ function formatMessage(content: string): string {
     .replace(/^# (.*$)/gm, '<h1>$1</h1>')
     .replace(/^## (.*$)/gm, '<h2>$1</h2>')
     .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-    .replace(/\n/g, '<br>');
+    .replace(/\n/g, '<br>')
 }
 
 async function enviarConsulta() {
   if (pregunta.value.trim()) {
     try {
-      await store.enviarConsulta(pregunta.value);
-      pregunta.value = '';
-      await nextTick();
-      if (messagesBox.value) messagesBox.value.scrollTop = messagesBox.value.scrollHeight;
+      await store.enviarConsulta(pregunta.value)
+      pregunta.value = ''
+      await nextTick()
+      if (messagesBox.value) messagesBox.value.scrollTop = messagesBox.value.scrollHeight
     } catch (error) {
-      console.error('Error al enviar consulta:', error);
+      console.error('Error al enviar consulta:', error)
     }
   }
 }
 
 onMounted(() => {
-  store.iniciarSesion();
+  store.iniciarSesion()
   void nextTick().then(() => {
-    if (messagesBox.value) messagesBox.value.scrollTop = messagesBox.value.scrollHeight;
-  });
-});
+    if (messagesBox.value) messagesBox.value.scrollTop = messagesBox.value.scrollHeight
+  })
+})
 
-import { watch } from 'vue';
 watch(mensajes, async () => {
-  await nextTick();
-  if (messagesBox.value) messagesBox.value.scrollTop = messagesBox.value.scrollHeight;
-}, { deep: true });
+  await nextTick()
+  if (messagesBox.value) messagesBox.value.scrollTop = messagesBox.value.scrollHeight
+}, { deep: true })
 </script>
 
 <style scoped>
@@ -207,9 +248,6 @@ watch(mensajes, async () => {
   100% { opacity: 0.2; transform: translateY(0); }
 }
 
-/* ==============================
-   Section header
-   ============================== */
 .page-header {
   display: flex;
   flex-direction: column;
@@ -246,9 +284,6 @@ watch(mensajes, async () => {
   font-size: 1rem;
 }
 
-/* ==============================
-   Chat card
-   ============================== */
 .chat-wrapper {
   display: flex;
   flex-direction: column;
@@ -265,9 +300,6 @@ watch(mensajes, async () => {
   height: 580px;
 }
 
-/* ==============================
-   Chat header
-   ============================== */
 .chat-header {
   padding: 16px 22px;
   border-bottom: 1px solid rgba(27, 27, 30, 0.07);
@@ -302,9 +334,6 @@ watch(mensajes, async () => {
 
 .help-btn:hover { background: rgba(27, 27, 30, 0.05); }
 
-/* ==============================
-   Messages area
-   ============================== */
 .messages-area {
   flex: 1;
   overflow-y: auto;
@@ -374,7 +403,6 @@ watch(mensajes, async () => {
   margin-top: 8px;
 }
 
-/* Formatted markdown */
 .formatted-message :deep(h1),
 .formatted-message :deep(h2),
 .formatted-message :deep(h3) {
@@ -387,7 +415,6 @@ watch(mensajes, async () => {
 .formatted-message :deep(strong) { font-weight: 600; }
 .formatted-message :deep(em)     { font-style: italic; }
 
-/* Typing dots */
 .typing-bubble { padding: 13px 16px; }
 
 .typing-dots {
@@ -408,9 +435,6 @@ watch(mensajes, async () => {
 .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
 .typing-dots span:nth-child(3) { animation-delay: 0.30s; }
 
-/* ==============================
-   Suggestions
-   ============================== */
 .suggestions-row {
   padding: 12px 22px 6px;
   display: flex;
@@ -443,9 +467,6 @@ watch(mensajes, async () => {
   color: #fff;
 }
 
-/* ==============================
-   Input area
-   ============================== */
 .input-area {
   padding: 14px 22px 18px;
   border-top: 1px solid rgba(27, 27, 30, 0.07);
@@ -462,9 +483,7 @@ watch(mensajes, async () => {
   padding: 8px 8px 8px 15px;
 }
 
-.chat-input {
-  flex: 1;
-}
+.chat-input { flex: 1; }
 
 :deep(.chat-input .q-field__control) {
   background: transparent !important;
@@ -515,9 +534,6 @@ watch(mensajes, async () => {
   color: var(--q-negative);
 }
 
-/* ==============================
-   Responsive
-   ============================== */
 @media (max-width: 600px) {
   .chat-card {
     height: 520px;

@@ -2,9 +2,11 @@ import type { ChatSession} from '@google/generative-ai';
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { GEMINI_MODEL_STANDARD } from '../constants/gemini'
 
+
 const genAI = new GoogleGenerativeAI(
   import.meta.env.VITE_GEMINI_API_KEY
 )
+
 
 // ================================
 // MODELO
@@ -93,7 +95,7 @@ export function iniciarChatJuridico(): ChatSession {
       role: 'user',
       parts: [{
         text: [
-          'Eres Letsy, una IA jurídica especializada en derecho peruano.',
+          'Eres Letxi, una IA jurídica especializada en derecho peruano.',
           '- Respondes consultas legales de manera clara y precisa.',
           '- Citas artículos y normas legales peruanas cuando es relevante.',
           '- Si no sabes algo, lo dices honestamente.',

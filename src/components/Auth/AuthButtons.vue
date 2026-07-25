@@ -26,9 +26,9 @@
             <div class="row items-center no-wrap">
               <!-- Avatar con foto real del usuario -->
               <q-avatar size="32px" color="primary" text-color="white">
-                <img 
-                  v-if="profileStore.photoURL" 
-                  :src="profileStore.photoURL" 
+                <img
+                  v-if="profileStore.photoURL"
+                  :src="profileStore.photoURL"
                   alt="Foto de perfil"
                   style="width: 100%; height: 100%; object-fit: cover;"
                 />
@@ -193,7 +193,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 const profileStore = useUserProfileStore();
 
-const { isAuthenticated, userName } = storeToRefs(authStore);
+const { isAuthenticated } = storeToRefs(authStore)
 
 // Control de diálogos
 const showLoginDialog = ref(false);

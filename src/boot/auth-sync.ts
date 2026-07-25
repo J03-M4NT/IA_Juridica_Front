@@ -12,12 +12,11 @@ export default defineBoot(async () => {
     console.error('Error setting persistence:', error)
   })
 
-  auth.onAuthStateChanged(async (firebaseUser) => {
+  auth.onAuthStateChanged((firebaseUser) => {
+  void (async () => {
     authStore.setUser(firebaseUser)
-
     if (firebaseUser) {
       await profileStore.loadProfile(firebaseUser.uid)
-
       if (!profileStore.profile) {
         await profileStore.initializeProfile(
           firebaseUser.uid,
@@ -29,5 +28,6 @@ export default defineBoot(async () => {
     } else {
       profileStore.clearProfile()
     }
-  })
+  })()
+})
 })

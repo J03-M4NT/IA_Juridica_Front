@@ -333,11 +333,6 @@ const showNotification = (options: NotificationOptions) => {
   $q.notify(options);
 };
 
-interface RejectedEntry {
-  failedPropValidation: string;
-  file?: File;
-  message?: string;
-}
 
 interface ApiError {
   status?: number;
@@ -559,16 +554,7 @@ const runCorrection = async () => {
   }
 };
 
-const onRejected = (rejectedEntries: RejectedEntry[]) => {
-  const entry = rejectedEntries[0];
-  if (entry?.failedPropValidation === 'max-file-size') {
-    showError('El archivo es demasiado grande. El límite es 20MB.');
-  } else if (entry?.failedPropValidation === 'accept') {
-    showError('Por favor, selecciona un archivo PDF válido.');
-  } else {
-    showError('Error al seleccionar el archivo.');
-  }
-};
+
 
 const showError = (message: string) => {
   error.value = message;
