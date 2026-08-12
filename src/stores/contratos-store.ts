@@ -1,33 +1,41 @@
-import { defineStore } from 'pinia';
-import { exportToWord, exportToPDF } from '../utils/documentExport'; // Mantenemos las funciones de exportación
-import { supabase } from '../lib/supabaseClient';
+import { defineStore } from 'pinia'
+import { exportToWord, exportToPDF } from '../utils/documentExport'
+import { getErrorMessage } from '../utils/errors'
+import {
+  listenContratos,
+  getContratoDownloadURL,
+  downloadContrato,
+  getTemplateDownloadURL,
+  type ContratoFirebase
+} from '../services/contratosService'
+import { getDocs, collection } from 'firebase/firestore'
+import { db } from '../firebase/firebaseConfig'
+import type { Unsubscribe } from 'firebase/firestore'
 
-/**
- * NUEVA INTERFAZ: Define la estructura de una plantilla de contrato que viene de Supabase.
- * Nota que volvemos a usar 'content' y 'variables', en lugar de 'storage_path'.
- */
 export interface ContractTemplate {
-  id: string;
-  name: string;
-  type: string;
-  content: string;
-  storage_path?: string; // Ruta del PDF en Supabase Storage (bucket: contratos_archivos)
-  variables: Array<{
-    key: string;
-    label: string;
-    type: 'text' | 'date' | 'number'; // Tipos de variables que tu editor puede manejar
-    required: boolean;
-  }>;
+  id: string
+  name: string
+  type: string
+  description?: string
+  storage_path: string
+  content?: string
+  variables?: Record<string, string>[]
 }
 
 interface ModifiedContract {
-  templateId: string;
-  variables: Record<string, string>;
-  modifiedContent: string;
+  templateId: string
+  variables: Record<string, string>
+  modifiedContent: string
 }
 
 export const useContratosStore = defineStore('contratos', {
   state: () => ({
+    firebaseContratos: [] as ContratoFirebase[],
+    selectedContrato: null as ContratoFirebase | null,
+    firebaseLoading: false,
+    firebaseError: null as string | null,
+    _unsubscribeContratos: null as Unsubscribe | null,
+
     templates: [] as ContractTemplate[],
     currentTemplate: null as ContractTemplate | null,
     modifiedContracts: [] as ModifiedContract[],
@@ -37,192 +45,216 @@ export const useContratosStore = defineStore('contratos', {
 
   getters: {
     getTemplateById: (state) => {
-      return (id: string) => state.templates.find(t => t.id === id);
+      return (id: string) => state.templates.find(t => t.id === id)
     },
+
     getModifiedContract: (state) => {
-      return (templateId: string) => state.modifiedContracts.find(
-        m => m.templateId === templateId
-      );
-    },
+      return (templateId: string) =>
+        state.modifiedContracts.find(m => m.templateId === templateId)
+    }
   },
 
   actions: {
-    /**
-     * FUNCIÓN ACTUALIZADA: Esta acción ahora se conecta a tu tabla 'contract_templates' de Supabase
-     * para obtener la lista de plantillas de texto disponibles.
-     */
+    // ================================
+    // TEMPLATES DE FIREBASE
+    // ================================
     async fetchTemplates() {
-      this.isLoading = true;
-      this.error = null;
+      this.isLoading = true
+      this.error = null
+
       try {
+        const querySnapshot = await getDocs(collection(db, 'contract_templates'))
+        const templates: ContractTemplate[] = []
 
-        // 1. Realizamos la consulta a la tabla 'contract_templates' en Supabase
-        const { data, error } = await supabase
-          .from('contract_templates')
-          .select('*');
+        querySnapshot.forEach((doc) => {
+          const data = doc.data()
+          templates.push({
+            id: doc.id,
+            name: data.name || 'Sin nombre',
+            type: data.type || 'general',
+            description: data.description || '',
+            storage_path: data.storage_path || '',
+            content: data.content,
+            variables: data.variables
+          } as ContractTemplate)
+        })
 
-        // 2. Manejamos el error si la consulta falla
-        if (error) {
-          console.error('Error fetching templates from Supabase:', error);
-          throw new Error(`Error al obtener plantillas: ${error.message}`);
-        }
-
-        // 3. Asignamos los datos obtenidos al estado de la tienda.
-        // 'data' ahora contiene la lista de tus contratos con su nombre y la ruta del archivo.
-        this.templates = data || [];
+        this.templates = templates
       } catch (err) {
-        this.error = err instanceof Error ? err.message : 'Error desconocido al cargar plantillas';
+        console.error('Error cargando templates:', err)
+        this.error = getErrorMessage(err) || 'Error cargando plantillas'
       } finally {
-        this.isLoading = false;
+        this.isLoading = false
       }
     },
 
-    setCurrentTemplate(template: ContractTemplate | null) { // Permitimos que sea nulo para deseleccionar
-      this.currentTemplate = template;
-      // CORRECCIÓN 1: Al seleccionar una plantilla, es buena práctica limpiar
-      // el estado modificado previo para evitar datos inconsistentes.
+    setCurrentTemplate(template: ContractTemplate | null) {
+      this.currentTemplate = template
+
       if (template) {
-        this.updateModifiedContract(template.id, {}, template.content);
+        this.updateModifiedContract(
+          template.id,
+          {},
+          template.content || ''
+        )
       }
     },
 
-    updateModifiedContract(templateId: string, variables: Record<string, string>, modifiedContent: string) {
-      const index = this.modifiedContracts.findIndex(m => m.templateId === templateId);
+    updateModifiedContract(
+      templateId: string,
+      variables: Record<string, string>,
+      modifiedContent: string
+    ) {
+      const index = this.modifiedContracts.findIndex(
+        m => m.templateId === templateId
+      )
+
       const modifiedContract = {
         templateId,
         variables,
-        modifiedContent,
-      };
+        modifiedContent
+      }
 
       if (index === -1) {
-        this.modifiedContracts.push(modifiedContract);
+        this.modifiedContracts.push(modifiedContract)
       } else {
-        this.modifiedContracts[index] = modifiedContract;
+        this.modifiedContracts[index] = modifiedContract
       }
     },
 
+    // ================================
+    // EXPORTACIÓN
+    // ================================
     async exportToWord(templateId: string): Promise<Blob> {
       try {
-        const contract = this.modifiedContracts.find(c => c.templateId === templateId);
+        const contract = this.modifiedContracts.find(c => c.templateId === templateId)
         if (!contract) {
-          console.error('Contrato no encontrado:', templateId);
-          throw new Error('No se encontró el contrato para exportar');
+          throw new Error('No se encontró el contrato para exportar')
         }
 
-        // CORRECCIÓN 2: No se puede usar un getter (`this.getTemplateById`) dentro de una acción de esta manera.
-        // En su lugar, buscamos directamente en el array de estado `this.templates`.
-        const template = this.templates.find(t => t.id === templateId);
+        const template = this.templates.find(t => t.id === templateId)
         if (!template) {
-          console.error('Plantilla no encontrada:', templateId);
-          throw new Error('No se encontró la plantilla del contrato');
+          throw new Error('No se encontró la plantilla del contrato')
         }
 
-        console.log('Exportando a Word:', {
-          templateName: template.name,
-          contentLength: contract.modifiedContent.length
-        });
-
-        const blob = await exportToWord(contract.modifiedContent, template.name);
-        console.log('Exportación a Word completada:', {
-          size: blob.size,
-          type: blob.type
-        });
-
-        return blob;
-      } catch (error) {
-        console.error('Error en exportToWord:', error);
-        throw error;
+        return await exportToWord(contract.modifiedContent, template.name)
+      } catch (err) {
+        console.error('Error en exportToWord:', err)
+        throw err
       }
     },
 
     async exportToPDF(templateId: string): Promise<Blob> {
       try {
-        const contract = this.modifiedContracts.find(c => c.templateId === templateId);
+        const contract = this.modifiedContracts.find(c => c.templateId === templateId)
         if (!contract) {
-          console.error('Contrato no encontrado:', templateId);
-          throw new Error('No se encontró el contrato para exportar');
+          throw new Error('No se encontró el contrato para exportar')
         }
 
-        // CORRECCIÓN 2 (aplicada también aquí): Buscamos directamente en el array de estado.
-        const template = this.templates.find(t => t.id === templateId);
+        const template = this.templates.find(t => t.id === templateId)
         if (!template) {
-          console.error('Plantilla no encontrada:', templateId);
-          throw new Error('No se encontró la plantilla del contrato');
+          throw new Error('No se encontró la plantilla del contrato')
         }
 
-        console.log('Exportando a PDF:', {
-          templateName: template.name,
-          contentLength: contract.modifiedContent.length
-        });
-
-        const blob = await exportToPDF(contract.modifiedContent, template.name);
-        console.log('Exportación a PDF completada:', {
-          size: blob.size,
-          type: blob.type
-        });
-
-        return blob;
-      } catch (error) {
-        console.error('Error en exportToPDF:', error);
-        throw error;
+        return await exportToPDF(contract.modifiedContent, template.name)
+      } catch (err) {
+        console.error('Error en exportToPDF:', err)
+        throw err
       }
     },
 
-    /**
-     * Obtiene la URL pública de un PDF desde Supabase Storage
-     */
+    // ================================
+    // FIREBASE STORAGE - TEMPLATES
+    // ================================
     async getPDFUrl(storagePath: string): Promise<string> {
       try {
-        const { data } = supabase.storage
-          .from('contratos_archivos')
-          .getPublicUrl(storagePath);
-
-        if (!data || !data.publicUrl) {
-          throw new Error('No se pudo obtener la URL pública del PDF');
+        if (!storagePath) {
+          throw new Error('No se proporcionó una ruta de almacenamiento')
         }
 
-        return data.publicUrl;
-      } catch (error) {
-        console.error('Error obteniendo URL del PDF:', error);
-        throw error;
+        const url = await getTemplateDownloadURL(storagePath)
+        return url
+      } catch (err) {
+        console.error('Error obteniendo URL del PDF:', err)
+        throw err
       }
     },
 
-    /**
-     * Descarga el PDF original desde Supabase Storage
-     */
     async downloadOriginalPDF(templateId: string): Promise<Blob> {
       try {
-        const template = this.templates.find(t => t.id === templateId);
+        const template = this.templates.find(t => t.id === templateId)
         if (!template) {
-          throw new Error('Plantilla no encontrada');
+          throw new Error('Plantilla no encontrada')
         }
 
         if (!template.storage_path) {
-          throw new Error('Este contrato no tiene un PDF almacenado');
+          throw new Error('Este contrato no tiene un PDF almacenado')
         }
 
-        console.log('Descargando PDF desde:', template.storage_path);
-
-        const { data, error } = await supabase.storage
-          .from('contratos_archivos')
-          .download(template.storage_path);
-
-        if (error || !data) {
-          console.error('Error descargando PDF:', error);
-          throw new Error(`Error al descargar el PDF: ${error?.message || 'Desconocido'}`);
-        }
-
-        console.log('PDF descargado exitosamente:', {
-          size: data.size,
-          type: data.type
-        });
-
-        return data;
-      } catch (error) {
-        console.error('Error en downloadOriginalPDF:', error);
-        throw error;
+        return await downloadContrato(template.storage_path)
+      } catch (err) {
+        console.error('Error en downloadOriginalPDF:', err)
+        throw err
       }
     },
-  },
-});
+
+    // ================================
+    // FIREBASE CONTRATOS GENERADOS
+    // ================================
+    startListeningFirebaseContratos() {
+      if (this._unsubscribeContratos) {
+        return
+      }
+
+      this.firebaseLoading = true
+      this.firebaseError = null
+
+      try {
+        this._unsubscribeContratos = listenContratos(
+          (contratos) => {
+            this.firebaseContratos = contratos
+            this.firebaseLoading = false
+          },
+          (error) => {
+            this.firebaseError = error.message
+            this.firebaseLoading = false
+            console.error('Error escuchando contratos:', error)
+          }
+        )
+      } catch (err) {
+        this.firebaseError = getErrorMessage(err)
+        this.firebaseLoading = false
+        console.error('Error iniciando listener:', err)
+      }
+    },
+
+    stopListeningFirebaseContratos() {
+      if (this._unsubscribeContratos) {
+        this._unsubscribeContratos()
+        this._unsubscribeContratos = null
+      }
+    },
+
+    selectFirebaseContrato(contrato: ContratoFirebase | null) {
+      this.selectedContrato = contrato
+    },
+
+    async getFirebaseContratoURL(storagePath: string): Promise<string> {
+      try {
+        return await getContratoDownloadURL(storagePath)
+      } catch (err) {
+        console.error('Error obteniendo URL del contrato:', err)
+        throw err
+      }
+    },
+
+    async downloadFirebaseContrato(storagePath: string): Promise<Blob> {
+      try {
+        return await downloadContrato(storagePath)
+      } catch (err) {
+        console.error('Error descargando contrato:', err)
+        throw err
+      }
+    },
+  }
+})

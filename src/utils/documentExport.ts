@@ -22,7 +22,6 @@ interface TextRunProps {
 export const exportToWord = async (content: string, documentName: string): Promise<Blob> => {
   try {
     /* eslint-disable @typescript-eslint/no-explicit-any */
-    console.log('Iniciando exportación a Word');
 
   // Crear un elemento temporal para procesar el HTML
   const tempDiv = document.createElement('div');
@@ -154,9 +153,8 @@ export const exportToWord = async (content: string, documentName: string): Promi
         },
         children,
       }],
-    });    console.log('Documento creado, generando blob...');
+    });
     const blob = await Packer.toBlob(doc);
-    console.log('Blob generado:', { size: blob.size, type: blob.type });
 
     return blob;
   } catch (error) {

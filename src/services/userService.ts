@@ -67,6 +67,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
                 email: data.email,
                 displayName: data.displayName,
                 photoURL: data.photoURL,
+                role: data.role || 'user',
                 createdAt: (data.createdAt as Timestamp)?.toDate() || new Date(),
                 updatedAt: (data.updatedAt as Timestamp)?.toDate() || new Date()
             };

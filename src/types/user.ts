@@ -6,6 +6,7 @@ export interface UserProfile {
     email: string;
     displayName: string;
     photoURL: string | null;
+    role?: 'user' | 'admin';
     createdAt: Date;
     updatedAt: Date;
 }

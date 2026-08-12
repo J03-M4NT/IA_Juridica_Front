@@ -1,154 +1,120 @@
 <template>
-  <q-page class="consultas-page flex flex-center column">
-    <!-- Background gradient -->
-    <div class="page-background"></div>
+  <q-page class="consultas-page">
 
-    <!-- Centered Content -->
-    <div class="content-wrapper flex flex-center column q-pa-lg">
-      <!-- Title Section -->
-      <div class="title-section text-center q-mb-xl">
-        <h1 class="main-title text-h4 text-weight-bold q-mb-md">CONSULTAS JURÍDICAS</h1>
-        <p class="subtitle text-body1 text-black-7">Haz preguntas sobre leyes y contratos</p>
+    <!-- Section header -->
+    <div class="page-header">
+      <div class="section-icon-wrap icon-blue">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3f6fc9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
       </div>
-
-      <!-- Action Buttons Card (compact, transparent; button aligned to right of chat) -->
-      <q-card class="actions-card modern-card q-pa-sm">
-        <div class="actions-inner">
-          <q-btn
-            color="grey-8"
-            icon="help"
-            label="CENTRO DE AYUDA"
-            @click="showHelp = true"
-            class="action-button help-button"
-            unelevated
-            rounded
-            size="md"
-            style="min-width: 140px;"
-          >
-            <q-tooltip>Centro de ayuda</q-tooltip>
-          </q-btn>
-        </div>
-      </q-card>
-
-      <!-- Chat Section -->
-      <div class="chat-section q-mt-xl">
-        <q-card class="chat-card modern-card">
-          <q-card-section class="chat-header">
-            <h3 class="chat-title text-h6 text-weight-medium">Chat de Consultas</h3>
-          </q-card-section>
-
-          <!-- Messages Box -->
-                  <q-card-section class="messages-container">
-                    <div class="messages-box" ref="messagesBox">
-                      <div v-for="(mensaje, index) in mensajes" :key="index" class="message-wrapper q-mb-lg">
-                        <!-- AI Message -->
-                        <div v-if="mensaje.esIA" class="ai-message">
-                          <div class="avatar ai-avatar">
-                            <q-icon name="smart_toy" size="20px" />
-                          </div>
-                          <div class="message-bubble ai-bubble">
-                            <div class="message-meta">
-                              <span class="sender">LEXIT AI</span>
-                              <small class="timestamp">{{ formatTimestamp(mensaje.timestamp) }}</small>
-                            </div>
-                            <div class="message-content formatted-message" v-html="formatMessage(mensaje.contenido)"></div>
-                            <div v-if="mensaje.referencias?.length" class="references text-caption text-black-6 q-mt-sm">
-                              <strong>Referencias:</strong>
-                              <div v-for="(ref, idx) in mensaje.referencias" :key="idx" class="q-mt-xs">{{ ref }}</div>
-                            </div>
-                          </div>
-                        </div>
-                        <!-- User Message -->
-                        <div v-else class="user-message">
-                          <div class="message-bubble user-bubble">
-                            <div class="message-meta">
-                              <small class="timestamp">{{ formatTimestamp(mensaje.timestamp) }}</small>
-                            </div>
-                            <div class="message-content">{{ mensaje.contenido }}</div>
-                          </div>
-                          <div class="avatar user-avatar">
-                            <q-icon name="person" size="20px" />
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Typing indicator when loading -->
-                      <div v-if="store.loading" class="message-wrapper q-mb-lg typing-row">
-                        <div class="ai-message">
-                          <div class="avatar ai-avatar">
-                            <q-icon name="smart_toy" size="20px" />
-                          </div>
-                          <div class="message-bubble ai-bubble typing-bubble">
-                            <div class="typing-dots">
-                              <span></span><span></span><span></span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Quick suggestions -->
-                    <div class="quick-suggestions q-mt-sm">
-                      <span class="hint">Sugerencias rápidas:</span>
-                      <q-chip v-for="(s, i) in suggestions" :key="i" class="q-ml-sm" clickable @click="useSuggestion(s)">{{ s }}</q-chip>
-                    </div>
-          </q-card-section>
-
-          <!-- Input Area -->
-          <q-card-section class="input-section">
-            <q-form @submit.prevent="enviarConsulta" class="input-form">
-              <q-input
-                v-model="pregunta"
-                placeholder="Escribe tu consulta legal aquí..."
-                type="textarea"
-                autogrow
-                outlined
-                :disable="store.loading"
-                :max-height="120"
-                class="chat-input"
-                hide-bottom-space
-              >
-                <template v-slot:append>
-                  <q-btn
-                    round
-                    flat
-                    icon="send"
-                    type="submit"
-                    :loading="store.loading"
-                    color="primary"
-                    size="md"
-                    @click="enviarConsulta"
-                  />
-                </template>
-              </q-input>
-            </q-form>
-            <div v-if="store.error" class="error-message q-mt-md text-center">
-              <q-icon name="error" color="negative" class="q-mr-xs" />
-              <span class="text-negative text-body2">{{ store.error }}</span>
-            </div>
-          </q-card-section>
-        </q-card>
-      </div>
-      <div class="input-area">
-        <q-form @submit.prevent="enviarConsulta" class="input-form">
-          <q-input
-            v-model="pregunta"
-            placeholder="Escribe tu consulta legal aquí..."
-            type="textarea"
-            autogrow
-            outlined
-            :disable="store.loading"
-            class="input-textarea"
-            hide-bottom-space
-            no-error-icon
-          >
-            <template v-slot:append>
-              <q-btn round icon="send" color="primary" size="md" class="send-btn" @click="enviarConsulta" :loading="store.loading" />
-            </template>
-          </q-input>
-        </q-form>
+      <div>
+        <h1 class="page-title">Consultas Jurídicas</h1>
+        <p class="page-subtitle">Haz preguntas sobre leyes y contratos</p>
       </div>
     </div>
+
+    <!-- Chat wrapper -->
+    <div class="chat-wrapper">
+
+      <!-- Chat card -->
+      <div class="chat-card">
+
+        <!-- Chat header -->
+        <div class="chat-header">
+          <span class="chat-header-title">Chat de Consultas</span>
+          <button class="help-btn" @click="showHelp = true">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>
+            </svg>
+            Centro de ayuda
+          </button>
+        </div>
+
+        <!-- Messages area -->
+        <div class="messages-area" ref="messagesBox">
+          <div v-for="(mensaje, index) in mensajes" :key="index" class="message-wrapper">
+
+            <!-- AI message -->
+            <div v-if="mensaje.esIA" class="msg-row msg-row--ai">
+              <img :src="aiLogo" alt="LEXIT AI" class="msg-avatar" />
+              <div class="msg-bubble msg-bubble--ai">
+                <div class="msg-meta msg-meta--ai">LEXIT AI · {{ formatTimestamp(mensaje.timestamp) }}</div>
+                <div class="msg-content formatted-message" v-html="formatMessage(mensaje.contenido)"></div>
+                <div v-if="mensaje.referencias?.length" class="msg-refs">
+                  <strong>Referencias:</strong>
+                  <div v-for="(ref, idx) in mensaje.referencias" :key="idx" class="q-mt-xs">{{ ref }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- User message -->
+            <div v-else class="msg-row msg-row--user">
+              <div class="msg-bubble msg-bubble--user">
+                <div class="msg-meta msg-meta--user">{{ formatTimestamp(mensaje.timestamp) }}</div>
+                <div class="msg-content">{{ mensaje.contenido }}</div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Typing indicator -->
+          <div v-if="store.loading" class="msg-row msg-row--ai">
+            <img :src="aiLogo" alt="LEXIT AI" class="msg-avatar" />
+            <div class="msg-bubble msg-bubble--ai typing-bubble">
+              <div class="typing-dots">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Suggestions -->
+        <div class="suggestions-row">
+          <span class="suggestions-label">Sugerencias:</span>
+          <button
+            v-for="(s, i) in suggestions"
+            :key="i"
+            class="suggestion-chip"
+            @click="useSuggestion(s)"
+          >{{ s }}</button>
+        </div>
+
+        <!-- Input area -->
+        <div class="input-area">
+          <div class="input-wrap">
+            <q-input
+              v-model="pregunta"
+              placeholder="Escribe tu consulta legal aquí..."
+              type="textarea"
+              autogrow
+              borderless
+              :disable="store.loading"
+              :max-height="120"
+              class="chat-input"
+              hide-bottom-space
+              @keydown.enter.exact.prevent="enviarConsulta"
+            />
+            <button
+              class="send-btn"
+              :disabled="store.loading || !pregunta.trim()"
+              @click="enviarConsulta"
+            >
+              <svg v-if="!store.loading" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+              </svg>
+              <q-spinner v-else size="18px" color="white" />
+            </button>
+          </div>
+          <div v-if="store.error" class="error-row">
+            <q-icon name="error" color="negative" size="18px" />
+            <span class="error-text">{{ store.error }}</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
   </q-page>
 </template>
 
@@ -161,10 +127,11 @@ const store = useConsultasStore();
 const pregunta = ref('');
 const showHelp = ref(false);
 
+const aiLogo: string = new URL('../assets/logo.svg', import.meta.url).href;
+
 const { mensajes } = storeToRefs(store);
 const messagesBox = ref<HTMLElement | null>(null);
 
-// Quick suggestion chips
 const suggestions = [
   '¿Cuáles son mis obligaciones en este contrato?',
   '¿Qué cláusulas representan mayor riesgo?',
@@ -185,34 +152,36 @@ function formatTimestamp(ts: Date | string): string {
   }
 }
 
+function formatMessage(content: string): string {
+  return content
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+    .replace(/\n/g, '<br>');
+}
+
 async function enviarConsulta() {
-  console.log('Enviando consulta:', pregunta.value); // Debug log
   if (pregunta.value.trim()) {
     try {
       await store.enviarConsulta(pregunta.value);
       pregunta.value = '';
-
-      // Scroll al final
       await nextTick();
-      // scroll bottom
-      if (messagesBox.value) {
-        messagesBox.value.scrollTop = messagesBox.value.scrollHeight;
-      }
+      if (messagesBox.value) messagesBox.value.scrollTop = messagesBox.value.scrollHeight;
     } catch (error) {
       console.error('Error al enviar consulta:', error);
     }
   }
 }
 
-onMounted(async () => {
-  store.limpiar();
-  // ensure scroll to bottom on mount
+onMounted(() => {
+  store.iniciarSesion();
   void nextTick().then(() => {
     if (messagesBox.value) messagesBox.value.scrollTop = messagesBox.value.scrollHeight;
   });
 });
 
-// watch mensajes to auto scroll when new messages arrive
 import { watch } from 'vue';
 watch(mensajes, async () => {
   await nextTick();
@@ -222,494 +191,340 @@ watch(mensajes, async () => {
 
 <style scoped>
 .consultas-page {
-  min-height: 100vh;
-  position: relative;
-  overflow-x: hidden;
-  /* ensure the q-page default dark background doesn't show through */
-  background: transparent !important;
+  max-width: 860px;
+  margin: 0 auto;
+  animation: floatUp 0.5s ease-out both;
 }
 
-/* selection styling: highlighted text should show black letters */
-.consultas-page ::selection {
-  background: rgba(255, 235, 255, 0.6);
-  color: #000;
+@keyframes floatUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-.page-background {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, #6b5fe6 0%, #7b3fc1 100%);
-  z-index: -1;
+@keyframes blink {
+  0%   { opacity: 0.2; transform: translateY(0); }
+  50%  { opacity: 1;   transform: translateY(-3px); }
+  100% { opacity: 0.2; transform: translateY(0); }
 }
 
-.chat-header {
-  background: #ffffff !important;
-  border-bottom: 1px solid #e5e7eb;
-  padding: 1.5rem 0;
+/* ==============================
+   Section header
+   ============================== */
+.page-header {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  gap: 16px;
+  margin-bottom: 22px;
+  text-align: center;
 }
 
-.header-icon {
-  color: #1e40af !important;
-  margin-right: 0.75rem;
-}
-
-.chat-title {
-  font-size: 1.75rem !important;
-  font-weight: 700 !important;
-  color: #1e40af !important;
-  margin: 0;
-  letter-spacing: -0.025em;
-}
-
-.messages-area {
-  flex: 1;
-  padding: 1.5rem 0;
-  overflow-y: auto;
-}
-
-
-/* Action Buttons Card */
-  .actions-card {
-    border-radius: 12px;
-    box-shadow: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    /* transparente para integrar con el header; el botón controla el visual */
-    background: transparent;
-    border: none;
-    width: auto;
-    padding: 0.25rem 0.5rem;
-    display: block;
-    margin: 0 0 12px 0; /* space below the actions area */
-    text-align: left;
-    position: static;
-    z-index: 999;
-  }
-
-  .help-button { z-index: 1000; }
-
-  .actions-inner {
-    max-width: 800px; /* match chat-card max-width */
-    margin: 0 auto;
-    display: flex;
-    justify-content: flex-end; /* align the button to the right edge of the chat */
-    align-items: center;
-  }
-
-.message-row {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  align-items: flex-start;
-}
-
-.ai-row {
-  justify-content: flex-start;
-}
-
-.user-row {
-  justify-content: flex-end;
-}
-
-.avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+.section-icon-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-top: 0.25rem;
-  font-size: 1.25rem;
 }
 
+.icon-blue { background: rgba(79, 127, 214, 0.13); }
+
+.page-title {
+  font-family: 'EB Garamond', serif;
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0;
+  color: #16161a;
+}
+
+.page-subtitle {
+  margin: 2px 0 0;
+  color: #6a6a72;
+  font-size: 1rem;
+}
+
+/* ==============================
+   Chat card
+   ============================== */
+.chat-wrapper {
+  display: flex;
+  flex-direction: column;
+}
 
 .chat-card {
-  border-radius: 16px;
-  box-shadow: 0 14px 48px rgba(68, 36, 120, 0.08);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  background: rgba(247, 242, 255, 0.98);
-  border: 1px solid rgba(110, 60, 150, 0.12);
+  background: #fff;
+  border: 1px solid rgba(27, 27, 30, 0.08);
+  border-radius: 20px;
+  box-shadow: 0 4px 18px rgba(27, 27, 30, 0.06);
   overflow: hidden;
-  position: relative;
-  z-index: 1;
-  margin-top: 0.5rem; /* ensure space between button and chat card */
+  display: flex;
+  flex-direction: column;
+  height: 580px;
 }
 
+/* ==============================
+   Chat header
+   ============================== */
 .chat-header {
-  /* reforzar el contraste del header con un morado más intenso */
-  background: linear-gradient(135deg, #6b5fe6 0%, #7b3fc1 100%);
-  color: #fff;
-  padding: 1rem 1.5rem;
+  padding: 16px 22px;
+  border-bottom: 1px solid rgba(27, 27, 30, 0.07);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
 }
 
-.message-content-wrapper {
-  max-width: calc(100% - 3.5rem);
-  min-width: 250px;
+.chat-header-title {
+  font-family: 'EB Garamond', serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #16161a;
 }
 
-.message-card {
-  border-radius: 1rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  transition: box-shadow 0.2s ease;
-  max-width: 100%;
-}
-
-.message-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-}
-
-.ai-card {
-  background: transparent !important;
-  border: none !important;
-}
-
-
-.avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+.help-btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  background: rgba(255,255,255,0.9);
-  border: 1px solid rgba(0,0,0,0.06);
+  gap: 7px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #55555c;
+  background: #FAFAF7;
+  border: 1px solid rgba(27, 27, 30, 0.08);
+  padding: 7px 13px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: 'Figtree', sans-serif;
+  transition: background 0.2s;
 }
 
-.ai-avatar { margin-right: 12px; }
-.user-avatar { margin-left: 12px; }
+.help-btn:hover { background: rgba(27, 27, 30, 0.05); }
 
-.ai-message {
+/* ==============================
+   Messages area
+   ============================== */
+.messages-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(27,27,30,0.14) transparent;
+}
+
+.msg-row {
   display: flex;
   align-items: flex-start;
-  justify-content: flex-start;
-  margin-right: 18%;
-}
-.user-message {
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  margin-left: 18%;
+  gap: 11px;
 }
 
-.ai-card .message-content {
+.msg-row--ai  { max-width: 82%; margin-right: auto; }
+.msg-row--user { max-width: 78%; margin-left: auto; flex-direction: row-reverse; }
+
+.msg-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(27, 27, 30, 0.08);
+  padding: 3px;
+  background: #fff;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.msg-bubble {
+  padding: 13px 16px;
+  border-radius: 4px 16px 16px 16px;
+}
+
+.msg-bubble--ai {
+  background: #FAFAF7;
+  border: 1px solid rgba(27, 27, 30, 0.07);
+}
+
+.msg-bubble--user {
+  background: #4f7fd6;
+  border-radius: 16px 4px 16px 16px;
+}
+
+.msg-meta {
+  font-size: 0.72rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.msg-meta--ai   { color: #9a9aa2; }
+.msg-meta--user { color: rgba(255, 255, 255, 0.85); }
+
+.msg-content {
+  font-size: 0.95rem;
   line-height: 1.6;
-  font-size: 1rem;
-  color: #000000 !important;
+  color: #3a3a40;
+}
+
+.msg-bubble--user .msg-content { color: #fff; }
+
+.msg-refs {
+  font-size: 0.8rem;
+  color: #9a9aa2;
+  margin-top: 8px;
+}
+
+/* Formatted markdown */
+.formatted-message :deep(h1),
+.formatted-message :deep(h2),
+.formatted-message :deep(h3) {
+  font-family: 'EB Garamond', serif;
+  font-weight: 600;
+  margin: 8px 0 4px;
+  color: #16161a;
+}
+
+.formatted-message :deep(strong) { font-weight: 600; }
+.formatted-message :deep(em)     { font-style: italic; }
+
+/* Typing dots */
+.typing-bubble { padding: 13px 16px; }
+
+.typing-dots {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.typing-dots span {
+  width: 8px;
+  height: 8px;
+  background: #4f7fd6;
+  border-radius: 50%;
+  display: inline-block;
+  opacity: 0.6;
+  animation: blink 1s infinite;
+}
+
+.typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.30s; }
+
+/* ==============================
+   Suggestions
+   ============================== */
+.suggestions-row {
+  padding: 12px 22px 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.suggestions-label {
+  font-size: 0.82rem;
+  color: #9a9aa2;
   font-weight: 500;
-  min-height: 20px;
-  background: #ffffff !important;
-  padding: 1rem !important;
-  border-radius: 0.75rem !important;
-  margin: 0.5rem 0 !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  border: 2px solid #1e40af !important;
-  display: block !important;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
 }
 
-
-.ai-bubble {
-  background: rgba(250, 247, 255, 0.98);
-  color: #262626;
-  border: 1px solid rgba(150, 110, 210, 0.14);
-  box-shadow: 0 8px 18px rgba(100, 70, 170, 0.06);
+.suggestion-chip {
+  font-size: 0.82rem;
+  color: #3f6fc9;
+  background: rgba(79, 127, 214, 0.10);
+  border: 1px solid rgba(79, 127, 214, 0.24);
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: 'Figtree', sans-serif;
+  transition: background 0.2s, color 0.2s;
 }
 
-.message-meta {
-  display:flex;
-  align-items:center;
-  gap:8px;
-  margin-bottom:6px;
-}
-.sender{ font-weight:600; font-size:0.85rem; color:#555; }
-.timestamp{ color:#9aa0a6; font-size:0.72rem; }
-
-
-.user-bubble {
-  background: linear-gradient(135deg, #7b5ff8 0%, #6b3fd1 100%);
-  color: white;
-  box-shadow: 0 6px 18px rgba(95, 65, 170, 0.18);
+.suggestion-chip:hover {
+  background: #4f7fd6;
+  color: #fff;
 }
 
-.typing-bubble{ padding:10px 14px; }
-.typing-dots{ display:inline-flex; gap:6px; }
-.typing-dots span{ width:8px; height:8px; background:#b8c1ff; border-radius:50%; display:inline-block; opacity:0.6; animation: blink 1s infinite; }
-.typing-dots span:nth-child(2){ animation-delay: 0.15s; }
-.typing-dots span:nth-child(3){ animation-delay: 0.3s; }
-@keyframes blink{ 0%{ opacity:0.2; transform:translateY(0);} 50%{ opacity:1; transform:translateY(-3px);} 100%{ opacity:0.2; transform:translateY(0);} }
-
-.message-content {
-  line-height: 1.5;
-  font-size: 15px;
-}
-
-.message-content {
-  line-height: 1.6;
-  font-size: 1rem;
-  color: #0f172a !important;
-  font-weight: 400;
-  min-height: 20px;
-}
-
-.user-card .message-content {
-  color: #ffffff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.user-card .message-content a {
-  color: #bfdbfe;
-}
-
-.welcome-message {
-  text-align: center;
-  padding: 3rem 1rem;
-  color: #6b7280;
-  background: #ffffff;
-  border-radius: 1rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  max-width: 500px;
-  margin: 0 auto;
-}
-
-.welcome-message p {
-  font-size: 1.1rem;
-  margin: 0;
-}
-
+/* ==============================
+   Input area
+   ============================== */
 .input-area {
-  background: #ffffff;
-  border-top: 1px solid #e5e7eb;
-  padding: 1.5rem;
-  box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+  padding: 14px 22px 18px;
+  border-top: 1px solid rgba(27, 27, 30, 0.07);
+  flex-shrink: 0;
 }
 
-.quick-suggestions{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.quick-suggestions .hint{ color:#6b5f7f; font-size:0.9rem; font-weight:500; }
-.quick-suggestions q-chip{ background: rgba(123,80,200,0.12); border: 1px solid rgba(123,80,200,0.22); color: #2b104b; }
-
-
-.input-form {
-  max-width: 800px;
-  margin: 0 auto;
+.input-wrap {
   display: flex;
-  gap: 0.75rem;
   align-items: flex-end;
+  gap: 10px;
+  background: #FAFAF7;
+  border: 1px solid rgba(27, 27, 30, 0.12);
+  border-radius: 14px;
+  padding: 8px 8px 8px 15px;
 }
 
-:deep(.input-textarea .q-field__control) {
-  border-radius: 1rem !important;
-  background: #ffffff !important;
-  border: 2px solid #e5e7eb !important;
-  transition: all 0.2s ease !important;
+.chat-input {
+  flex: 1;
 }
 
-:deep(.input-textarea .q-field__control:focus) {
-  border-color: #1e40af !important;
-  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1) !important;
+:deep(.chat-input .q-field__control) {
+  background: transparent !important;
+  padding: 0 !important;
+  min-height: unset !important;
 }
 
-:deep(.input-textarea .q-field__native) {
-  color: #0f172a !important;
-  font-size: 1rem !important;
+:deep(.chat-input .q-field__native) {
+  color: #1b1b1e !important;
+  font-family: 'Figtree', sans-serif !important;
+  font-size: 0.98rem !important;
+  padding: 7px 0 !important;
+  line-height: 1.4 !important;
+  resize: none !important;
 }
 
-:deep(.input-textarea .q-field__label) {
-  color: #475569 !important;
+:deep(.chat-input .q-field__bottom) { display: none !important; }
+
+.send-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: #4f7fd6;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 3px 10px rgba(79, 127, 214, 0.40);
+  transition: transform 0.18s;
 }
 
-:deep(.send-btn) {
-  background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%) !important;
-  color: white !important;
-  width: 44px !important;
-  height: 44px !important;
-  border-radius: 50% !important;
-  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3) !important;
-  transition: all 0.2s ease !important;
-  margin-left: 8px !important;
+.send-btn:hover:not(:disabled) { transform: scale(1.05); }
+.send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.error-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  justify-content: center;
 }
 
-:deep(.send-btn:hover) {
-  transform: scale(1.05) !important;
-  box-shadow: 0 6px 16px rgba(30, 64, 175, 0.4) !important;
+.error-text {
+  font-size: 0.88rem;
+  color: var(--q-negative);
 }
 
-:deep(.send-btn .q-icon) {
-  font-size: 20px !important;
-}
-
-/* Dark mode */
-:deep(.q-dark) {
-  .actions-card,
+/* ==============================
+   Responsive
+   ============================== */
+@media (max-width: 600px) {
   .chat-card {
-    /* glass morado en modo oscuro para integrarse con el fondo púrpura */
-    background: linear-gradient(180deg, rgba(90,55,140,0.08), rgba(60,30,90,0.08));
-    border: 1px solid rgba(118, 75, 162, 0.18);
-    box-shadow: 0 10px 34px rgba(8,6,20,0.5);
+    height: 520px;
+    border-radius: 16px;
   }
 
-  .chat-header{ background: linear-gradient(135deg, rgba(96,71,230,0.9), rgba(111,77,184,0.9)); }
-
-  .ai-bubble {
-    background: rgba(48, 40, 60, 0.94);
-    color: #e9e7ff;
-    border-color: rgba(118,75,162,0.22);
-    box-shadow: 0 6px 18px rgba(32,20,70,0.45);
-  }
-
-  .chat-input {
-    background: rgba(28, 20, 40, 0.86);
-    border-color: rgba(118,75,162,0.18);
-  }
-
-  .references {
-    border-color: rgba(118,75,162,0.18);
-    color: #cfc6ee;
-  }
-
-  .input-section {
-    border-color: rgba(118,75,162,0.18);
-  }
-
-  :deep(.q-dark .ai-card .q-card) {
-    background: #1f2937 !important;
-    border: none !important;
-  }
-
-  :deep(.q-dark .ai-card .q-card-section) {
-    background: transparent !important;
-    padding: 0 !important;
-    color: #ffffff !important;
-  }
-
-  :deep(.q-dark .ai-card .message-content) {
-    color: #ffffff !important;
-    background: #374151 !important;
-  }
-
-  :deep(.q-dark .message-content *) {
-    color: #ffffff !important;
-  }
-
-  :deep(.ai-card) {
-    color: #ffffff !important;
-  }
-
-  .ai-card .message-content {
-    color: #f9fafb !important;
-    background: #374151 !important;
-    border: 1px solid #4b5563 !important;
-  }
-
-  .message-content {
-    color: #f8fafc !important;
-  }
-
-  .welcome-message {
-    background: #334155;
-    color: #cbd5e1;
-  }
-
-  .input-area {
-    background: #1e293b;
-    border-color: #475569;
-    box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.3);
-  }
-
-  :deep(.input-textarea .q-field__control) {
-    background: #475569 !important;
-    border-color: #64748b !important;
-    color: #f8fafc !important;
-  }
-
-  :deep(.input-textarea .q-field__control:focus) {
-    border-color: #60a5fa !important;
-    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2) !important;
-  }
-
-  :deep(.input-textarea .q-field__native) {
-    color: #f8fafc !important;
-  }
-
-  :deep(.send-btn) {
-    background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%) !important;
-  }
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .chat-container {
-    padding: 0 0.5rem;
-  }
-
-  .messages-wrapper {
-    padding: 0 0.5rem;
-  }
-
-  .message-row {
-    gap: 0.75rem;
-  }
-
-  .avatar {
-    width: 36px;
-    height: 36px;
-    font-size: 1rem;
-  }
-
-  .message-content-wrapper {
-    max-width: calc(100% - 3rem);
-  }
-
-  .q-card-section {
-    padding: 0.875rem 1rem !important;
-  }
-
-  .message-content {
-    font-size: 0.95rem;
-  }
-
-  .input-area {
-    padding: 1rem 0.5rem;
-  }
-
-  .input-form {
-    gap: 0.5rem;
-  }
-
-  :deep(.send-btn) {
-    width: 40px !important;
-    height: 40px !important;
-  }
-
-  .chat-title {
-    font-size: 1.5rem;
-  }
-
-  .welcome-message {
-    padding: 2rem 0.5rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .message-row {
-    gap: 0.5rem;
-  }
-
-  .message-content-wrapper {
-    max-width: calc(100% - 2.5rem);
-  }
-
-  .chat-header {
-    padding: 1rem 0;
-  }
+  .msg-row--ai  { max-width: 92%; }
+  .msg-row--user { max-width: 88%; }
 }
 </style>

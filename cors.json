@@ -1,0 +1,13 @@
+[
+  {
+    "origin": [
+      "https://j03-m4nt.github.io",
+      "http://localhost:9000",
+      "http://localhost:9001",
+      "http://localhost:8080"
+    ],
+    "method": ["GET", "HEAD"],
+    "responseHeader": ["Content-Type", "Content-Length"],
+    "maxAgeSeconds": 3600
+  }
+]

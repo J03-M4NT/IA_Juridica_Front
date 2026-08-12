@@ -14,7 +14,9 @@ export default defineConfig((/* ctx */) => {
     boot: [
       'axios',
       'dark',
-      'firebase'
+      'firebase',
+      'auth-sync',
+      'notify'
     ],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
@@ -57,7 +59,7 @@ export default defineConfig((/* ctx */) => {
 
       // rebuildCache: true, // rebuilds Vite/linter/etc cache on startup
 
-      // publicPath: '/',
+      publicPath: '/IA_Juridica_Front/',
       // analyze: true,
       // env: {},
       // rawDefine: {}
@@ -121,7 +123,7 @@ export default defineConfig((/* ctx */) => {
       // directives: [],
 
       // Quasar plugins
-      plugins: []
+      plugins: ['Notify']
     },
 
     // animations: 'all', // --- includes all animations
