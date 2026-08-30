@@ -83,9 +83,9 @@ export async function corregirContrato(
 // ================================
 // 3. CHAT JURÍDICO
 // ================================
-export function iniciarChatJuridico(): ChatSession {
+export function iniciarChatJuridico(pastHistory: any[] = []): ChatSession {
   const chat = model.startChat({
-    history: [],
+    history: pastHistory,
     generationConfig: {
       maxOutputTokens: 2000,
     },
