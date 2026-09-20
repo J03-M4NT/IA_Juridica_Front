@@ -1,12 +1,8 @@
 import { db, storage } from '../firebase/firebaseConfig';
 import {
-    doc,
-    getDoc,
-    setDoc,
-    updateDoc,
-    serverTimestamp,
-    Timestamp
-} from 'firebase/firestore';
+  doc, getDoc, setDoc, updateDoc, serverTimestamp
+} from 'firebase/firestore'
+import type { Timestamp } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { UserProfile, UpdateProfileData, ProfileResponse } from '../types/user';
 
@@ -40,9 +36,9 @@ export async function createUserProfile(
             success: true,
             message: 'Perfil creado exitosamente'
         };
-    } catch (error: any) {
-        console.error('❌ createUserProfile - Error:', error);
-        console.error('Código:', error?.code, 'Mensaje:', error?.message);
+    } catch (err) {
+  const error = err as { code?: string; message?: string }
+  console.error('Código:', error?.code, 'Mensaje:', error?.message)
         return {
             success: false,
             message: error?.code === 'permission-denied'
@@ -104,9 +100,9 @@ export async function updateUserProfile(
             success: true,
             message: 'Perfil actualizado exitosamente'
         };
-    } catch (error: any) {
-        console.error('❌ updateUserProfile - Error:', error);
-        console.error('Código:', error?.code, 'Mensaje:', error?.message);
+    } catch (err) {
+  const error = err as { code?: string; message?: string }
+  console.error('Código:', error?.code, 'Mensaje:', error?.message)
         return {
             success: false,
             message: error?.code === 'permission-denied'
@@ -163,9 +159,9 @@ export async function updateUserPhotoFromFile(
             success: result.success,
             message: result.success ? 'Foto actualizada exitosamente' : (result.message || 'Error al actualizar foto')
         };
-    } catch (error: any) {
-        console.error('❌ updateUserPhotoFromFile - Error:', error);
-        console.error('Código:', error?.code, 'Mensaje:', error?.message);
+    } catch (err) {
+  const error = err as { code?: string; message?: string }
+  console.error('Código:', error?.code, 'Mensaje:', error?.message)
         return {
             success: false,
             message: error?.code === 'storage/unauthorized'

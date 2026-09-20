@@ -1,59 +1,90 @@
 // app global css in SCSS form
 
-// Variables de paleta Minimal Legal Moderno
+// ==========================================================================
+// LEXIT AI — Design System
+// Estética profesional inspirada en plataformas legales premium (Harvey AI):
+// fondo crema cálido, tinta casi negra, un único acento terracota, tipografía
+// serif para títulos + sans para UI, bordes finos en vez de sombras pesadas.
+// ==========================================================================
 :root {
-  --primary-color: #007BFF;
-  --secondary-color: #4B4B4B;
-  --background-color: #F5F7FA;
-  --card-background: #FFFFFF;
-  --text-color: #212529;
-  --border-color: #E0E0E0;
-  --hover-color: #0056b3;
-  --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.1);
-  --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.15);
-  --shadow-heavy: 0 8px 32px rgba(0, 0, 0, 0.1);
-  --border-radius: 16px;
+  // Superficie
+  --bg: #FAFAF7;
+  --surface: #FFFFFF;
+  --surface-alt: #F3F1EC;
+  --surface-sunken: #EFEDE6;
+
+  // Tinta / texto
+  --ink: #1B1B1E;
+  --ink-soft: #3A3A40;
+  --text-secondary: #6A6A72;
+  --text-muted: #9B9BA1;
+
+  // Acento único de marca
+  --accent: #B5502E;
+  --accent-hover: #9C4326;
+  --accent-soft: rgba(181, 80, 46, 0.10);
+  --accent-soft-strong: rgba(181, 80, 46, 0.16);
+
+  // Bordes
+  --border-color: rgba(27, 27, 30, 0.10);
+  --border-color-strong: rgba(27, 27, 30, 0.16);
+
+  // Sombra (uso deliberadamente sutil)
+  --shadow-light: 0 1px 2px rgba(20, 18, 14, 0.04);
+  --shadow-medium: 0 6px 20px rgba(20, 18, 14, 0.08);
+  --shadow-heavy: 0 12px 32px rgba(20, 18, 14, 0.10);
+
+  // Radios — mesurados, no "pill"
+  --border-radius: 12px;
   --border-radius-small: 8px;
+
+  // Retrocompatibilidad con nombres previos usados en algunos componentes
+  --primary-color: var(--ink);
+  --secondary-color: var(--text-secondary);
+  --background-color: var(--bg);
+  --card-background: var(--surface);
+  --hover-color: var(--accent-hover);
 }
 
-// Fuente global Poppins/Inter
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Figtree:wght@400;500;600;700&display=swap');
+
+// Tipografía global: Figtree (UI/cuerpo), EB Garamond reservado para titulares
 body {
-  font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.6;
-  background-color: var(--background-color);
-  color: var(--text-color);
+  background-color: var(--bg);
+  color: var(--ink);
+}
+
+h1, h2, h3 {
+  font-family: 'EB Garamond', serif;
 }
 
 // Animacion para la barra izquierda
 .q-drawer {
-  transition: transform 0.4s cubic-bezier(.25,.8,.25,1);
+  transition: transform 0.3s cubic-bezier(.25,.8,.25,1);
 }
 
-// Estilos minimalistas globales
+// Estilos base minimalistas — bordes finos, sombra casi ausente
 .q-card {
   border-radius: var(--border-radius) !important;
   box-shadow: var(--shadow-light) !important;
-  background-color: var(--card-background) !important;
+  background-color: var(--surface) !important;
   border: 1px solid var(--border-color) !important;
-  transition: all 0.3s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .q-card:hover {
-  box-shadow: var(--shadow-medium) !important;
-  transform: translateY(-2px);
+  border-color: var(--border-color-strong) !important;
 }
 
 .q-btn {
   border-radius: var(--border-radius-small) !important;
-  box-shadow: var(--shadow-light) !important;
-  transition: all 0.3s ease;
+  box-shadow: none !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
   font-weight: 500;
   font-family: inherit;
-}
-
-.q-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-medium) !important;
+  letter-spacing: 0;
 }
 
 .q-btn.unelevated {
@@ -73,7 +104,7 @@ body {
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -82,22 +113,22 @@ body {
 }
 
 .fade-in {
-  animation: fadeIn 0.5s ease-out;
+  animation: fadeIn 0.4s ease-out;
 }
 
-// Gradientes para encabezados
+// Encabezados — degradado retirado en favor de superficie plana crema
 .header-gradient {
-  background: linear-gradient(120deg, #E3F2FD, #FFFFFF);
+  background: var(--surface-alt);
 }
 
-// Botones primarios
+// Botones primarios — tinta sólida, estilo "Request access" de Harvey
 .btn-primary {
-  background: var(--primary-color) !important;
-  color: white !important;
+  background: var(--ink) !important;
+  color: var(--surface) !important;
 }
 
 .btn-primary:hover {
-  background: var(--hover-color) !important;
+  background: var(--ink-soft) !important;
 }
 
 .formatted-message {
@@ -143,6 +174,6 @@ body {
 }
 
 .bg-light {
-  background-color: #f7f7f8 !important;
-  color: #000000 !important;
+  background-color: var(--bg) !important;
+  color: var(--ink) !important;
 }

@@ -36,3 +36,10 @@ yarn-error.log*
 # firebase cache
 .firebase/
 .firebaserc
+
+# .docx de prueba generados al verificar la fidelidad de exportToWord
+/.scratch-fidelidad-docx/
+/.scratch-flujo-completo-docx/
+/.scratch-5docs/
+/.scratch-poc-docx/
+/.scratch-poc-reales/

@@ -15,11 +15,6 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
     children: [
       {
-        path: 'analizador',
-        component: () => import('pages/AnalyzerPage.vue'),
-        meta: { requiresAuth: true },
-      },
-      {
         path: 'consultas',
         component: () => import('pages/ConsultasPage.vue'),
         meta: { requiresAuth: true },

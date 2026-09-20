@@ -17,9 +17,14 @@ export interface ContractTemplate {
   name: string
   type: string
   description?: string
-  storage_path: string
+  storage_path?: string
   content?: string
-  variables?: Record<string, string>[]
+  variables?: Array<{
+    key: string
+    label: string
+    type: string
+    required: boolean
+  }>
 }
 
 interface ModifiedContract {

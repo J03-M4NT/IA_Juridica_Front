@@ -20,6 +20,22 @@ service cloud.firestore {
       allow write: if false; // Solo se escriben desde la consola de Firebase
     }
 
+    // Regla para las normas del día (escritas por la Cloud Function de
+    // scraping vía Admin SDK, que no pasa por estas reglas)
+    match /normas_diarias/{fecha} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Regla para las plantillas de contrato
+    // Cualquier usuario autenticado puede leerlas; solo un admin puede
+    // subir/eliminar plantillas (coincide con userProfile.isAdmin, que
+    // usa el mismo campo "role" del documento de usuario)
+    match /contract_templates/{templateId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
 
   }
 }
