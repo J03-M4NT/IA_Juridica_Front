@@ -1,5 +1,3 @@
-// gemini-2.5-flash-lite: faster and cheaper, for high-volume or latency-sensitive tasks
-export const GEMINI_MODEL_FAST = 'gemini-2.5-flash-lite'
-
-// gemini-2.5-flash: more capable, for complex legal analysis and contract generation
-export const GEMINI_MODEL_STANDARD = 'gemini-2.5-flash'
+// ✅ Usa gemini-2.5-flash que SÍ aparece en tu lista sin restricciones
+export const GEMINI_MODEL_FAST = 'gemini-3.1-flash-lite'
+export const GEMINI_MODEL_STANDARD = 'gemini-3.1-flash-lite'

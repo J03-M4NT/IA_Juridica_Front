@@ -147,7 +147,7 @@ const scrollTriggers: ScrollTrigger[] = []
 
 onMounted(() => {
   if (isAuthenticated.value) {
-    void router.replace('/app/analizador')
+    void router.replace('/app/consultas')
     return
   }
 

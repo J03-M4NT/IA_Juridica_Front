@@ -1,6 +1,6 @@
 /**
  * Script de debugging para diagnosticar problemas de Firebase
- * 
+ *
  * INSTRUCCIONES:
  * 1. Abre la consola del navegador (F12)
  * 2. Copia y pega este código completo
@@ -10,7 +10,7 @@
 import { db, storage } from '../firebase/firebaseConfig';
 import { auth } from '../boot/firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+
 
 export async function debugFirebase() {
     console.log('🔍 === INICIANDO DIAGNÓSTICO DE FIREBASE ===');
@@ -72,10 +72,10 @@ export async function debugFirebase() {
             console.warn('⚠️ No se encontró el documento después de escribir');
         }
 
-    } catch (error: any) {
-        console.error('❌ ERROR EN FIRESTORE:', error);
-        console.error('Código de error:', error.code);
-        console.error('Mensaje:', error.message);
+    } catch (err) {
+  const error = err as { code?: string; message?: string }
+  console.error('Código de error:', error.code)
+  console.error('Mensaje:', error.message)
 
         if (error.code === 'permission-denied') {
             console.log('');

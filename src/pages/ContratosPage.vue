@@ -4,7 +4,7 @@
     <!-- Section header -->
     <div class="page-header">
       <div class="section-icon-wrap icon-purple">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7c47e0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#B5502E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 7h18"/><path d="M3 7l2-3h14l2 3"/><path d="M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/><path d="M9 12h6"/>
         </svg>
       </div>
@@ -20,7 +20,7 @@
         <div class="lx-card">
           <div class="lx-card-header">
             <div class="lx-card-header-title">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c47e0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B5502E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                 <path d="M14 2v6h6"/>
               </svg>
@@ -73,14 +73,14 @@
         <div class="lx-card" v-if="!modoEdicion">
           <div class="lx-card-header">
             <div class="lx-card-header-title">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c47e0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B5502E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>
               </svg>
               Vista Previa del Contrato
             </div>
             <q-btn
               v-if="pdfDoc"
-              color="deep-orange"
+              color="accent"
               icon="edit"
               label="Editar Contrato"
               @click="abrirEditor"
@@ -101,7 +101,7 @@
             </div>
 
             <div v-else-if="loadingPdf" class="pdf-loading row items-center justify-center">
-              <q-spinner-dots color="orange" size="50px" />
+              <q-spinner-dots color="primary" size="50px" />
               <p class="q-ml-md text-grey-7">Cargando PDF...</p>
             </div>
 
@@ -109,17 +109,17 @@
               <div class="text-center">
                 <q-icon name="error_outline" size="48px" color="negative" />
                 <p class="text-negative q-mt-md">{{ pdfError }}</p>
-                <q-btn color="orange" label="Reintentar" @click="loadPDFPreview" class="q-mt-md" />
+                <q-btn color="primary" label="Reintentar" @click="loadPDFPreview" class="q-mt-md" />
               </div>
             </div>
 
             <div v-else-if="pdfDoc" class="pdf-canvas-container">
               <canvas ref="pdfCanvas" class="pdf-canvas" />
               <div class="row items-center q-mt-md q-gutter-sm">
-                <q-btn round color="orange" icon="chevron_left"
+                <q-btn round color="primary" icon="chevron_left"
                   :disable="currentPage <= 1 || isRendering" @click="prevPage" />
                 <span class="text-body1 text-dark">Página {{ currentPage }} de {{ numPages }}</span>
-                <q-btn round color="orange" icon="chevron_right"
+                <q-btn round color="primary" icon="chevron_right"
                   :disable="currentPage >= numPages || isRendering" @click="nextPage" />
               </div>
             </div>
@@ -130,7 +130,7 @@
         <div class="lx-card" v-if="modoEdicion">
           <div class="lx-card-header">
             <div class="lx-card-header-title">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c47e0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B5502E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                 <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/>
               </svg>
@@ -142,7 +142,7 @@
           <div style="height:1px;background:rgba(27,27,30,0.07)"></div>
 
           <!-- Tabs: Manual / IA -->
-          <q-tabs v-model="tabEdicion" color="orange" active-color="orange" class="q-px-md q-pt-sm text-dark" align="left">
+          <q-tabs v-model="tabEdicion" color="primary" active-color="accent" class="q-px-md q-pt-sm text-dark" align="left">
             <q-tab name="manual" icon="edit" label="Editar Manualmente" />
             <q-tab name="ia" icon="auto_awesome" label="Modificar con IA" />
           </q-tabs>
@@ -158,7 +158,7 @@
             <div v-if="tabEdicion === 'ia'">
               <div class="ia-panel q-mb-md">
                 <p class="text-grey-7 q-mb-sm text-weight-medium">
-                  <q-icon name="auto_awesome" color="orange" class="q-mr-xs" />
+                  <q-icon name="auto_awesome" color="accent" class="q-mr-xs" />
                   Dile a Letsy AI qué cambios quieres:
                 </p>
 
@@ -172,7 +172,7 @@
                 />
 
                 <q-btn
-                  color="orange"
+                  color="accent"
                   icon="auto_awesome"
                   label="Modificar con Letsy AI"
                   @click="modificarConIA"
@@ -182,7 +182,7 @@
                 />
 
                 <div v-if="cargandoIA" class="row items-center justify-center q-mt-md">
-                  <q-spinner-dots color="orange" size="40px" />
+                  <q-spinner-dots color="primary" size="40px" />
                   <span class="q-ml-md text-grey-7">Letsy AI está modificando el contrato...</span>
                 </div>
               </div>
@@ -207,7 +207,7 @@
           <div class="lx-card-body row q-gutter-sm items-center">
             <div class="text-grey-7 text-caption">Descargar como:</div>
             <q-btn
-              color="blue-8"
+              color="primary"
               icon="description"
               label="Word (.docx)"
               @click="descargarWord"
@@ -215,7 +215,7 @@
               unelevated
             />
             <q-btn
-              color="red-8"
+              color="primary"
               icon="picture_as_pdf"
               label="PDF"
               @click="descargarPDF"
@@ -229,7 +229,7 @@
         <div class="lx-card lx-card--mt">
           <div class="lx-card-header">
             <div class="lx-card-header-title">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c47e0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B5502E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
               </svg>
               Contratos Generados
@@ -253,7 +253,7 @@
                   <q-item-label caption class="text-grey-8">{{ new Date(contrato.createdAt).toLocaleString('es-PE') }}</q-item-label>
                 </q-item-section>
                 <q-item-section side>
-                  <q-btn flat round dense icon="download" color="orange"
+                  <q-btn flat round dense icon="download" color="grey-7"
                     @click.stop="downloadFirebaseContrato" :loading="fbDownloading" />
                 </q-item-section>
               </q-item>
@@ -268,7 +268,7 @@
             <div v-if="store.selectedContrato" class="q-mt-md">
               <q-separator class="q-mb-md" />
               <div v-if="fbLoadingPdf" class="pdf-loading row items-center justify-center">
-                <q-spinner-dots color="orange" size="50px" />
+                <q-spinner-dots color="primary" size="50px" />
                 <p class="q-ml-md text-grey-7">Cargando contrato...</p>
               </div>
               <div v-else-if="fbPdfError" class="pdf-error row items-center justify-center">
@@ -280,10 +280,10 @@
               <div v-else-if="fbPdfDoc" class="pdf-canvas-container">
                 <canvas ref="fbPdfCanvas" class="pdf-canvas" />
                 <div class="row items-center q-mt-md q-gutter-sm">
-                  <q-btn round color="orange" icon="chevron_left"
+                  <q-btn round color="primary" icon="chevron_left"
                     :disable="fbCurrentPage <= 1 || fbIsRendering" @click="fbPrevPage" />
                   <span class="text-body1 text-dark">Página {{ fbCurrentPage }} de {{ fbNumPages }}</span>
-                  <q-btn round color="orange" icon="chevron_right"
+                  <q-btn round color="primary" icon="chevron_right"
                     :disable="fbCurrentPage >= fbNumPages || fbIsRendering" @click="fbNextPage" />
                 </div>
               </div>
@@ -724,14 +724,14 @@ watch(currentTemplate, async (newTemplate) => {
 .section-icon-wrap {
   width: 52px;
   height: 52px;
-  border-radius: 15px;
+  border-radius: var(--border-radius);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-.icon-purple { background: rgba(139, 92, 246, 0.13); }
+.icon-purple { background: var(--accent-soft); }
 
 .page-title {
   font-family: 'EB Garamond', serif;
@@ -751,10 +751,10 @@ watch(currentTemplate, async (newTemplate) => {
    Card system
    ============================== */
 .lx-card {
-  background: #fff;
-  border: 1px solid rgba(27, 27, 30, 0.08);
-  border-radius: 18px;
-  box-shadow: 0 1px 3px rgba(27, 27, 30, 0.04);
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-light);
   overflow: hidden;
 }
 
@@ -797,9 +797,9 @@ watch(currentTemplate, async (newTemplate) => {
 .template-icon-wrap {
   width: 38px;
   height: 38px;
-  border-radius: 10px;
-  background: rgba(255, 155, 106, 0.15);
-  color: #d97a3e;
+  border-radius: var(--border-radius-small);
+  background: var(--accent-soft);
+  color: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -811,15 +811,15 @@ watch(currentTemplate, async (newTemplate) => {
   margin: 2px 6px;
 }
 
-.template-item:hover { background: rgba(139, 92, 246, 0.05); }
+.template-item:hover { background: rgba(27, 27, 30, 0.04); }
 
 .template-item.q-item--active {
-  background: rgba(139, 92, 246, 0.10);
+  background: var(--accent-soft);
 }
 
 .template-item.q-item--active .template-icon-wrap {
-  background: rgba(139, 92, 246, 0.15);
-  color: #7c47e0;
+  background: var(--accent-soft-strong);
+  color: var(--accent);
 }
 
 /* ==============================
@@ -832,9 +832,9 @@ watch(currentTemplate, async (newTemplate) => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, #f4f4f0, #fafaf7);
-  border: 1px solid rgba(27, 27, 30, 0.08);
-  border-radius: 12px;
+  background: linear-gradient(180deg, var(--surface-alt), var(--bg));
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
   padding: 2rem 1rem;
   min-height: 500px;
 }
@@ -842,32 +842,32 @@ watch(currentTemplate, async (newTemplate) => {
 .pdf-canvas {
   max-width: 100%;
   max-height: 600px;
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(27, 27, 30, 0.12);
+  border-radius: var(--border-radius-small);
+  box-shadow: var(--shadow-medium);
   background: white !important;
 }
 
 canvas {
   max-width: 100%;
-  border-radius: 8px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  border-radius: var(--border-radius-small);
+  box-shadow: var(--shadow-light);
   background: white !important;
 }
 
 .pdf-loading, .pdf-error {
   min-height: 400px;
-  background: #fafaf7;
-  border-radius: 8px;
-  border: 1px solid rgba(27, 27, 30, 0.08);
+  background: var(--bg);
+  border-radius: var(--border-radius-small);
+  border: 1px solid var(--border-color);
 }
 
 /* ==============================
    IA panel
    ============================== */
 .ia-panel {
-  background: rgba(255, 152, 0, 0.04);
-  border: 1px solid rgba(255, 152, 0, 0.18);
-  border-radius: 14px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-soft-strong);
+  border-radius: var(--border-radius);
   padding: 1.5rem;
 }
 

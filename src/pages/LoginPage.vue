@@ -159,7 +159,7 @@ const getErrorMessage = (errorCode: string): string => {
 .login-page {
   min-height: 100vh;
   position: relative;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--bg);
 }
 
 .background-gradient {
@@ -168,7 +168,7 @@ const getErrorMessage = (errorCode: string): string => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--bg);
   z-index: -1;
 }
 
@@ -177,10 +177,8 @@ const getErrorMessage = (errorCode: string): string => {
   max-width: 400px;
   border-radius: var(--border-radius);
   background: var(--card-background);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-medium);
+  box-shadow: var(--shadow-light);
 }
 
 .logo-section {
@@ -198,8 +196,9 @@ const getErrorMessage = (errorCode: string): string => {
 .brand-title {
   color: var(--primary-color);
   margin: 0;
-  letter-spacing: 1px;
+  letter-spacing: -0.01em;
   font-weight: 600;
+  font-family: 'EB Garamond', serif;
 }
 
 .brand-subtitle {
@@ -217,14 +216,13 @@ const getErrorMessage = (errorCode: string): string => {
 
 .btn-primary {
   background: var(--primary-color) !important;
-  color: white !important;
+  color: var(--surface) !important;
   border-radius: var(--border-radius-small) !important;
 }
 
 .btn-primary:hover {
-  background: var(--hover-color) !important;
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-medium) !important;
+  background: var(--ink-soft) !important;
+  box-shadow: var(--shadow-light) !important;
 }
 
 .divider-section {
@@ -244,13 +242,13 @@ const getErrorMessage = (errorCode: string): string => {
 .google-btn {
   border: 1px solid var(--border-color);
   background: var(--card-background) !important;
-  color: var(--text-color) !important;
+  color: var(--ink) !important;
   font-weight: 500;
   border-radius: var(--border-radius-small) !important;
 }
 
 .google-btn:hover {
-  background: var(--background-color) !important;
+  background: var(--surface-alt) !important;
   box-shadow: var(--shadow-light) !important;
 }
 

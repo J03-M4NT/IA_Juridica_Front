@@ -26,9 +26,9 @@
             <div class="row items-center no-wrap">
               <!-- Avatar con foto real del usuario -->
               <q-avatar size="32px" color="primary" text-color="white">
-                <img 
-                  v-if="profileStore.photoURL" 
-                  :src="profileStore.photoURL" 
+                <img
+                  v-if="profileStore.photoURL"
+                  :src="profileStore.photoURL"
                   alt="Foto de perfil"
                   style="width: 100%; height: 100%; object-fit: cover;"
                 />
@@ -193,7 +193,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 const profileStore = useUserProfileStore();
 
-const { isAuthenticated, userName } = storeToRefs(authStore);
+const { isAuthenticated } = storeToRefs(authStore)
 
 // Control de diálogos
 const showLoginDialog = ref(false);
@@ -228,7 +228,7 @@ const handleLogin = async () => {
       color: 'positive'
     });
     // Redirigir al analizador después del login exitoso
-    await router.replace('/app/analizador');
+    await router.replace('/app/consultas');
   } catch (error) {
     let errorMessage = 'Error al iniciar sesión';
 
@@ -270,7 +270,7 @@ const handleRegister = async () => {
       color: 'positive'
     });
     // Redirigir al analizador después del registro exitoso
-    await router.replace('/app/analizador');
+    await router.replace('/app/consultas');
   } catch (error) {
     let errorMessage = 'Error al registrarse';
 
@@ -341,12 +341,12 @@ const handleLogout = async () => {
   font-weight: 500;
   font-size: 0.95rem;
   padding: 8px 20px;
-  border-radius: 10px;
+  border-radius: var(--border-radius-small);
   transition: all 0.2s ease;
 }
 
 .login-btn {
-  color: #3a3a40 !important;
+  color: var(--ink-soft) !important;
   background: transparent !important;
 }
 
@@ -355,15 +355,15 @@ const handleLogout = async () => {
 }
 
 .register-btn {
-  background: #1b1b1e !important;
+  background: var(--ink) !important;
   color: #fff !important;
   font-weight: 600;
-  box-shadow: 0 2px 10px rgba(27, 27, 30, 0.18);
+  box-shadow: var(--shadow-light);
 }
 
 .register-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(27, 27, 30, 0.24) !important;
+  background: var(--ink-soft) !important;
+  box-shadow: var(--shadow-medium) !important;
 }
 
 .user-profile-btn {
@@ -387,8 +387,8 @@ const handleLogout = async () => {
   width: 420px;
   max-width: 95vw;
   background: #fff;
-  border-radius: 22px;
-  box-shadow: 0 30px 80px rgba(22, 22, 26, 0.30);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-heavy);
   overflow: hidden;
   animation: floatUp 0.25s ease-out both;
   font-family: 'Figtree', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -422,7 +422,7 @@ const handleLogout = async () => {
 .dialog-close {
   width: 34px;
   height: 34px;
-  border-radius: 10px;
+  border-radius: var(--border-radius-small);
   border: none;
   background: rgba(27, 27, 30, 0.05);
   color: #55555c;
@@ -458,7 +458,7 @@ const handleLogout = async () => {
   color: #1b1b1e;
   background: #FAFAF7;
   border: 1px solid rgba(27, 27, 30, 0.14);
-  border-radius: 12px;
+  border-radius: var(--border-radius);
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
   margin-bottom: 16px;
@@ -466,8 +466,8 @@ const handleLogout = async () => {
 }
 
 .custom-input:focus {
-  border-color: #8b5cf6;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .password-wrap {
@@ -510,17 +510,17 @@ const handleLogout = async () => {
   font-size: 1rem;
   font-weight: 600;
   color: #fff;
-  background: #1b1b1e;
+  background: var(--ink);
   border: none;
-  border-radius: 12px;
+  border-radius: var(--border-radius);
   cursor: pointer;
-  transition: transform 0.18s, box-shadow 0.18s;
-  box-shadow: 0 4px 14px rgba(27, 27, 30, 0.20);
+  transition: background 0.18s, box-shadow 0.18s;
+  box-shadow: var(--shadow-light);
 }
 
 .submit-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 22px rgba(27, 27, 30, 0.28);
+  background: var(--ink-soft);
+  box-shadow: var(--shadow-medium);
 }
 
 .switch-text {
@@ -532,13 +532,13 @@ const handleLogout = async () => {
 
 .switch-link {
   font-weight: 600;
-  color: #8b5cf6;
+  color: var(--accent);
   cursor: pointer;
   text-decoration: none;
 }
 
 .switch-link:hover {
-  color: #6d3fd4;
+  color: var(--accent-hover);
 }
 
 :deep(.q-btn) {

@@ -22,8 +22,10 @@ npm install @supabase/supabase-js
 # HTML para exportacion
 npm install html2pdf.js
 npm install html-to-docx
-
+# Instalar SDK pinecone
+npm install @pinecone-database/pinecone
 ```
+
 
 ### Start the app in development mode (hot-code reloading, error reporting, etc.)
 ```bash

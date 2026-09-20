@@ -1,161 +1,79 @@
-import type { ChatSession} from '@google/generative-ai';
-import { GoogleGenerativeAI } from '@google/generative-ai'
-import { GEMINI_MODEL_STANDARD } from '../constants/gemini'
-
-const genAI = new GoogleGenerativeAI(
-  import.meta.env.VITE_GEMINI_API_KEY
-)
-
-// ================================
-// MODELO
-// ================================
-const model = genAI.getGenerativeModel({
-  model: GEMINI_MODEL_STANDARD
-})
-// ================================
-// 1. ANÁLISIS DE CONTRATOS
-// ================================
-export async function analizarContrato(textoContrato: string) {
-  const prompt = `
-    Eres un abogado experto en derecho peruano.
-    Analiza este contrato y responde SOLO en JSON con esta estructura:
-    {
-      "resumen": "resumen ejecutivo breve",
-      "puntuacion": 75,
-      "riesgos": [
-        {
-          "clausula": "Cláusula X",
-          "descripcion": "descripción del riesgo",
-          "nivel": "alto",
-          "sugerencia": "cómo mejorarla"
-        }
-      ],
-      "mejoras": [
-        {
-          "titulo": "título",
-          "descripcion": "qué agregar o cambiar"
-        }
-      ],
-      "partes": {
-        "parte1": "nombre",
-        "parte2": "nombre"
-      },
-      "fechas_importantes": ["fecha1", "fecha2"],
-      "obligaciones": {
-        "parte1": ["obligacion1", "obligacion2"],
-        "parte2": ["obligacion1", "obligacion2"]
-      }
-    }
-
-    CONTRATO:
-    ${textoContrato}
-  `
-
-  const result = await model.generateContent(prompt)
-  const text = result.response.text()
-  const clean = text.replace(/```json|```/g, '').trim()
-  return JSON.parse(clean)
-}
-
-// ================================
-// 2. CORREGIR RIESGOS CON IA
-// ================================
-export async function corregirContrato(
-  textoContrato: string,
-  riesgos: string[]
-) {
-  const prompt = `
-    Eres un abogado experto en derecho peruano.
-    El siguiente contrato tiene estos riesgos detectados:
-    ${riesgos.join('\n')}
-
-    Reescribe el contrato corrigiendo todos los riesgos.
-    Devuelve SOLO el contrato corregido, sin explicaciones.
-
-    CONTRATO ORIGINAL:
-    ${textoContrato}
-  `
-
-  const result = await model.generateContent(prompt)
-  return result.response.text()
-}
-
-// ================================
-// 3. CHAT JURÍDICO
-// ================================
-export function iniciarChatJuridico(pastHistory: any[] = []): ChatSession {
-  const chat = model.startChat({
-    history: pastHistory,
-    generationConfig: {
-      maxOutputTokens: 2000,
-    },
-    systemInstruction: {
-      role: 'user',
-      parts: [{
-        text: [
-          'Eres Letsy, una IA jurídica especializada en derecho peruano.',
-          '- Respondes consultas legales de manera clara y precisa.',
-          '- Citas artículos y normas legales peruanas cuando es relevante.',
-          '- Si no sabes algo, lo dices honestamente.',
-          '- Usas lenguaje accesible, no solo jerga legal.',
-          '- Siempre recomiendas consultar un abogado para casos complejos.',
-          '- Respondes en formato markdown cuando sea útil (listas, negritas).',
-        ].join('\n')
-      }]
-    }
-  })
-  return chat
-}
-
-export async function enviarMensajeChat(
-  chat: ChatSession,
-  mensaje: string
-) {
-  const result = await chat.sendMessage(mensaje)
-  return result.response.text()
-}
+const FUNCTIONS_URL = 'https://us-central1-lexit-ai.cloudfunctions.net'
 
 // ================================
 // 4. MODIFICAR PLANTILLA
+// (delegado a la Cloud Function modificarPlantillaIA — antes llamaba a
+// Gemini directo desde el navegador con la API key expuesta en el bundle)
 // ================================
 export async function modificarPlantilla(
   textoPlantilla: string,
   instruccion: string
-) {
-  const prompt = `
-    Eres un abogado experto en derecho peruano.
-    El usuario quiere modificar esta plantilla de contrato.
+): Promise<string> {
+  const response = await fetch(`${FUNCTIONS_URL}/modificarPlantillaIA`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ textoPlantilla, instruccion })
+  })
 
-    INSTRUCCIÓN: ${instruccion}
+  const data = await response.json() as { textoModificado?: string; error?: string }
+  if (!response.ok || data.textoModificado === undefined) {
+    throw new Error(data.error ?? 'No se pudo modificar la plantilla')
+  }
 
-    PLANTILLA ACTUAL:
-    ${textoPlantilla}
-
-    Devuelve SOLO el contrato modificado, sin explicaciones.
-  `
-
-  const result = await model.generateContent(prompt)
-  return result.response.text()
+  return data.textoModificado
 }
 
 // ================================
-// 5. RELLENAR VARIABLES DEL CONTRATO
+// 5b. RESUMEN DE NORMAS DEL DÍA
+// (delegado a la Cloud Function resumirNormasDelDiaIA — mismo motivo)
 // ================================
-export async function rellenarContrato(
-  textoPlantilla: string,
-  datos: Record<string, string>
-) {
-  const prompt = `
-    Rellena esta plantilla de contrato con los siguientes datos:
-    ${JSON.stringify(datos, null, 2)}
+export interface ResumenNormasDelDia {
+  resumen: string
+  destacadas: { titulo: string; razon: string }[]
+}
 
-    Reemplaza todos los campos XXXXXXXX o [CAMPO] con los datos proporcionados.
-    Devuelve SOLO el contrato rellenado.
+export async function resumirNormasDelDia(
+  normas: { titulo: string; sumilla: string }[]
+): Promise<ResumenNormasDelDia> {
+  const response = await fetch(`${FUNCTIONS_URL}/resumirNormasDelDiaIA`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ normas })
+  })
 
-    PLANTILLA:
-    ${textoPlantilla}
-  `
+  const data = await response.json() as Partial<ResumenNormasDelDia> & { error?: string }
+  if (!response.ok || !data.resumen) {
+    throw new Error(data.error ?? 'No se pudo generar el resumen de normas del día')
+  }
 
-  const result = await model.generateContent(prompt)
-  return result.response.text()
+  return { resumen: data.resumen, destacadas: data.destacadas ?? [] }
+}
+
+// ================================
+// 6. SUGERENCIAS DE CAMBIOS (redline) PARA UN CONTRATO
+// (delegado a la Cloud Function generarSugerenciasContrato — mismo motivo)
+// ================================
+export interface SugerenciaCambio {
+  id: string
+  tipo: 'cambio' | 'riesgo'
+  clausula: string
+  textoOriginal: string
+  textoSugerido: string
+  explicacion: string
+  nivel?: 'alto' | 'medio' | 'bajo'
+}
+
+export async function sugerirCambiosContrato(textoContrato: string): Promise<SugerenciaCambio[]> {
+  const response = await fetch(`${FUNCTIONS_URL}/generarSugerenciasContrato`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ textoContrato })
+  })
+
+  const data = await response.json() as { sugerencias?: SugerenciaCambio[]; error?: string }
+  if (!response.ok || !data.sugerencias) {
+    throw new Error(data.error ?? 'No se pudieron generar las sugerencias')
+  }
+
+  return data.sugerencias
 }

@@ -3,9 +3,9 @@
     <!-- Barra de herramientas tipo Word -->
     <div class="toolbar">
       <q-btn-group flat>
-        <q-btn flat dense icon="format_bold" @click="editor?.chain().focus().toggleBold().run()" :color="editor?.isActive('bold') ? 'orange' : 'grey-7'" />
-        <q-btn flat dense icon="format_italic" @click="editor?.chain().focus().toggleItalic().run()" :color="editor?.isActive('italic') ? 'orange' : 'grey-7'" />
-        <q-btn flat dense icon="format_underlined" @click="editor?.chain().focus().toggleUnderline().run()" :color="editor?.isActive('underline') ? 'orange' : 'grey-7'" />
+        <q-btn flat dense icon="format_bold" @click="editor?.chain().focus().toggleBold().run()" :color="editor?.isActive('bold') ? 'accent' : 'grey-7'" />
+        <q-btn flat dense icon="format_italic" @click="editor?.chain().focus().toggleItalic().run()" :color="editor?.isActive('italic') ? 'accent' : 'grey-7'" />
+        <q-btn flat dense icon="format_underlined" @click="editor?.chain().focus().toggleUnderline().run()" :color="editor?.isActive('underline') ? 'accent' : 'grey-7'" />
       </q-btn-group>
 
       <q-separator vertical class="q-mx-sm" />
@@ -82,15 +82,15 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .editor-wrapper {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-small);
   overflow: hidden;
-  background: #f5f5f5;
+  background: var(--surface-alt);
 }
 
 .toolbar {
-  background: white;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-color);
   padding: 8px 12px;
   display: flex;
   align-items: center;
@@ -105,16 +105,16 @@ onBeforeUnmount(() => {
   padding: 24px;
   min-height: 600px;
   overflow-y: auto;
-  background: #f5f5f5;
+  background: var(--surface-alt);
 }
 
 .document-page {
-  background: white;
+  background: var(--surface);
   width: 210mm;
   min-height: 297mm;
   margin: 0 auto;
   padding: 25mm 20mm;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow-medium);
   border-radius: 2px;
 }
 </style>
