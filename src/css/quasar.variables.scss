@@ -12,14 +12,14 @@
 // to match your app's branding.
 // Tip: Use the "Theme Builder" on Quasar's documentation website.
 
-$primary   : #007AFF; // Azul iOS para minimalismo
-$secondary : #8E8E93; // Gris sutil
-$accent    : #FF9500; // Naranja moderno
+$primary   : #1B1B1E; // Tinta casi negra — botones y acentos primarios
+$secondary : #6A6A72; // Gris cálido sutil
+$accent    : #B5502E; // Terracota — único acento de marca
 
-$dark      : #1C1C1E; // Gris oscuro minimalista
+$dark      : #1C1C1E;
 $dark-page : #121212;
 
-$positive  : #34C759; // Verde iOS
-$negative  : #FF3B30; // Rojo iOS
-$info      : #5AC8FA; // Azul claro
-$warning   : #FFCC00; // Amarillo
+$positive  : #2F8F5B; // Verde apagado
+$negative  : #C23B2E; // Rojo apagado (coherente con el acento)
+$info      : #3F6FC9; // Azul apagado
+$warning   : #C48A1E; // Ámbar apagado

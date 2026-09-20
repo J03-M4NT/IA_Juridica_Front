@@ -251,9 +251,9 @@ function closeDialog() {
 .pd-card {
   width: 420px;
   max-width: 94vw;
-  background: #fff;
-  border-radius: 22px;
-  box-shadow: 0 8px 40px rgba(27, 27, 30, 0.14);
+  background: var(--surface);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-heavy);
   padding: 28px 28px 26px;
   font-family: 'Figtree', sans-serif;
 }
@@ -272,16 +272,16 @@ function closeDialog() {
   font-family: 'EB Garamond', serif;
   font-size: 1.45rem;
   font-weight: 600;
-  color: #16161a;
+  color: var(--ink);
 }
 
 .pd-close {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 1px solid rgba(27, 27, 30, 0.10);
-  background: #FAFAF7;
-  color: #6a6a72;
+  border: 1px solid var(--border-color);
+  background: var(--bg);
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -290,8 +290,8 @@ function closeDialog() {
 }
 
 .pd-close:hover {
-  background: rgba(27, 27, 30, 0.07);
-  color: #1b1b1e;
+  background: var(--surface-alt);
+  color: var(--ink);
 }
 
 /* ==============================
@@ -309,9 +309,9 @@ function closeDialog() {
   width: 88px;
   height: 88px;
   border-radius: 50%;
-  border: 3px solid rgba(27, 27, 30, 0.08);
+  border: 3px solid var(--border-color);
   overflow: hidden;
-  background: #FAFAF7;
+  background: var(--bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -337,21 +337,21 @@ function closeDialog() {
   gap: 7px;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #3a3a40;
-  background: #fff;
-  border: 1px solid rgba(27, 27, 30, 0.14);
+  color: var(--ink-soft);
+  background: var(--surface);
+  border: 1px solid var(--border-color-strong);
   padding: 8px 14px;
-  border-radius: 10px;
+  border-radius: var(--border-radius-small);
   cursor: pointer;
   font-family: 'Figtree', sans-serif;
   transition: background 0.15s;
 }
 
-.pd-photo-btn:hover { background: #FAFAF7; }
+.pd-photo-btn:hover { background: var(--bg); }
 
 .pd-photo-hint {
   font-size: 0.78rem;
-  color: #9a9aa2;
+  color: var(--text-muted);
 }
 
 /* ==============================
@@ -367,7 +367,7 @@ function closeDialog() {
   display: block;
   font-size: 0.82rem;
   font-weight: 600;
-  color: #55555c;
+  color: var(--ink-soft);
   margin-bottom: 6px;
 }
 
@@ -376,10 +376,10 @@ function closeDialog() {
   padding: 11px 14px;
   font-size: 0.95rem;
   font-family: 'Figtree', sans-serif;
-  color: #1b1b1e;
-  background: #FAFAF7;
-  border: 1px solid rgba(27, 27, 30, 0.13);
-  border-radius: 11px;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--border-color-strong);
+  border-radius: var(--border-radius-small);
   outline: none;
   box-sizing: border-box;
   margin-bottom: 16px;
@@ -387,17 +387,17 @@ function closeDialog() {
 }
 
 .pd-input:focus {
-  border-color: #7c47e0;
-  box-shadow: 0 0 0 3px rgba(124, 71, 224, 0.12);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .pd-input--readonly {
-  color: #9a9aa2;
+  color: var(--text-muted);
   cursor: default;
 }
 
 .pd-input--readonly:focus {
-  border-color: rgba(27, 27, 30, 0.13);
+  border-color: var(--border-color-strong);
   box-shadow: none;
 }
 
@@ -415,38 +415,37 @@ function closeDialog() {
   padding: 10px 18px;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #6a6a72;
+  color: var(--text-secondary);
   background: transparent;
-  border: 1px solid rgba(27, 27, 30, 0.12);
-  border-radius: 10px;
+  border: 1px solid var(--border-color-strong);
+  border-radius: var(--border-radius-small);
   cursor: pointer;
   font-family: 'Figtree', sans-serif;
   transition: background 0.15s;
 }
 
-.pd-cancel-btn:hover:not(:disabled) { background: #FAFAF7; }
+.pd-cancel-btn:hover:not(:disabled) { background: var(--bg); }
 .pd-cancel-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .pd-save-btn {
   padding: 10px 22px;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #fff;
-  background: #1b1b1e;
+  color: var(--surface);
+  background: var(--ink);
   border: none;
-  border-radius: 10px;
+  border-radius: var(--border-radius-small);
   cursor: pointer;
   font-family: 'Figtree', sans-serif;
   min-width: 130px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, transform 0.15s;
+  transition: background 0.15s;
 }
 
 .pd-save-btn:hover:not(:disabled) {
-  background: #2e2e33;
-  transform: translateY(-1px);
+  background: var(--ink-soft);
 }
 
 .pd-save-btn:disabled { opacity: 0.55; cursor: not-allowed; }

@@ -1,11 +1,6 @@
 <template>
   <div class="landing-page">
 
-    <!-- Blob decorations -->
-    <div class="blob blob-1"></div>
-    <div class="blob blob-2"></div>
-    <div class="blob blob-3"></div>
-
     <!-- Header -->
     <header class="landing-header">
       <div class="header-inner">
@@ -38,7 +33,7 @@
 
           <article class="feature-card">
             <div class="feature-icon-wrap icon-teal">
-              <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#1fa8bb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#B5502E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                 <path d="M14 2v6h6"/>
                 <path d="M8 13h8"/>
@@ -51,7 +46,7 @@
 
           <article class="feature-card">
             <div class="feature-icon-wrap icon-pink">
-              <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#e0508f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#B5502E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 <path d="M8 9h8"/>
                 <path d="M8 13h5"/>
@@ -63,7 +58,7 @@
 
           <article class="feature-card">
             <div class="feature-icon-wrap icon-purple">
-              <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#7c47e0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#B5502E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M3 7h18"/>
                 <path d="M3 7l2-3h14l2 3"/>
                 <path d="M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/>
@@ -135,7 +130,7 @@ const { isAuthenticated } = storeToRefs(authStore)
 
 onMounted(() => {
   if (isAuthenticated.value) {
-    void router.replace('/app/analizador')
+    void router.replace('/app/consultas')
   }
 })
 </script>
@@ -160,51 +155,9 @@ onMounted(() => {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ==============================
-   Blob decorations
-   ============================== */
-@keyframes blob {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(12px, -10px) scale(1.06); }
-}
-
 @keyframes floatUp {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
-}
-
-.blob {
-  position: absolute;
-  border-radius: 50%;
-  pointer-events: none;
-  filter: blur(8px);
-}
-
-.blob-1 {
-  top: -120px;
-  right: -80px;
-  width: 420px;
-  height: 420px;
-  background: radial-gradient(circle at 30% 30%, rgba(57, 199, 216, 0.28), transparent 70%);
-  animation: blob 14s ease-in-out infinite;
-}
-
-.blob-2 {
-  top: 180px;
-  left: -140px;
-  width: 380px;
-  height: 380px;
-  background: radial-gradient(circle at 40% 40%, rgba(255, 100, 176, 0.20), transparent 70%);
-  animation: blob 18s ease-in-out infinite;
-}
-
-.blob-3 {
-  top: 520px;
-  right: -100px;
-  width: 340px;
-  height: 340px;
-  background: radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.18), transparent 70%);
-  animation: blob 16s ease-in-out infinite;
 }
 
 /* ==============================
@@ -273,7 +226,7 @@ onMounted(() => {
   width: 78px;
   display: block;
   margin: 0 auto 22px;
-  filter: drop-shadow(0 8px 22px rgba(139, 92, 246, 0.22));
+  filter: drop-shadow(0 8px 22px rgba(27, 27, 30, 0.12));
 }
 
 .hero-title {
@@ -327,31 +280,33 @@ onMounted(() => {
 
 .feature-card {
   background: #fff;
-  border: 1px solid rgba(27, 27, 30, 0.08);
-  border-radius: 20px;
+  border: 1px solid rgba(27, 27, 30, 0.09);
+  border-radius: 14px;
   padding: 30px 26px;
-  box-shadow: 0 1px 3px rgba(27, 27, 30, 0.04);
-  transition: transform 0.28s, box-shadow 0.28s;
+  box-shadow: none;
+  transition: border-color 0.25s, box-shadow 0.25s;
 }
 
 .feature-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 16px 40px rgba(27, 27, 30, 0.10);
+  border-color: rgba(27, 27, 30, 0.18);
+  box-shadow: 0 10px 28px rgba(27, 27, 30, 0.07);
 }
 
 .feature-icon-wrap {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 20px;
 }
 
-.icon-teal   { background: rgba(57, 199, 216, 0.14); }
-.icon-pink   { background: rgba(255, 100, 176, 0.13); }
-.icon-purple { background: rgba(139, 92, 246, 0.13); }
+.icon-teal,
+.icon-pink,
+.icon-purple {
+  background: var(--accent-soft);
+}
 
 .feature-title {
   font-family: 'EB Garamond', serif;
@@ -388,7 +343,7 @@ onMounted(() => {
   font-weight: 600;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: #8b5cf6;
+  color: var(--accent);
   margin-bottom: 12px;
 }
 
@@ -408,15 +363,15 @@ onMounted(() => {
 
 .step-card {
   background: #fff;
-  border: 1px solid rgba(27, 27, 30, 0.08);
-  border-radius: 20px;
+  border: 1px solid rgba(27, 27, 30, 0.09);
+  border-radius: 14px;
   padding: 30px 26px;
 }
 
 .step-number {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: 10px;
   color: #fff;
   display: flex;
   align-items: center;
@@ -427,9 +382,7 @@ onMounted(() => {
   margin-bottom: 18px;
 }
 
-.step-1 { background: #39c7d8; }
-.step-2 { background: #ff64b0; }
-.step-3 { background: #8b5cf6; }
+.step-1, .step-2, .step-3 { background: var(--ink); }
 
 .step-title {
   font-family: 'EB Garamond', serif;

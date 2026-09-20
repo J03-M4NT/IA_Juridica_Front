@@ -59,11 +59,11 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     if (requiresAuth && !isAuthenticated) {
       next('/');
     } else if (isAuthenticated && to.path === '/') {
-      next('/app/analizador');
+      next('/app/consultas');
     } else if (requiresAdmin) {
       const profileStore = useUserProfileStore();
       if (!profileStore.isAdmin) {
-        next('/app/analizador');
+        next('/app/consultas');
       } else {
         next();
       }

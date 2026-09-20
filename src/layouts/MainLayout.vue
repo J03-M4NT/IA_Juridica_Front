@@ -22,15 +22,6 @@
         <!-- Nav links (desktop) -->
         <nav class="nav-links gt-md">
 
-          <q-btn flat no-caps to="/app/analizador" class="nav-btn nav-btn--teal"
-            :class="{ 'nav-btn--active': $route.path === '/app/analizador' }">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="q-mr-xs">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/>
-            </svg>
-            Analizar PDF
-          </q-btn>
-
           <q-btn flat no-caps to="/app/consultas" class="nav-btn nav-btn--blue"
             :class="{ 'nav-btn--active': $route.path === '/app/consultas' }">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="q-mr-xs">
@@ -79,11 +70,6 @@
     <q-drawer v-model="drawerOpen" side="left" overlay behavior="mobile" class="mobile-drawer">
       <q-list padding>
         <q-item-label header class="drawer-header">Navegación</q-item-label>
-
-        <q-item clickable v-ripple to="/app/analizador" @click="drawerOpen = false" active-class="drawer-item--active">
-          <q-item-section avatar><q-icon name="description" /></q-item-section>
-          <q-item-section>Analizar PDF</q-item-section>
-        </q-item>
 
         <q-item clickable v-ripple to="/app/consultas" @click="drawerOpen = false" active-class="drawer-item--active">
           <q-item-section avatar><q-icon name="chat" /></q-item-section>
@@ -213,29 +199,14 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   color: #1b1b1e !important;
 }
 
-/* Per-section active colors */
-.nav-btn--teal.nav-btn--active {
-  background: rgba(57, 199, 216, 0.14) !important;
-  color: #1fa8bb !important;
-  font-weight: 600 !important;
-}
-
-.nav-btn--blue.nav-btn--active {
-  background: rgba(79, 127, 214, 0.13) !important;
-  color: #3f6fc9 !important;
-  font-weight: 600 !important;
-}
-
-.nav-btn--purple.nav-btn--active {
-  background: rgba(139, 92, 246, 0.13) !important;
-  color: #7c47e0 !important;
-  font-weight: 600 !important;
-}
-
+/* Estado activo — acento único de marca (antes: un color distinto por sección) */
+.nav-btn--teal.nav-btn--active,
+.nav-btn--blue.nav-btn--active,
+.nav-btn--purple.nav-btn--active,
 .nav-btn--orange.nav-btn--active,
 .nav-btn--admin.nav-btn--active {
-  background: rgba(255, 155, 106, 0.15) !important;
-  color: #d97a3e !important;
+  background: var(--accent-soft) !important;
+  color: var(--accent) !important;
   font-weight: 600 !important;
 }
 
@@ -299,9 +270,9 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 }
 
 .drawer-item--active {
-  color: #8b5cf6 !important;
+  color: var(--accent) !important;
   font-weight: 600;
-  background: rgba(139, 92, 246, 0.07);
+  background: var(--accent-soft);
   border-radius: 9px;
 }
 
