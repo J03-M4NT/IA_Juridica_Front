@@ -1,10 +1,10 @@
 <template>
-  <div class="landing-page">
+  <div class="landing-page" ref="pageRoot">
 
     <!-- Blob decorations -->
-    <div class="blob blob-1"></div>
-    <div class="blob blob-2"></div>
-    <div class="blob blob-3"></div>
+    <div class="blob-wrap blob-wrap-1"><div class="blob blob-1"></div></div>
+    <div class="blob-wrap blob-wrap-2"><div class="blob blob-2"></div></div>
+    <div class="blob-wrap blob-wrap-3"><div class="blob blob-3"></div></div>
 
     <!-- Header -->
     <header class="landing-header">
@@ -123,20 +123,154 @@
 <!-- --------------------------------------------------- -->
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '../stores/auth'
 import AuthButtons from '../components/Auth/AuthButtons.vue'
+import { gsap } from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+
+gsap.registerPlugin(ScrollTrigger)
 
 const router = useRouter()
 const authStore = useAuthStore()
 const { isAuthenticated } = storeToRefs(authStore)
 
+const pageRoot = ref<HTMLElement | null>(null)
+
+const prefersReducedMotion = () =>
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+let handleMouseMove: ((e: MouseEvent) => void) | null = null
+const scrollTriggers: ScrollTrigger[] = []
+
 onMounted(() => {
   if (isAuthenticated.value) {
     void router.replace('/app/analizador')
+    return
   }
+
+  const root = pageRoot.value
+  if (!root || prefersReducedMotion()) return
+
+  // --- Entrada del hero: más dinámica (3D y elastic) ---
+  const heroLogo = root.querySelector('.hero-logo')
+  const heroTexts = [
+    '.hero-title',
+    '.hero-subtitle',
+    '.hero-heading',
+    '.hero-description',
+  ]
+    .map((sel) => root.querySelector(sel))
+    .filter(Boolean) as HTMLElement[]
+
+  const tlHero = gsap.timeline({ delay: 0.1 })
+  
+  if (heroLogo) {
+    gsap.set(heroLogo, { scale: 0.5, opacity: 0 })
+    tlHero.to(heroLogo, {
+      scale: 1,
+      opacity: 1,
+      duration: 1.2,
+      ease: 'elastic.out(1, 0.5)'
+    })
+  }
+
+  gsap.set(heroTexts, { opacity: 0, y: 40, rotationX: -45, transformPerspective: 800 })
+  tlHero.to(heroTexts, {
+    opacity: 1,
+    y: 0,
+    rotationX: 0,
+    duration: 1,
+    ease: 'power3.out',
+    stagger: 0.15,
+  }, "-=0.9") // Empezar un poco antes de que termine el logo
+
+  // --- Feature cards: entrada elástica ---
+  const featureCards = root.querySelectorAll<HTMLElement>('.feature-card')
+  gsap.set(featureCards, { opacity: 0, y: 50, scale: 0.9 })
+  scrollTriggers.push(
+    ScrollTrigger.create({
+      trigger: '.features-grid',
+      start: 'top 85%',
+      once: true,
+      onEnter: () =>
+        gsap.to(featureCards, {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.8,
+          ease: 'back.out(1.5)',
+          stagger: 0.15,
+        }),
+    }),
+  )
+
+  // --- Step cards: rebote secuencial ---
+  const stepCards = root.querySelectorAll<HTMLElement>('.step-card')
+  gsap.set(stepCards, { opacity: 0, y: 60 })
+  scrollTriggers.push(
+    ScrollTrigger.create({
+      trigger: '.steps-grid',
+      start: 'top 85%',
+      once: true,
+      onEnter: () =>
+        gsap.to(stepCards, {
+          opacity: 1,
+          y: 0,
+          duration: 0.9,
+          ease: 'elastic.out(1, 0.75)',
+          stagger: 0.2,
+        }),
+    }),
+  )
+
+  // --- Fondo reactivo al mouse (blob-wrap) y Scroll Parallax (blob inner) ---
+  const wraps = root.querySelectorAll<HTMLElement>('.blob-wrap')
+  const depths = [18, 26, 14]
+
+  const quickBlobs = Array.from(wraps).map((el) => ({
+    x: gsap.quickTo(el, 'x', { duration: 0.9, ease: 'power3.out' }),
+    y: gsap.quickTo(el, 'y', { duration: 0.9, ease: 'power3.out' }),
+  }))
+
+  handleMouseMove = (e: MouseEvent) => {
+    const cx = window.innerWidth / 2
+    const cy = window.innerHeight / 2
+    const nx = (e.clientX - cx) / cx
+    const ny = (e.clientY - cy) / cy
+
+    quickBlobs.forEach((q, i) => {
+      const depth = depths[i] ?? 16
+      q.x(nx * depth)
+      q.y(ny * depth)
+    })
+  }
+
+  window.addEventListener('mousemove', handleMouseMove, { passive: true })
+
+  // Scroll Parallax para los blobs (añade profundidad vertical al hacer scroll)
+  const innerBlobs = root.querySelectorAll<HTMLElement>('.blob')
+  innerBlobs.forEach((blob, index) => {
+    const speed = index === 0 ? 0.15 : index === 1 ? -0.2 : 0.1
+    const st = ScrollTrigger.create({
+      trigger: root,
+      start: 'top top',
+      end: 'bottom top',
+      scrub: true,
+      animation: gsap.to(blob, {
+        y: () => window.innerHeight * speed,
+        ease: 'none'
+      })
+    })
+    scrollTriggers.push(st)
+  })
+})
+
+onUnmounted(() => {
+  if (handleMouseMove) window.removeEventListener('mousemove', handleMouseMove)
+  scrollTriggers.forEach((st) => st.kill())
 })
 </script>
 
@@ -162,49 +296,48 @@ onMounted(() => {
 
 /* ==============================
    Blob decorations
+   - .blob-wrap: posición en pantalla + lo mueve GSAP (mouse parallax)
+   - .blob: animación orgánica de CSS (scale + micro-drift)
+   Separados para que ambos transforms no se peleen.
    ============================== */
 @keyframes blob {
   0%, 100% { transform: translate(0, 0) scale(1); }
   50% { transform: translate(12px, -10px) scale(1.06); }
 }
 
-@keyframes floatUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+.blob-wrap {
+  position: absolute;
+  pointer-events: none;
+  will-change: transform;
 }
+
+.blob-wrap-1 { top: -120px; right: -80px; width: 420px; height: 420px; }
+.blob-wrap-2 { top: 180px; left: -140px; width: 380px; height: 380px; }
+.blob-wrap-3 { top: 520px; right: -100px; width: 340px; height: 340px; }
 
 .blob {
   position: absolute;
+  inset: 0;
   border-radius: 50%;
-  pointer-events: none;
   filter: blur(8px);
 }
 
 .blob-1 {
-  top: -120px;
-  right: -80px;
-  width: 420px;
-  height: 420px;
   background: radial-gradient(circle at 30% 30%, rgba(57, 199, 216, 0.28), transparent 70%);
-  animation: blob 14s ease-in-out infinite;
 }
 
 .blob-2 {
-  top: 180px;
-  left: -140px;
-  width: 380px;
-  height: 380px;
   background: radial-gradient(circle at 40% 40%, rgba(255, 100, 176, 0.20), transparent 70%);
-  animation: blob 18s ease-in-out infinite;
 }
 
 .blob-3 {
-  top: 520px;
-  right: -100px;
-  width: 340px;
-  height: 340px;
   background: radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.18), transparent 70%);
-  animation: blob 16s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .blob-1 { animation: blob 14s ease-in-out infinite; }
+  .blob-2 { animation: blob 18s ease-in-out infinite; }
+  .blob-3 { animation: blob 16s ease-in-out infinite; }
 }
 
 /* ==============================
@@ -265,7 +398,6 @@ onMounted(() => {
   margin: 0 auto;
   padding: 90px 28px 20px;
   text-align: center;
-  animation: floatUp 0.7s ease-out both;
 }
 
 .hero-logo {
@@ -283,7 +415,10 @@ onMounted(() => {
   font-weight: 600;
   margin: 0 0 14px;
   letter-spacing: -0.01em;
-  color: #16161a;
+  background: linear-gradient(135deg, #16161a 0%, #3a3a44 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .hero-subtitle {
@@ -326,17 +461,29 @@ onMounted(() => {
 }
 
 .feature-card {
-  background: #fff;
-  border: 1px solid rgba(27, 27, 30, 0.08);
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   border-radius: 20px;
   padding: 30px 26px;
-  box-shadow: 0 1px 3px rgba(27, 27, 30, 0.04);
-  transition: transform 0.28s, box-shadow 0.28s;
+  box-shadow: 0 4px 12px rgba(27, 27, 30, 0.02);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
 .feature-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 16px 40px rgba(27, 27, 30, 0.10);
+  border-color: rgba(255, 255, 255, 1);
+}
+
+.feature-card:nth-child(1):hover {
+  box-shadow: 0 16px 40px rgba(57, 199, 216, 0.25);
+}
+.feature-card:nth-child(2):hover {
+  box-shadow: 0 16px 40px rgba(255, 100, 176, 0.22);
+}
+.feature-card:nth-child(3):hover {
+  box-shadow: 0 16px 40px rgba(139, 92, 246, 0.22);
 }
 
 .feature-icon-wrap {
@@ -407,10 +554,13 @@ onMounted(() => {
 }
 
 .step-card {
-  background: #fff;
-  border: 1px solid rgba(27, 27, 30, 0.08);
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   border-radius: 20px;
   padding: 30px 26px;
+  box-shadow: 0 4px 12px rgba(27, 27, 30, 0.02);
 }
 
 .step-number {
@@ -427,9 +577,9 @@ onMounted(() => {
   margin-bottom: 18px;
 }
 
-.step-1 { background: #39c7d8; }
-.step-2 { background: #ff64b0; }
-.step-3 { background: #8b5cf6; }
+.step-1 { background: linear-gradient(135deg, #39c7d8 0%, #29a0af 100%); box-shadow: 0 4px 12px rgba(57, 199, 216, 0.3); }
+.step-2 { background: linear-gradient(135deg, #ff64b0 0%, #e04a92 100%); box-shadow: 0 4px 12px rgba(255, 100, 176, 0.3); }
+.step-3 { background: linear-gradient(135deg, #8b5cf6 0%, #6d42d3 100%); box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3); }
 
 .step-title {
   font-family: 'EB Garamond', serif;
