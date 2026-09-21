@@ -1,8 +1,10 @@
 <template>
   <q-page class="consultas-page" :class="{ 'consultas-page--with-pdf': store.archivoAdjunto }">
 
-    <!-- Section header -->
-    <div class="page-header">
+    <!-- Section header — se encoge y se atenúa al bajar en el chat, para
+         devolverle espacio a la conversación sin perder el título del
+         todo (ver onMessagesScroll). -->
+    <div class="page-header" :class="{ 'page-header--compact': chatDesplazado }">
       <div class="section-icon-wrap icon-blue">
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#B5502E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -38,7 +40,7 @@
       </div>
 
       <!-- Messages area -->
-      <div class="messages-area" ref="messagesBox">
+      <div class="messages-area" ref="messagesBox" @scroll="onMessagesScroll">
         <div v-for="(mensaje, index) in mensajes" :key="index" class="message-wrapper">
 
           <!-- AI message: bloque de texto simple, sin avatar ni burbuja -->
@@ -402,6 +404,14 @@ const pregunta = ref('')
 
 const { mensajes } = storeToRefs(store)
 const messagesBox = ref<HTMLElement | null>(null)
+
+// Puramente visual: encoge/atenúa el encabezado mientras se baja en el
+// chat, para devolverle espacio a la conversación (ver .page-header--compact).
+const chatDesplazado = ref(false)
+
+function onMessagesScroll(event: Event) {
+  chatDesplazado.value = (event.target as HTMLElement).scrollTop > 16
+}
 
 const copiedIndex = ref<number | null>(null)
 
@@ -1109,6 +1119,16 @@ watch(mensajes, async () => {
   max-width: 1100px;
   margin: 0 auto;
   animation: floatUp 0.5s ease-out both;
+  display: flex;
+  flex-direction: column;
+  /* 94px = el padding vertical de .q-page en MainLayout.vue (34px arriba +
+     60px abajo). Sin fijar esta altura, el encabezado + el chat empujan el
+     contenido más allá del viewport y es la PÁGINA la que hace scroll,
+     arrastrando el composer con ella — en vez de quedarse quieto abajo
+     mientras solo se desplazan los mensajes. */
+  height: calc(100vh - 94px);
+  min-height: 560px;
+  overflow: hidden;
 }
 
 @keyframes floatUp {
@@ -1123,37 +1143,63 @@ watch(mensajes, async () => {
 }
 
 .page-header {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  margin-bottom: 22px;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(27, 27, 30, 0.08);
   text-align: center;
+  transition: opacity 0.25s ease, transform 0.25s ease, margin-bottom 0.25s ease, padding-bottom 0.25s ease;
+}
+
+/* Al bajar en el chat, el encabezado se encoge y atenúa en vez de ocupar
+   su espacio completo todo el tiempo (ver onMessagesScroll). */
+.page-header--compact {
+  opacity: 0.4;
+  transform: scale(0.92);
+  margin-bottom: 6px;
+  padding-bottom: 8px;
+}
+
+.page-header--compact:hover {
+  opacity: 0.9;
 }
 
 .section-icon-wrap {
-  width: 52px;
-  height: 52px;
-  border-radius: var(--border-radius);
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px var(--accent-soft-strong);
+  transition: width 0.25s ease, height 0.25s ease;
+}
+
+.section-icon-wrap svg {
+  width: 22px;
+  height: 22px;
 }
 
 .icon-blue { background: var(--accent-soft); }
 
 .page-title {
-  font-family: 'EB Garamond', serif;
-  font-size: 2rem;
+  font-family: 'Fraunces', 'EB Garamond', serif;
+  font-optical-sizing: auto;
+  font-size: 1.7rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
   margin: 0;
   color: #16161a;
 }
 
 .page-subtitle {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   color: #6a6a72;
   font-size: 1rem;
 }
@@ -1162,23 +1208,32 @@ watch(mensajes, async () => {
   max-width: 1760px;
 }
 
-.consultas-layout--split {
+.consultas-layout {
+  flex: 1;
+  min-height: 0;
   display: flex;
+}
+
+.consultas-layout--split {
   gap: 20px;
-  align-items: flex-start;
 }
 
 .consultas-layout--split .chat-wrapper {
-  flex: 1;
   min-width: 360px;
 }
 
 .chat-wrapper {
+  flex: 1;
   display: flex;
   flex-direction: column;
   position: relative;
-  height: 78vh;
-  min-height: 560px;
+  height: 100%;
+  min-height: 0;
+  background: var(--surface-alt);
+  border: 1px solid rgba(27, 27, 30, 0.08);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-light);
+  padding: 16px 20px;
 }
 
 /* Overlay al arrastrar un archivo sobre el chat */
@@ -1216,7 +1271,7 @@ watch(mensajes, async () => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: 78vh;
+  height: 100%;
 }
 
 .documento-panel-header {
@@ -1477,7 +1532,7 @@ watch(mensajes, async () => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: 78vh;
+  height: 100%;
 }
 
 .sugerencias-rail-header {
@@ -1508,8 +1563,24 @@ watch(mensajes, async () => {
 .pdf-panel-error { color: #C23B2E; }
 
 @media (max-width: 1240px) {
+  /* Con el documento y las sugerencias apilados debajo del chat (en vez de
+     al costado), tres paneles a pantalla completa no caben en un solo
+     viewport — se vuelve al scroll normal de la página en vez de forzar
+     todo dentro de una altura fija. */
+  .consultas-page {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
   .consultas-layout--split {
     flex-direction: column;
+  }
+
+  .chat-wrapper {
+    flex: none;
+    height: 78vh;
+    min-height: 560px;
   }
 
   .documento-panel {
@@ -1531,16 +1602,22 @@ watch(mensajes, async () => {
 .messages-area {
   flex: 1;
   overflow-y: auto;
-  padding: 8px 4px 22px;
+  padding: 4px 4px 16px;
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 18px;
   scrollbar-width: thin;
   scrollbar-color: rgba(27,27,30,0.14) transparent;
 }
 
 .msg-block--ai {
   max-width: 100%;
+  background: #fff;
+  border: 1px solid rgba(27, 27, 30, 0.08);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px var(--border-radius) var(--border-radius) 4px;
+  padding: 18px 22px;
+  box-shadow: var(--shadow-light);
 }
 
 .msg-block--user {
@@ -1550,8 +1627,8 @@ watch(mensajes, async () => {
 
 .msg-bubble-user {
   max-width: 74%;
-  background: var(--surface-alt);
-  color: var(--ink);
+  background: var(--ink);
+  color: #FAFAF7;
   padding: 12px 16px;
   border-radius: 16px 16px 4px 16px;
   font-size: 0.95rem;
@@ -1560,12 +1637,17 @@ watch(mensajes, async () => {
 }
 
 .msg-meta {
-  font-size: 0.72rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Fraunces', 'EB Garamond', serif;
+  font-size: 0.74rem;
   font-weight: 600;
-  margin-bottom: 5px;
+  letter-spacing: 0.02em;
+  margin-bottom: 9px;
 }
 
-.msg-meta--ai { color: #9a9aa2; }
+.msg-meta--ai { color: var(--accent); }
 
 .msg-content {
   font-size: 1rem;
@@ -1690,7 +1772,7 @@ watch(mensajes, async () => {
 }
 
 .input-area {
-  padding: 10px 4px 4px;
+  padding: 8px 2px 0;
   flex-shrink: 0;
 }
 
@@ -1769,6 +1851,12 @@ watch(mensajes, async () => {
   border-radius: 26px;
   padding: 7px 7px 7px 8px;
   box-shadow: var(--shadow-light);
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+.composer-pill:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .plus-btn {

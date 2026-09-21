@@ -1,98 +1,83 @@
 <template>
   <q-layout view="hHh Lpr fFf">
 
-    <!-- Top Navbar -->
-    <q-header class="app-navbar" height-hint="60">
-      <q-toolbar class="navbar-toolbar">
-
-        <!-- Logo -->
-        <div class="brand-section" @click="$router.push('/')" style="cursor: pointer">
-          <img src="../assets/logo.svg" alt="LEXIT AI" class="brand-logo" />
-          <span class="brand-name">LEXIT AI</span>
-        </div>
-
-        <!-- Hamburger (mobile) -->
+    <!-- Barra superior — solo en mobile/tablet, la marca y navegación viven
+         en el panel lateral en pantallas grandes (ver q-drawer abajo) -->
+    <q-header class="mobile-topbar lt-lg" height-hint="56">
+      <q-toolbar class="mobile-toolbar">
         <q-btn
           flat dense round icon="menu"
-          class="lt-lg q-mr-sm hamburger-btn"
+          class="q-mr-sm hamburger-btn"
           @click="drawerOpen = !drawerOpen"
           aria-label="Menú de navegación"
         />
-
-        <!-- Nav links (desktop) -->
-        <nav class="nav-links gt-md">
-
-          <q-btn flat no-caps to="/app/consultas" class="nav-btn nav-btn--blue"
-            :class="{ 'nav-btn--active': $route.path === '/app/consultas' }">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="q-mr-xs">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-            Consultas
-          </q-btn>
-
-          <q-btn flat no-caps to="/app/contratos" class="nav-btn nav-btn--purple"
-            :class="{ 'nav-btn--active': $route.path === '/app/contratos' }">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="q-mr-xs">
-              <path d="M3 7h18"/><path d="M3 7l2-3h14l2 3"/><path d="M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/><path d="M9 12h6"/>
-            </svg>
-            Contratos
-          </q-btn>
-
-          <q-btn flat no-caps to="/app/normas" class="nav-btn nav-btn--orange"
-            :class="{ 'nav-btn--active': $route.path === '/app/normas' }">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="q-mr-xs">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-            </svg>
-            Normas
-          </q-btn>
-
-          <q-btn
-            v-if="profileStore.isAdmin"
-            flat no-caps to="/app/admin"
-            class="nav-btn nav-btn--admin"
-            :class="{ 'nav-btn--active': $route.path === '/app/admin' }"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="q-mr-xs">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-            Admin
-          </q-btn>
-
-        </nav>
-
-        <q-space />
-        <auth-buttons />
-
+        <span class="mobile-brand" @click="$router.push('/')">LEXIT</span>
       </q-toolbar>
     </q-header>
 
-    <!-- Mobile drawer -->
-    <q-drawer v-model="drawerOpen" side="left" overlay behavior="mobile" class="mobile-drawer">
-      <q-list padding>
-        <q-item-label header class="drawer-header">Navegación</q-item-label>
+    <!-- Panel lateral — permanente en desktop, drawer superpuesto en mobile -->
+    <q-drawer
+      v-model="drawerOpen"
+      show-if-above
+      :breakpoint="1023"
+      :width="252"
+      bordered
+      class="app-sidebar"
+    >
+      <div class="sidebar-inner">
 
-        <q-item clickable v-ripple to="/app/consultas" @click="drawerOpen = false" active-class="drawer-item--active">
-          <q-item-section avatar><q-icon name="chat" /></q-item-section>
-          <q-item-section>Consultas</q-item-section>
-        </q-item>
+        <div class="sidebar-brand" @click="$router.push('/')">
+          <span class="sidebar-brand-text">LEXIT</span>
+        </div>
 
-        <q-item clickable v-ripple to="/app/contratos" @click="drawerOpen = false" active-class="drawer-item--active">
-          <q-item-section avatar><q-icon name="gavel" /></q-item-section>
-          <q-item-section>Contratos</q-item-section>
-        </q-item>
+        <nav class="sidebar-nav">
 
-        <q-item clickable v-ripple to="/app/normas" @click="drawerOpen = false" active-class="drawer-item--active">
-          <q-item-section avatar><q-icon name="menu_book" /></q-item-section>
-          <q-item-section>Normas</q-item-section>
-        </q-item>
+          <router-link to="/app/consultas" class="sidebar-link"
+            :class="{ 'sidebar-link--active': $route.path === '/app/consultas' }"
+            @click="cerrarDrawerEnMobile">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            Consultas
+          </router-link>
 
-        <q-separator v-if="profileStore.isAdmin" class="q-my-sm" />
+          <router-link to="/app/contratos" class="sidebar-link"
+            :class="{ 'sidebar-link--active': $route.path === '/app/contratos' }"
+            @click="cerrarDrawerEnMobile">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 7h18"/><path d="M3 7l2-3h14l2 3"/><path d="M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/><path d="M9 12h6"/>
+            </svg>
+            Contratos
+          </router-link>
 
-        <q-item v-if="profileStore.isAdmin" clickable v-ripple to="/app/admin" @click="drawerOpen = false" active-class="drawer-item--active">
-          <q-item-section avatar><q-icon name="admin_panel_settings" /></q-item-section>
-          <q-item-section>Administración</q-item-section>
-        </q-item>
-      </q-list>
+          <router-link to="/app/normas" class="sidebar-link"
+            :class="{ 'sidebar-link--active': $route.path === '/app/normas' }"
+            @click="cerrarDrawerEnMobile">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            </svg>
+            Normas
+          </router-link>
+
+          <router-link
+            v-if="profileStore.isAdmin"
+            to="/app/admin"
+            class="sidebar-link"
+            :class="{ 'sidebar-link--active': $route.path === '/app/admin' }"
+            @click="cerrarDrawerEnMobile">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            Admin
+          </router-link>
+
+        </nav>
+
+        <div class="sidebar-footer">
+          <auth-buttons />
+        </div>
+
+      </div>
     </q-drawer>
 
     <!-- Page content -->
@@ -109,11 +94,21 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useQuasar } from 'quasar'
 import AuthButtons from '../components/Auth/AuthButtons.vue'
 import { useUserProfileStore } from '../stores/userProfile'
 
+const $q = useQuasar()
 const profileStore = useUserProfileStore()
 const drawerOpen = ref(false)
+
+// El panel lateral es permanente en desktop (show-if-above lo mantiene
+// visible ahí sin importar drawerOpen) y un overlay en mobile — cerrarlo
+// incondicionalmente al navegar lo hacía desaparecer también en desktop,
+// porque show-if-above solo lo vuelve a abrir solo, no en cada clic.
+function cerrarDrawerEnMobile() {
+  if ($q.screen.lt.lg) drawerOpen.value = false
+}
 
 const beforeLeave = (el: Element) => { el.classList.add('transitioning') }
 const enter = (el: Element) => { el.classList.remove('transitioning') }
@@ -128,90 +123,168 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Figtree:wght@400;500;600;700&display=swap');
 
 /* ==============================
-   Navbar
+   Barra superior (mobile/tablet) — mismo tono oscuro que el panel
+   lateral, para que la transición entre ambos sea continua.
    ============================== */
-.app-navbar {
-  background: rgba(250, 250, 247, 0.88) !important;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-bottom: 1px solid rgba(27, 27, 30, 0.07) !important;
+.mobile-topbar {
+  background: var(--ink) !important;
+  border-bottom: 1px solid rgba(250, 250, 247, 0.08) !important;
   box-shadow: none !important;
 }
 
-.navbar-toolbar {
-  max-width: 1280px;
-  margin: 0 auto;
-  width: 100%;
-  min-height: 60px;
-  padding: 0 24px;
-  gap: 18px;
-  font-family: 'Figtree', sans-serif;
+.mobile-toolbar {
+  min-height: 56px;
+  padding: 0 14px;
 }
 
-/* ==============================
-   Brand
-   ============================== */
-.brand-section {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-.brand-logo {
-  height: 32px;
-  width: 32px;
-}
-
-.brand-name {
-  font-family: 'EB Garamond', serif;
-  font-size: 1.35rem;
+.mobile-brand {
+  font-family: 'Fraunces', 'EB Garamond', serif;
+  font-optical-sizing: auto;
+  font-size: 1.2rem;
   font-weight: 600;
-  letter-spacing: 0.01em;
-  color: #1b1b1e;
-}
-
-/* ==============================
-   Nav links
-   ============================== */
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 14px;
-  flex-wrap: wrap;
-}
-
-.nav-btn {
-  font-family: 'Figtree', sans-serif !important;
-  font-size: 0.9rem !important;
-  font-weight: 500 !important;
-  color: #6a6a72 !important;
-  border-radius: 11px !important;
-  padding: 8px 14px !important;
-  transition: background 0.2s, color 0.2s !important;
-  text-transform: none !important;
-  letter-spacing: 0 !important;
-}
-
-.nav-btn:hover {
-  background: rgba(27, 27, 30, 0.05) !important;
-  color: #1b1b1e !important;
-}
-
-/* Estado activo — acento único de marca (antes: un color distinto por sección) */
-.nav-btn--teal.nav-btn--active,
-.nav-btn--blue.nav-btn--active,
-.nav-btn--purple.nav-btn--active,
-.nav-btn--orange.nav-btn--active,
-.nav-btn--admin.nav-btn--active {
-  background: var(--accent-soft) !important;
-  color: var(--accent) !important;
-  font-weight: 600 !important;
+  letter-spacing: -0.01em;
+  color: #FAFAF7;
+  cursor: pointer;
 }
 
 .hamburger-btn {
-  color: #3a3a40 !important;
+  color: rgba(250, 250, 247, 0.85) !important;
+}
+
+/* ==============================
+   Panel lateral — oscuro a propósito (identidad "legal tech" seria),
+   con el mismo tinta que el resto de la marca (var(--ink)), no un
+   negro genérico. El :deep() de abajo es necesario porque el fondo
+   real de Quasar en modo oscuro (activado globalmente en
+   boot/dark.ts) vive en .q-drawer__content, no en la raíz .q-drawer
+   donde cae la clase .app-sidebar — sin este override, esa capa
+   interna se queda con el negro por defecto de Quasar.
+   ============================== */
+.app-sidebar {
+  background: var(--ink) !important;
+}
+
+:deep(.app-sidebar .q-drawer__content) {
+  background: var(--ink);
+  border-right: 1px solid rgba(250, 250, 247, 0.08);
+}
+
+.sidebar-inner {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 16px 18px;
+  font-family: 'Figtree', sans-serif;
+  overflow: hidden;
+}
+
+.sidebar-inner::before {
+  content: '';
+  position: absolute;
+  top: -140px;
+  left: -80px;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(181, 80, 46, 0.28), transparent 70%);
+  pointer-events: none;
+}
+
+.sidebar-brand {
+  position: relative;
+  padding: 6px 10px 22px;
+  cursor: pointer;
+}
+
+.sidebar-brand-text {
+  font-family: 'Fraunces', 'EB Garamond', serif;
+  font-optical-sizing: auto;
+  font-size: 1.45rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #FAFAF7;
+}
+
+.sidebar-nav {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sidebar-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.94rem;
+  font-weight: 500;
+  color: rgba(250, 250, 247, 0.62);
+  text-decoration: none;
+  transition: background 0.18s, color 0.18s;
+}
+
+.sidebar-link svg {
+  flex-shrink: 0;
+}
+
+.sidebar-link:hover {
+  background: rgba(250, 250, 247, 0.06);
+  color: rgba(250, 250, 247, 0.92);
+}
+
+.sidebar-link--active {
+  background: rgba(181, 80, 46, 0.2);
+  color: #e8b381;
+  font-weight: 600;
+}
+
+.sidebar-link--active::before {
+  content: '';
+  position: absolute;
+  left: -16px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+}
+
+.sidebar-footer {
+  position: relative;
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid rgba(250, 250, 247, 0.1);
+}
+
+.sidebar-footer :deep(.auth-buttons) {
+  width: 100%;
+}
+
+/* AuthButtons.vue está pensado para fondos claros (usa el color
+   "primary" de Quasar, casi negro, para el texto) — se sobreescribe
+   solo el botón visible aquí (no el menú desplegable, que Quasar
+   renderiza aparte, flotando sobre toda la página) para que el
+   nombre del usuario se lea sobre este panel oscuro. */
+.sidebar-footer :deep(.user-profile-btn) {
+  width: 100%;
+  justify-content: flex-start;
+  color: rgba(250, 250, 247, 0.92) !important;
+}
+
+.sidebar-footer :deep(.user-profile-btn .text-primary) {
+  color: rgba(250, 250, 247, 0.92) !important;
+}
+
+.sidebar-footer :deep(.user-profile-btn .q-icon) {
+  color: rgba(250, 250, 247, 0.55) !important;
+}
+
+.sidebar-footer :deep(.q-avatar) {
+  background: var(--accent) !important;
 }
 
 /* ==============================
@@ -223,9 +296,9 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 
 .q-page {
   background: #FAFAF7;
-  min-height: calc(100vh - 60px);
-  padding: 34px 24px 60px;
-  max-width: 1280px;
+  min-height: 100vh;
+  padding: 34px 32px 60px;
+  max-width: 1400px;
   margin: 0 auto;
   width: 100%;
 }
@@ -253,51 +326,17 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 }
 
 /* ==============================
-   Mobile drawer
-   ============================== */
-.mobile-drawer {
-  padding-top: 60px;
-  background: #fff !important;
-}
-
-.drawer-header {
-  font-family: 'Figtree', sans-serif;
-  font-weight: 600;
-  color: #6a6a72;
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.drawer-item--active {
-  color: var(--accent) !important;
-  font-weight: 600;
-  background: var(--accent-soft);
-  border-radius: 9px;
-}
-
-/* ==============================
    Responsive
    ============================== */
-@media (max-width: 1024px) {
-  .navbar-toolbar {
-    padding: 0 16px;
-  }
-}
-
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
   .q-page {
-    padding: 20px 16px 40px;
+    padding: 24px 20px 50px;
   }
 }
 
 @media (max-width: 480px) {
   .q-page {
     padding: 16px 12px 32px;
-  }
-
-  .brand-name {
-    font-size: 1.1rem;
   }
 }
 </style>
