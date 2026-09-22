@@ -79,7 +79,7 @@
               Vista Previa del Contrato
             </div>
             <q-btn
-              v-if="pdfDoc"
+              v-if="pdfDoc || (esWordTemplate && textoHtml)"
               color="accent"
               icon="edit"
               label="Editar Contrato"
@@ -102,15 +102,25 @@
 
             <div v-else-if="loadingPdf" class="pdf-loading row items-center justify-center">
               <q-spinner-dots color="primary" size="50px" />
-              <p class="q-ml-md text-grey-7">Cargando PDF...</p>
+              <p class="q-ml-md text-grey-7">Cargando plantilla...</p>
             </div>
 
             <div v-else-if="pdfError" class="pdf-error row items-center justify-center">
               <div class="text-center">
                 <q-icon name="error_outline" size="48px" color="negative" />
                 <p class="text-negative q-mt-md">{{ pdfError }}</p>
-                <q-btn color="primary" label="Reintentar" @click="loadPDFPreview" class="q-mt-md" />
+                <q-btn color="primary" label="Reintentar" @click="esWordTemplate ? loadWordPreview() : loadPDFPreview()" class="q-mt-md" />
               </div>
+            </div>
+
+            <!-- Word: sin "páginas" que paginar — se muestra el HTML extraído
+                 directo, como una hoja continua. -->
+            <div v-else-if="esWordTemplate && textoHtml" class="word-preview-container">
+              <div
+                class="document-preview"
+                :style="plantillaFuenteDetectada ? { fontFamily: `'${plantillaFuenteDetectada}', serif` } : undefined"
+                v-html="textoHtml"
+              ></div>
             </div>
 
             <div v-else-if="pdfDoc" class="pdf-canvas-container">
@@ -324,6 +334,7 @@ import type { ContractTemplate } from '../stores/contratos-store'
 import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy } from 'pdfjs-dist'
 import { modificarPlantilla } from '../services/geminiService'
 import { exportToWord, exportToPDF } from '../utils/documentExport'
+import { extraerHtmlWord } from '../utils/mammothExtractor'
 import EditorContrato from '../components/EditorContrato.vue'
 
 GlobalWorkerOptions.workerSrc = `${import.meta.env.BASE_URL}pdf.worker.min.js`
@@ -411,6 +422,7 @@ const selectTemplate = (template: ContractTemplate) => {
   textoEditado.value = ''
   textoHtml.value = ''
   instruccionIA.value = ''
+  plantillaFuenteDetectada.value = undefined
 }
 
 // =========================
@@ -432,11 +444,26 @@ const extraerTextoPDF = async (pdf: PDFDocumentProxy): Promise<string> => {
 // =========================
 // TEXTO A HTML
 // =========================
+// Distintas plantillas traen distintos estilos de encabezado de cláusula
+// ("CLÁUSULA PRIMERA", "ARTÍCULO 1°", "PRIMERA.-"/"DÉCIMO SEGUNDA.-",
+// "1.-", "I.-") — este patrón cubre los formatos comunes en contratos en
+// español, no solo el de una plantilla en particular.
+const PATRON_ENCABEZADO =
+  'CL[ÁA]USULA\\s+[A-ZÁÉÍÓÚÑ0-9]+' +
+  '|ART[IÍ]CULO\\s+\\d+°?' +
+  '|[A-ZÁÉÍÓÚÑ]{4,}(?:\\s+[A-ZÁÉÍÓÚÑ]{4,}){0,2}\\.-' +
+  '|[IVXLCDM]{1,4}\\.-' +
+  '|\\d{1,2}\\.-'
+
+const REGEX_SALTO_ANTES_DE_ENCABEZADO = new RegExp(
+  `(\\S)(\\s+)(${PATRON_ENCABEZADO}|CONTRATO DE|Definiciones)`,
+  'g'
+)
+const REGEX_LINEA_ES_ENCABEZADO = new RegExp(`^(?:${PATRON_ENCABEZADO})`)
+
 const textoAHtml = (texto: string): string => {
   const procesado = texto
-    .replace(/CLÁUSULA/g, '\n\nCLÁUSULA')
-    .replace(/CONTRATO DE/g, '\n\nCONTRATO DE')
-    .replace(/Definiciones/g, '\n\nDefiniciones')
+    .replace(REGEX_SALTO_ANTES_DE_ENCABEZADO, '$1\n\n$3')
     .replace(/ {2,}/g, ' ')
     .trim()
 
@@ -450,17 +477,67 @@ const textoAHtml = (texto: string): string => {
         return `<p style="text-align:center; font-weight:bold; font-size:14pt; font-family:Times New Roman; margin:16px 0 12px 0;">${linea}</p>`
       }
 
-      if (linea.startsWith('CLÁUSULA')) {
-        return `<p style="font-weight:bold; font-size:11pt; font-family:Times New Roman; margin:12px 0 4px 0;">${linea}</p>`
-      }
-
       if (linea === 'Definiciones') {
         return `<p style="font-weight:bold; font-size:12pt; font-family:Times New Roman; margin:12px 0 6px 0;">${linea}</p>`
+      }
+
+      if (REGEX_LINEA_ES_ENCABEZADO.test(linea)) {
+        return `<p style="font-weight:bold; font-size:11pt; font-family:Times New Roman; margin:12px 0 4px 0;">${linea}</p>`
       }
 
       return `<p style="text-align:justify; font-size:11pt; font-family:Times New Roman; margin:2px 0;">${linea}</p>`
     })
     .join('')
+}
+
+// =========================
+// TIPO DE ARCHIVO DE LA PLANTILLA ACTUAL
+// (no hay un campo aparte en Firestore para esto — se infiere de la
+// extensión del storage_path, así no hace falta migrar datos existentes)
+// =========================
+const esWordTemplate = computed(() =>
+  /\.docx$/i.test(currentTemplate.value?.storage_path ?? '')
+)
+
+// Fuente real del documento (ej. "Aptos", "Calibri") — extraerHtmlWord la
+// detecta leyendo word/theme/theme1.xml del .docx, pero antes se
+// descartaba: el preview se mostraba SIEMPRE en Times New Roman (fijo en
+// el CSS de .document-preview) sin importar la fuente real del original,
+// por eso se veía distinto a simple vista. Se guarda para aplicarla tanto
+// en la vista previa como al reconstruir la descarga.
+const plantillaFuenteDetectada = ref<string | undefined>(undefined)
+
+// =========================
+// CARGAR PLANTILLA WORD (mismo rol que loadPDFPreview, pero para .docx —
+// no hay "páginas" que renderizar en canvas, se muestra el HTML extraído
+// directo, igual que en Consultas)
+// =========================
+const loadWordPreview = async () => {
+  if (!currentTemplate.value?.storage_path) return
+
+  loadingPdf.value = true
+  pdfError.value = null
+  textoEditado.value = ''
+  textoHtml.value = ''
+  pdfDoc.value = null
+
+  try {
+    const blob = await store.downloadOriginalPDF(currentTemplate.value.id)
+    const archivo = new File(
+      [blob],
+      currentTemplate.value.name || 'plantilla.docx',
+      { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
+    )
+    const { html, fuenteDetectada } = await extraerHtmlWord(archivo)
+    textoHtml.value = html
+    textoEditado.value = stripHtml(html)
+    plantillaFuenteDetectada.value = fuenteDetectada ?? undefined
+    loadingPdf.value = false
+  } catch (err) {
+    console.error('Error cargando plantilla Word:', err)
+    pdfError.value = 'No se pudo cargar la plantilla Word'
+    loadingPdf.value = false
+  }
 }
 
 // =========================
@@ -590,7 +667,7 @@ const descargarWord = async () => {
   if (!textoHtml.value) return
   descargandoWord.value = true
   try {
-    const blob = await exportToWord(textoHtml.value, currentTemplate.value?.name || 'contrato')
+    const blob = await exportToWord(textoHtml.value, currentTemplate.value?.name || 'contrato', plantillaFuenteDetectada.value)
     triggerDownload(blob, `${currentTemplate.value?.name || 'contrato'}.docx`)
   } catch (err) {
     console.error('Error exportando Word:', err)
@@ -694,7 +771,12 @@ const downloadFirebaseContrato = async () => {
 // WATCH TEMPLATE
 // =========================
 watch(currentTemplate, async (newTemplate) => {
-  if (newTemplate?.storage_path) await loadPDFPreview()
+  if (!newTemplate?.storage_path) return
+  if (esWordTemplate.value) {
+    await loadWordPreview()
+  } else {
+    await loadPDFPreview()
+  }
 })
 </script>
 
@@ -852,6 +934,16 @@ canvas {
   border-radius: var(--border-radius-small);
   box-shadow: var(--shadow-light);
   background: white !important;
+}
+
+/* Plantilla Word: hoja continua (sin paginación como el PDF) */
+.word-preview-container {
+  background: white;
+  border-radius: var(--border-radius-small);
+  box-shadow: var(--shadow-medium);
+  padding: 2.5rem 3rem;
+  max-height: 640px;
+  overflow-y: auto;
 }
 
 .pdf-loading, .pdf-error {

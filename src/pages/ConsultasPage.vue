@@ -181,7 +181,19 @@
     </div>
 
     <!-- Documento: previsualización tipo Word, con cambios en amarillo y
-         riesgos en rojo marcados directamente sobre el texto. -->
+         riesgos en rojo marcados directamente sobre el texto.
+         DESHABILITADO a pedido del usuario: ya no se muestra automáticamente
+         al adjuntar — el chat debe quedar a ancho completo hasta que se pida
+         un análisis, momento en el que el panel de sugerencias (más abajo)
+         es la única superficie lateral que aparece. Todo el marcado/lógica
+         de este panel (pestañas, edición manual, "Descargar documento") se
+         deja intacto sin usar, por si se vuelve a necesitar más adelante. -->
+    <!-- El <template v-if="false"> exterior es lo que realmente lo
+         deshabilita; el v-if="store.archivoAdjunto" del div interior se
+         deja como estaba para que TypeScript lo siga infiriendo como no
+         nulo dentro del bloque (si no, cada store.archivoAdjunto.* de acá
+         abajo marcaría error de tipos). -->
+    <template v-if="false">
     <div v-if="store.archivoAdjunto" class="documento-panel">
       <div class="documento-panel-header">
         <div class="documento-panel-titulo">
@@ -189,7 +201,7 @@
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <path d="M14 2v6h6"/>
           </svg>
-          {{ store.archivoAdjunto.nombre }}
+          {{ store.archivoAdjunto?.nombre }}
         </div>
 
         <div class="documento-panel-acciones">
@@ -225,20 +237,6 @@
             </button>
           </div>
 
-          <div v-if="esWordAdjunto && store.archivoAdjunto?.storagePathDocx" class="documento-abrir-word-wrap">
-            <button type="button" class="documento-abrir-word" :disabled="abriendoEnWord" @click="abrirEnWord">
-              <q-spinner v-if="abriendoEnWord" size="14px" />
-              <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 3v4a1 1 0 0 0 1 1h4"/>
-                <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/>
-                <path d="M9 13h6M9 17h6M9 9h1"/>
-              </svg>
-              Descargar y abrir en Word
-            </button>
-            <span class="documento-abrir-word-hint">Se descargará el archivo — ábrelo desde tu carpeta de Descargas para editarlo con control de cambios reales en Word</span>
-            <span v-if="errorAbrirWord" class="documento-abrir-word-error">{{ errorAbrirWord }}</span>
-          </div>
-
           <button type="button" class="documento-descargar" :disabled="descargandoDocumento" @click="descargarDocumento">
             <q-spinner v-if="descargandoDocumento" size="14px" />
             <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -255,14 +253,6 @@
              estructura real (mammoth conserva negritas/listas/tablas), con
              las marcas de sugerencia superpuestas, y es editable ahí mismo. -->
         <template v-if="esWordAdjunto">
-          <div v-if="!cargandoSugerencias && !sugerencias.length && !sugerenciasAplicadas.length" class="documento-hint">
-            <span v-if="errorSugerencias">{{ errorSugerencias }} — <button type="button" class="documento-hint-link" @click="generarSugerencias">reintentar</button></span>
-            <span v-else>
-              Sin marcas todavía —
-              <button type="button" class="documento-hint-link" @click="generarSugerencias">genera sugerencias de cambios</button>
-              para verlas resaltadas aquí.
-            </span>
-          </div>
           <div class="documento-page">
             <div
               ref="documentoEditableRef"
@@ -301,14 +291,6 @@
           </div>
 
           <template v-else>
-            <div v-if="!cargandoSugerencias && !sugerencias.length && !sugerenciasAplicadas.length" class="documento-hint">
-              <span v-if="errorSugerencias">{{ errorSugerencias }} — <button type="button" class="documento-hint-link" @click="generarSugerencias">reintentar</button></span>
-              <span v-else>
-                Sin marcas todavía —
-                <button type="button" class="documento-hint-link" @click="generarSugerencias">genera sugerencias de cambios</button>
-                para verlas resaltadas aquí.
-              </span>
-            </div>
             <div class="documento-page">
               <!-- Editando: editable, con marcas de cambios/riesgos visibles -->
               <div
@@ -331,52 +313,90 @@
         </template>
       </div>
     </div>
+    </template>
 
-    <!-- Sugerencias: aparecen al costado del documento, sin pestañas -->
-    <div v-if="cargandoSugerencias || sugerencias.length || sugerenciasAplicadas.length || sugerenciasDescartadas.length" class="sugerencias-rail">
-      <div class="sugerencias-rail-header">
-        Sugerencias{{ sugerencias.length ? ` (${sugerencias.length})` : '' }}
+    <!-- Sugerencias: solo lectura — el análisis de riesgos de la IA. Aplicar
+         cambios reales ahora se hace en Word (ver el CTA arriba), no acá.
+         La lógica de aplicar/descartar/deshacer sigue existiendo en el
+         script (aplicarSugerencia, descartarSugerencia, deshacerSugerencia,
+         reconsiderarSugerencia, sugerenciasAplicadas, sugerenciasDescartadas)
+         por si se vuelve a necesitar — solo dejó de usarse desde esta vista. -->
+    <div v-if="cargandoSugerencias || sugerencias.length || errorSugerencias" class="sugerencias-rail">
+
+      <div v-if="store.archivoAdjunto?.storagePathDocx" class="sugerencias-cta">
+        <button type="button" class="sugerencias-cta-btn" :disabled="abriendoEnWord" @click="abrirEnWord">
+          <q-spinner v-if="abriendoEnWord" size="16px" color="white" />
+          <svg v-else width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 3v4a1 1 0 0 0 1 1h4"/>
+            <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/>
+            <path d="M9 13h6M9 17h6M9 9h1"/>
+          </svg>
+          Descargar y abrir en Word
+        </button>
+        <p class="sugerencias-cta-hint">Único camino para aplicar estos cambios — ábrelo en Word con control de cambios real.</p>
+        <p v-if="errorAbrirWord" class="documento-abrir-word-error">{{ errorAbrirWord }}</p>
       </div>
+
+      <div class="sugerencias-rail-header">Sugerencias</div>
+
       <div class="sugerencias-rail-body">
-        <div v-if="cargandoSugerencias" class="pdf-panel-status">
-          <q-spinner-dots color="primary" size="36px" />
-          <p>Generando sugerencias…</p>
+        <div v-if="cargandoSugerencias" class="sugerencias-cargando">
+          <q-spinner-dots color="primary" size="28px" />
+          <p class="sugerencias-cargando-titulo">Analizando el contrato</p>
+          <p class="sugerencias-cargando-sub">LexIT está revisando las cláusulas y evaluando riesgos…</p>
         </div>
-        <div v-else class="sugerencias-list">
-          <div v-for="s in sugerencias" :id="`sugerencia-${s.id}`" :key="s.id" class="sugerencia-card">
-            <div class="sugerencia-clausula">{{ s.clausula }}</div>
-            <p class="sugerencia-original">{{ s.textoOriginal }}</p>
-            <p v-if="s.textoSugerido" class="sugerencia-nuevo">{{ s.textoSugerido }}</p>
-            <p class="sugerencia-explicacion">{{ s.explicacion }}</p>
-            <p v-if="s.error" class="sugerencia-error">{{ s.error }}</p>
-            <div class="sugerencia-acciones">
-              <button type="button" class="sugerencia-descartar" @click="descartarSugerencia(s.id)">Descartar</button>
-              <button type="button" class="sugerencia-aplicar" @click="aplicarSugerencia(s)">Aplicar</button>
+        <div v-else-if="errorSugerencias" class="sugerencias-error-state">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <p class="sugerencias-error-titulo">No se pudo generar el análisis</p>
+          <p class="sugerencias-error-sub">{{ errorSugerencias }}</p>
+          <button type="button" class="sugerencias-reintentar-btn" @click="generarSugerencias">Reintentar</button>
+        </div>
+        <template v-else>
+          <div class="sugerencias-metricas">
+            <div class="metrica-bloque">
+              <span class="metrica-numero">{{ conteoSugerencias.total }}</span>
+              <span class="metrica-label">Total</span>
+            </div>
+            <div class="metrica-bloque metrica-bloque--alto">
+              <span class="metrica-numero">{{ conteoSugerencias.alto }}</span>
+              <span class="metrica-label">Alto</span>
+            </div>
+            <div class="metrica-bloque metrica-bloque--medio">
+              <span class="metrica-numero">{{ conteoSugerencias.medio }}</span>
+              <span class="metrica-label">Medio</span>
+            </div>
+            <div class="metrica-bloque metrica-bloque--bajo">
+              <span class="metrica-numero">{{ conteoSugerencias.bajo }}</span>
+              <span class="metrica-label">Bajo</span>
             </div>
           </div>
 
-          <div v-for="s in sugerenciasAplicadas" :id="`sugerencia-${s.id}`" :key="s.id" class="sugerencia-card sugerencia-card--aplicada">
-            <div class="sugerencia-clausula">{{ s.clausula }}</div>
-            <p class="sugerencia-aplicada-label">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 6L9 17l-5-5"/>
-              </svg>
-              Cambio aplicado
-            </p>
-            <p v-if="s.error" class="sugerencia-error">{{ s.error }}</p>
-            <div class="sugerencia-acciones">
-              <button type="button" class="sugerencia-deshacer" @click="deshacerSugerencia(s)">Deshacer</button>
-            </div>
-          </div>
+          <div class="sugerencias-list">
+            <div v-for="s in sugerencias" :id="`sugerencia-${s.id}`" :key="s.id" class="sugerencia-card">
+              <div class="sugerencia-card-top">
+                <div class="sugerencia-clausula">{{ s.clausula }}</div>
+                <span class="riesgo-badge" :class="s.nivel ? `riesgo-badge--${s.nivel}` : 'riesgo-badge--cambio'">
+                  {{ s.nivel ? `Riesgo ${s.nivel}` : 'Cambio sugerido' }}
+                </span>
+              </div>
 
-          <div v-for="s in sugerenciasDescartadas" :id="`sugerencia-${s.id}`" :key="s.id" class="sugerencia-card sugerencia-card--descartada">
-            <div class="sugerencia-clausula">{{ s.clausula }}</div>
-            <p class="sugerencia-descartada-label">Descartada</p>
-            <div class="sugerencia-acciones">
-              <button type="button" class="sugerencia-reconsiderar" @click="reconsiderarSugerencia(s.id)">Reconsiderar</button>
+              <p class="sugerencia-explicacion">
+                <strong>{{ s.tipo === 'riesgo' ? 'Por qué es riesgosa:' : 'Por qué se sugiere:' }}</strong>
+                {{ s.explicacion }}
+              </p>
+
+              <p v-if="s.textoSugerido" class="sugerencia-nuevo">
+                <strong>Así se podría redactar mejor:</strong> {{ s.textoSugerido }}
+              </p>
+
+              <p class="sugerencia-original">
+                <strong>Texto actual:</strong> &ldquo;{{ s.textoOriginal }}&rdquo;
+              </p>
             </div>
           </div>
-        </div>
+        </template>
       </div>
     </div>
 
@@ -387,7 +407,7 @@
 
 <script setup lang="ts">
 import { ref, shallowRef, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
-import { useConsultasStore } from '../stores/consultas-store'
+import { useConsultasStore, esSolicitudDeAnalisisDeRiesgos } from '../stores/consultas-store'
 import { useAuthStore } from '../stores/auth'
 import { storeToRefs } from 'pinia'
 import { extraerTextoPDF } from '../utils/pdfExtractor'
@@ -454,6 +474,29 @@ const sugerenciasDescartadas = ref<SugerenciaConError[]>([])
 const cargandoSugerencias = ref(false)
 const errorSugerencias = ref('')
 
+// El panel de documento (.documento-panel) está deshabilitado (v-if false)
+// a pedido del usuario — este computed ya no tiene consumidor mientras
+// siga así, se deja sin usar en vez de borrarlo por si se reactiva ese
+// panel más adelante.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const mostrandoAnalisisRiesgos = computed(() =>
+  cargandoSugerencias.value || sugerencias.value.length > 0 || !!errorSugerencias.value
+)
+
+// Franja de métricas del panel de sugerencias (solo lectura) — cuenta por
+// nivel de riesgo; las de tipo "cambio" (sin nivel) solo suman al total.
+const conteoSugerencias = computed(() => {
+  let alto = 0
+  let medio = 0
+  let bajo = 0
+  for (const s of sugerencias.value) {
+    if (s.nivel === 'alto') alto++
+    else if (s.nivel === 'medio') medio++
+    else if (s.nivel === 'bajo') bajo++
+  }
+  return { total: sugerencias.value.length, alto, medio, bajo }
+})
+
 function limpiarSugerencias() {
   sugerencias.value = []
   sugerenciasAplicadas.value = []
@@ -490,6 +533,12 @@ async function generarSugerencias() {
   }
 }
 
+// descartarSugerencia/reconsiderarSugerencia/aplicarSugerencia/
+// deshacerSugerencia: el panel de Sugerencias pasó a ser de solo lectura
+// (ver la vista en el template) — esta lógica de aplicar/descartar en el
+// navegador se deja intacta y sin usar, no se borra, por si se vuelve a
+// necesitar más adelante.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function descartarSugerencia(id: string) {
   const s = sugerencias.value.find(item => item.id === id)
   if (!s) return
@@ -497,6 +546,7 @@ function descartarSugerencia(id: string) {
   sugerenciasDescartadas.value = [...sugerenciasDescartadas.value, s]
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function reconsiderarSugerencia(id: string) {
   const s = sugerenciasDescartadas.value.find(item => item.id === id)
   if (!s) return
@@ -505,6 +555,7 @@ function reconsiderarSugerencia(id: string) {
   sugerencias.value = [...sugerencias.value, s]
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function aplicarSugerencia(s: SugerenciaConError) {
   flushEdicionPendiente()
   const adjuntoAntes = store.archivoAdjunto
@@ -535,6 +586,7 @@ function aplicarSugerencia(s: SugerenciaConError) {
 // sugerencia (nada más lo tocó desde entonces), se restaura directamente
 // la foto guardada en aplicarSugerencia — sin depender de encontrar el
 // fragmento como string.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function deshacerSugerencia(s: SugerenciaConError) {
   flushEdicionPendiente()
 
@@ -1049,6 +1101,11 @@ function quitarAdjunto() {
 onUnmounted(() => {
   intentoExtraccion++
   if (debounceEdicionId !== null) clearTimeout(debounceEdicionId)
+  // El documento adjunto es de esta sesión de Consultas — si el usuario
+  // navega a otra pestaña (Contratos, Normas) y vuelve, no debe seguir
+  // apareciendo (store.archivoAdjunto es estado de Pinia, sobrevive a la
+  // navegación por sí solo si no se limpia acá).
+  quitarAdjunto()
 })
 
 function formatTimestamp(ts: Date | string): string {
@@ -1075,8 +1132,18 @@ async function enviarConsulta() {
     (store.archivoAdjunto ? 'Analiza este contrato y sus riesgos.' : '')
 
   if (mensaje) {
+    // Misma intención, un solo disparo: si este mensaje pide análisis de
+    // riesgos, se genera el panel de sugerencias estructurado junto con la
+    // respuesta del chat — en paralelo, no como un segundo paso manual.
+    // Se evalúa ANTES de llamar a store.enviarConsulta porque esa llamada
+    // consume/limpia analisisPendiente al terminar.
+    const pideAnalisisDeRiesgos = !!store.archivoAdjunto &&
+      (store.analisisPendiente || esSolicitudDeAnalisisDeRiesgos(mensaje))
+
     try {
-      await store.enviarConsulta(mensaje)
+      const tareas: Promise<unknown>[] = [store.enviarConsulta(mensaje)]
+      if (pideAnalisisDeRiesgos) tareas.push(generarSugerencias())
+      await Promise.all(tareas)
       pregunta.value = ''
       await nextTick()
       if (messagesBox.value) messagesBox.value.scrollTop = messagesBox.value.scrollHeight
@@ -1116,7 +1183,10 @@ watch(mensajes, async () => {
 
 <style scoped>
 .consultas-page {
-  max-width: 1100px;
+  /* Antes 1100px — se sentía encerrado en una caja angosta. Ahora usa
+     todo el ancho que MainLayout.vue le da a .q-page (su propio tope es
+     1400px), así el chat se siente amplio en vez de una tarjeta chica. */
+  max-width: 1400px;
   margin: 0 auto;
   animation: floatUp 0.5s ease-out both;
   display: flex;
@@ -1553,6 +1623,150 @@ watch(mensajes, async () => {
   background: var(--surface-alt);
 }
 
+/* CTA "Descargar y abrir en Word" — único camino para editar, por eso va
+   primero y con más peso visual que cualquier otra cosa del panel. */
+.sugerencias-cta {
+  flex-shrink: 0;
+  padding: 16px;
+  border-bottom: 1px solid rgba(27, 27, 30, 0.08);
+  background: var(--ink);
+}
+
+.sugerencias-cta-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--border-radius-small);
+  padding: 11px 14px;
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.18s;
+}
+
+.sugerencias-cta-btn:hover:not(:disabled) { background: var(--accent-hover); }
+.sugerencias-cta-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.sugerencias-cta-hint {
+  margin: 8px 0 0;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: rgba(250, 250, 247, 0.65);
+}
+
+/* Franja de métricas */
+.sugerencias-metricas {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.metrica-bloque {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 4px;
+  background: #fff;
+  border: 1px solid rgba(27, 27, 30, 0.08);
+  border-radius: var(--border-radius-small);
+}
+
+.metrica-numero {
+  font-family: 'EB Garamond', serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.metrica-label {
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+}
+
+.metrica-bloque--alto .metrica-numero { color: #a12f26; }
+.metrica-bloque--medio .metrica-numero { color: #a56a10; }
+.metrica-bloque--bajo .metrica-numero { color: #2f7b4f; }
+
+.sugerencias-cargando {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 36px 16px;
+}
+
+.sugerencias-cargando-titulo {
+  font-family: 'EB Garamond', serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 10px 0 0;
+}
+
+.sugerencias-cargando-sub {
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 220px;
+}
+
+.sugerencias-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 32px 16px;
+  color: #a12f26;
+}
+
+.sugerencias-error-titulo {
+  font-family: 'EB Garamond', serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 8px 0 0;
+}
+
+.sugerencias-error-sub {
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 220px;
+}
+
+.sugerencias-reintentar-btn {
+  margin-top: 10px;
+  background: var(--ink);
+  color: #fff;
+  border: none;
+  border-radius: var(--border-radius-small);
+  padding: 8px 16px;
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.18s;
+}
+
+.sugerencias-reintentar-btn:hover { background: var(--ink-soft); }
+
 .pdf-panel-status {
   text-align: center;
   color: var(--text-secondary);
@@ -1976,6 +2190,14 @@ watch(mensajes, async () => {
   border-color: var(--accent-soft-strong);
 }
 
+.sugerencia-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
 .sugerencia-clausula {
   font-family: 'Figtree', sans-serif;
   font-size: 0.72rem;
@@ -1983,15 +2205,34 @@ watch(mensajes, async () => {
   text-transform: uppercase;
   letter-spacing: 0.03em;
   color: var(--text-muted);
-  margin-bottom: 6px;
 }
 
-.sugerencia-original {
+.riesgo-badge {
+  flex-shrink: 0;
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.riesgo-badge--alto { background: #FBD5D0; color: #a12f26; }
+.riesgo-badge--medio { background: #FCE3D6; color: #a56a10; }
+.riesgo-badge--bajo { background: #DCEFE2; color: #2f7b4f; }
+.riesgo-badge--cambio { background: var(--surface-alt); color: var(--text-secondary); }
+
+.sugerencia-explicacion {
   font-size: 0.85rem;
   line-height: 1.5;
-  color: #C23B2E;
-  text-decoration: line-through;
-  margin: 0 0 6px;
+  color: var(--ink);
+  margin: 0 0 10px;
+}
+
+.sugerencia-explicacion strong {
+  font-weight: 700;
 }
 
 .sugerencia-nuevo {
@@ -1999,16 +2240,18 @@ watch(mensajes, async () => {
   line-height: 1.5;
   color: var(--ink);
   background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
   border-radius: 4px;
-  padding: 2px 4px;
-  margin: 0 0 8px;
-  display: inline;
+  padding: 8px 10px;
+  margin: 0 0 10px;
 }
 
-.sugerencia-explicacion {
-  font-size: 0.82rem;
+.sugerencia-original {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  font-style: italic;
   color: var(--text-secondary);
-  margin: 0 0 10px;
+  margin: 0;
 }
 
 .sugerencia-error {
