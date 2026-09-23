@@ -14,8 +14,13 @@ export async function subirDocumentoTemporal(uid: string, archivo: File): Promis
   const safeName = archivo.name.replace(/\s+/g, '_')
   const storagePath = `documentos-temporales/${uid}/${timestamp}-${safeName}`
 
+  // contentType explícito: en Windows File.type puede llegar vacío para un
+  // .docx, y la regla de Storage (storage.rules) exige exactamente este
+  // MIME — sin esto la subida se rechazaba en silencio.
   const fileRef = ref(storage, storagePath)
-  await uploadBytes(fileRef, archivo)
+  await uploadBytes(fileRef, archivo, {
+    contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  })
 
   return storagePath
 }

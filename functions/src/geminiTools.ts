@@ -2,7 +2,7 @@ import { onRequest } from 'firebase-functions/v2/https'
 import * as logger from 'firebase-functions/logger'
 import { createHash } from 'node:crypto'
 import { getFirestore } from 'firebase-admin/firestore'
-import { GEMINI_API_KEY, obtenerModeloGemini } from './geminiClient'
+import { GEMINI_API_KEY, TIMEOUT_FUNCIONES_IA_SEGUNDOS, conModeloDeRespaldo } from './geminiClient'
 import {
   ORIGENES_PERMITIDOS,
   MAX_CARACTERES_DOCUMENTO,
@@ -27,7 +27,7 @@ interface SugerenciaCambio {
 }
 
 export const generarSugerenciasContrato = onRequest(
-  { cors: ORIGENES_PERMITIDOS, secrets: [GEMINI_API_KEY], timeoutSeconds: 120 },
+  { cors: ORIGENES_PERMITIDOS, secrets: [GEMINI_API_KEY], timeoutSeconds: TIMEOUT_FUNCIONES_IA_SEGUNDOS },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
@@ -79,8 +79,7 @@ export const generarSugerenciasContrato = onRequest(
     ${textoContrato}
   `
 
-      const model = obtenerModeloGemini()
-      const result = await model.generateContent(prompt)
+      const result = await conModeloDeRespaldo(model => model.generateContent(prompt), { json: true })
       const text = result.response.text()
       const clean = text.replace(/```json|```/g, '').trim()
       const sugerencias = JSON.parse(clean) as Omit<SugerenciaCambio, 'id'>[]
@@ -100,7 +99,7 @@ export const generarSugerenciasContrato = onRequest(
 // MODIFICAR PLANTILLA CON IA
 // ================================
 export const modificarPlantillaIA = onRequest(
-  { cors: ORIGENES_PERMITIDOS, secrets: [GEMINI_API_KEY], timeoutSeconds: 120 },
+  { cors: ORIGENES_PERMITIDOS, secrets: [GEMINI_API_KEY], timeoutSeconds: TIMEOUT_FUNCIONES_IA_SEGUNDOS },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
@@ -134,8 +133,7 @@ export const modificarPlantillaIA = onRequest(
     Devuelve SOLO el contrato modificado, sin explicaciones.
   `
 
-      const model = obtenerModeloGemini()
-      const result = await model.generateContent(prompt)
+      const result = await conModeloDeRespaldo(model => model.generateContent(prompt))
 
       res.json({ textoModificado: result.response.text() })
     } catch (err) {
@@ -163,7 +161,7 @@ interface RespuestaChatEdicion {
 }
 
 export const chatEdicionContratoIA = onRequest(
-  { cors: ORIGENES_PERMITIDOS, secrets: [GEMINI_API_KEY], timeoutSeconds: 120 },
+  { cors: ORIGENES_PERMITIDOS, secrets: [GEMINI_API_KEY], timeoutSeconds: TIMEOUT_FUNCIONES_IA_SEGUNDOS },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
@@ -217,20 +215,19 @@ Responde SIEMPRE y ÚNICAMENTE en JSON, con esta estructura exacta, sin texto fu
 }
 `
 
-      const model = obtenerModeloGemini()
-      const chat = model.startChat({
+      const mensajeUsuario = respuestaUsuario?.trim() ||
+        'Analiza el contrato y hazme la primera pregunta para completarlo o modificarlo.'
+
+      // El chat se arma dentro del callback: si el modelo principal está
+      // saturado, se vuelve a armar con el modelo de respaldo.
+      const result = await conModeloDeRespaldo(model => model.startChat({
         history: historialChat.map(m => ({
           role: m.esIA ? 'model' : 'user',
           parts: [{ text: m.contenido }]
         })),
-        generationConfig: { maxOutputTokens: 4000 },
+        generationConfig: { maxOutputTokens: 4000, responseMimeType: 'application/json' },
         systemInstruction: { role: 'user', parts: [{ text: systemInstruction }] }
-      })
-
-      const mensajeUsuario = respuestaUsuario?.trim() ||
-        'Analiza el contrato y hazme la primera pregunta para completarlo o modificarlo.'
-
-      const result = await chat.sendMessage(mensajeUsuario)
+      }).sendMessage(mensajeUsuario))
       const text = result.response.text()
       const clean = text.replace(/```json|```/g, '').trim()
       const parsed = JSON.parse(clean) as Partial<RespuestaChatEdicion>
@@ -260,7 +257,7 @@ Responde SIEMPRE y ÚNICAMENTE en JSON, con esta estructura exacta, sin texto fu
 // RESUMEN DE NORMAS DEL DÍA
 // ================================
 export const resumirNormasDelDiaIA = onRequest(
-  { cors: ORIGENES_PERMITIDOS, secrets: [GEMINI_API_KEY], timeoutSeconds: 60 },
+  { cors: ORIGENES_PERMITIDOS, secrets: [GEMINI_API_KEY], timeoutSeconds: TIMEOUT_FUNCIONES_IA_SEGUNDOS },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
@@ -315,8 +312,7 @@ export const resumirNormasDelDiaIA = onRequest(
     }
   `
 
-      const model = obtenerModeloGemini()
-      const result = await model.generateContent(prompt)
+      const result = await conModeloDeRespaldo(model => model.generateContent(prompt), { json: true })
       const text = result.response.text()
       const clean = text.replace(/```json|```/g, '').trim()
       const resultado = JSON.parse(clean) as unknown

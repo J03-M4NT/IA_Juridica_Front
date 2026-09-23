@@ -28,13 +28,17 @@ export interface NormasDelDiaResult {
  */
 export async function obtenerUltimasNormas(): Promise<NormasDelDiaResult | null> {
   const normasRef = collection(db, 'normas_diarias')
-  const q = query(normasRef, orderBy('fecha', 'desc'), limit(1))
+  // Se piden las últimas ediciones y se usa la primera CON normas: antes
+  // del fix en scrapearNormasDiarias, de madrugada se guardaban ediciones
+  // vacías (El Peruano aún no publicaba) que dejaban la página sin normas.
+  const q = query(normasRef, orderBy('fecha', 'desc'), limit(5))
 
   const snapshot = await getDocs(q)
-  if (snapshot.empty) return null
+  const ediciones = snapshot.docs.map(d => d.data() as { fecha: string; normas?: NormaDelDia[] })
+  const edicion = ediciones.find(e => (e.normas?.length ?? 0) > 0)
+  if (!edicion) return null
 
-  const data = snapshot.docs[0]!.data() as { fecha: string; normas: NormaDelDia[] }
-  return { fecha: data.fecha, normas: data.normas ?? [] }
+  return { fecha: edicion.fecha, normas: edicion.normas ?? [] }
 }
 
 /**

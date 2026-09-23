@@ -1,6 +1,9 @@
 import { auth } from '../firebase/firebaseConfig'
 
-export const FUNCTIONS_URL = 'https://us-central1-lexit-ai.cloudfunctions.net'
+// VITE_FUNCTIONS_URL solo se define en el .env local para probar contra el
+// emulador (ej. http://127.0.0.1:5001/lexit-ai/us-central1). El deploy de
+// GitHub no la define, así que producción usa siempre las Functions reales.
+export const FUNCTIONS_URL = import.meta.env.VITE_FUNCTIONS_URL || 'https://us-central1-lexit-ai.cloudfunctions.net'
 
 // POST a una Cloud Function con el ID token de Firebase del usuario
 // actual. Todas las funciones lo exigen (ver functions/src/seguridad.ts):

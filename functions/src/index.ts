@@ -88,6 +88,15 @@ async function obtenerYGuardarNormasDelDia(): Promise<{ fechaId: string; total: 
 
   const fechaId = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
 
+  // De madrugada El Peruano todavía no publicó la edición del día y
+  // devuelve la lista vacía. Si se guardara, ese documento vacío pasaría
+  // a ser "el más reciente" y la Biblioteca Legal se vería sin normas
+  // hasta la mañana — mejor no tocar nada y seguir mostrando la anterior.
+  if (normas.length === 0) {
+    logger.info(`ℹ️ El Peruano aún no publica normas para ${fechaId}, se conserva la última edición`)
+    return { fechaId, total: 0 }
+  }
+
   const db = getFirestore()
   await db.collection('normas_diarias').doc(fechaId).set({
     fecha: fechaId,

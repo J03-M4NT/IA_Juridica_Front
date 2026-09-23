@@ -10,6 +10,8 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_MEASUREMENT_ID: string
   readonly VITE_SUPABASE_URL: string
   readonly VITE_SUPABASE_ANON_KEY: string
+  // Solo en desarrollo local, para usar el emulador de Functions
+  readonly VITE_FUNCTIONS_URL?: string
 }
 
 interface ImportMeta {
