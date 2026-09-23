@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="landing-page" ref="pageRoot">
 
     <!-- Blob decorations -->
@@ -14,7 +14,7 @@
         </div>
         <nav class="header-nav">
           <a href="#producto" class="header-nav-link" @click.prevent="scrollToSection('producto')">Producto</a>
-          <a href="#como-funciona" class="header-nav-link" @click.prevent="scrollToSection('como-funciona')">Cómo funciona</a>
+          <a href="#como-funciona" class="header-nav-link" @click.prevent="scrollToSection('como-funciona')">C├│mo funciona</a>
         </nav>
         <auth-buttons ref="authButtonsRef" />
       </div>
@@ -33,7 +33,7 @@
         </div>
 
         <div class="hero-inner">
-          <span class="hero-badge">IA jurídica especializada en derecho peruano</span>
+          <span class="hero-badge">IA jur├¡dica especializada en derecho peruano</span>
 
           <h1 class="hero-title">
             Todo tu trabajo legal.<br />
@@ -42,33 +42,33 @@
 
           <p class="hero-description">
             Resuelve consultas legales y analiza el riesgo de tus contratos por chat, completa
-            plantillas de contratos conversando con la IA, y mantente al día con las normas de
-            El Peruano — de principio a fin, sin salir de LEXIT AI.
+            plantillas de contratos conversando con la IA, y mantente al d├¡a con las normas de
+            El Peruano ÔÇö de principio a fin, sin salir de LEXIT AI.
           </p>
 
-          <p class="hero-caption">Hecho para abogados y estudios jurídicos en Perú</p>
+          <p class="hero-caption">Hecho para abogados y estudios jur├¡dicos en Per├║</p>
 
-          <!-- Vista previa ilustrativa del producto — al hacer clic invita a
-               iniciar sesión/registrarse, no ejecuta ninguna consulta real. -->
+          <!-- Vista previa ilustrativa del producto ÔÇö al hacer clic invita a
+               iniciar sesi├│n/registrarse, no ejecuta ninguna consulta real. -->
           <button type="button" class="hero-mock" @click="abrirAuth">
             <div class="mock-window">
               <div class="mock-window-bar">
                 <span class="mock-dot"></span>
                 <span class="mock-dot"></span>
                 <span class="mock-dot"></span>
-                <span class="mock-window-title">Consultas — LEXIT AI</span>
+                <span class="mock-window-title">Consultas ÔÇö LEXIT AI</span>
               </div>
               <div class="mock-chat">
                 <div class="mock-bubble mock-bubble--user">
-                  ¿Esta cláusula de resolución cumple el Código Civil?
+                  ┬┐Esta cl├íusula de resoluci├│n cumple el C├│digo Civil?
                 </div>
                 <div class="mock-bubble mock-bubble--ai">
-                  <span class="mock-bubble-tag">Artículo 1430°</span>
-                  Sí, siempre que la condición resolutoria se pacte expresamente. Te muestro
-                  la cita textual y cómo aplica a tu cláusula…
+                  <span class="mock-bubble-tag">Art├¡culo 1430┬░</span>
+                  S├¡, siempre que la condici├│n resolutoria se pacte expresamente. Te muestro
+                  la cita textual y c├│mo aplica a tu cl├íusulaÔÇª
                 </div>
               </div>
-              <div class="mock-cta">Inicia sesión para probarlo →</div>
+              <div class="mock-cta">Inicia sesi├│n para probarlo ÔåÆ</div>
             </div>
           </button>
         </div>
@@ -80,77 +80,49 @@
           <span class="section-label">Producto</span>
           <h2 class="section-title">Una plataforma, tres pilares</h2>
         </div>
-
-<<<<<<< ours
-          <article class="feature-card">
-            <div class="feature-icon-wrap icon-teal">
-              <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#1fa8bb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <path d="M14 2v6h6"/>
-                <path d="M8 13h8"/>
-                <path d="M8 17h5"/>
-              </svg>
-            </div>
-            <h3 class="feature-title">Análisis de PDF</h3>
-            <p class="feature-description">Extrae información clave de contratos y documentos legales automáticamente.</p>
-          </article>
-
-          <article class="feature-card">
-            <div class="feature-icon-wrap icon-pink">
-              <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#e0508f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-=======
         <div class="features-grid">
-
           <article class="feature-card reveal">
-            <div class="feature-icon-wrap">
+            <div class="feature-icon-wrap icon-teal">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
->>>>>>> theirs
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 <path d="M8 9h8"/>
                 <path d="M8 13h5"/>
               </svg>
             </div>
             <h3 class="feature-title">Consultas Legales</h3>
-            <p class="feature-description">Chatea con una IA especializada en derecho peruano — o adjunta un contrato (PDF o Word) para un análisis de riesgos cláusula por cláusula, con base legal citada.</p>
+            <p class="feature-description">Chatea con una IA especializada en derecho peruano ÔÇö o adjunta un contrato (PDF o Word) para un an├ílisis de riesgos cl├íusula por cl├íusula, con base legal citada.</p>
           </article>
 
-<<<<<<< ours
-          <article class="feature-card">
-            <div class="feature-icon-wrap icon-purple">
-              <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#7c47e0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-=======
           <article class="feature-card reveal">
-            <div class="feature-icon-wrap">
+            <div class="feature-icon-wrap icon-pink">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
->>>>>>> theirs
                 <path d="M3 7h18"/>
                 <path d="M3 7l2-3h14l2 3"/>
                 <path d="M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/>
                 <path d="M9 12h6"/>
               </svg>
             </div>
-            <h3 class="feature-title">Gestión de Contratos</h3>
-            <p class="feature-description">Elige una plantilla y complétala conversando con la IA, o edítala tú mismo. Descárgala lista, con marca de agua, o sigue editándola en Word con el complemento de LEXIT.</p>
+            <h3 class="feature-title">Gesti├│n de Contratos</h3>
+            <p class="feature-description">Elige una plantilla y compl├®tala conversando con la IA, o ed├¡tala t├║ mismo. Desc├írgala lista, con marca de agua, o sigue edit├índola en Word con el complemento de LEXIT.</p>
           </article>
 
           <article class="feature-card reveal">
-            <div class="feature-icon-wrap">
+            <div class="feature-icon-wrap icon-purple">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
               </svg>
             </div>
-            <h3 class="feature-title">Normas del Día</h3>
-            <p class="feature-description">Las normas publicadas en El Peruano, organizadas por sector, con un resumen diario generado por IA y lo más relevante para tu práctica.</p>
+            <h3 class="feature-title">Normas del D├¡a</h3>
+            <p class="feature-description">Las normas publicadas en El Peruano, organizadas por sector, con un resumen diario generado por IA y lo m├ís relevante para tu pr├íctica.</p>
           </article>
-
         </div>
       </section>
 
       <!-- How it works -->
       <section class="steps-section" id="como-funciona">
         <div class="section-header reveal">
-          <span class="section-label">Cómo funciona</span>
+          <span class="section-label">C├│mo funciona</span>
           <h2 class="section-title">Empieza en tres pasos</h2>
         </div>
 
@@ -159,7 +131,7 @@
           <div class="step-card reveal">
             <div class="step-number">01</div>
             <h3 class="step-title">Crea tu cuenta</h3>
-            <p class="step-description">Regístrate gratis en segundos y accede a todas las herramientas.</p>
+            <p class="step-description">Reg├¡strate gratis en segundos y accede a todas las herramientas.</p>
           </div>
 
           <div class="step-card reveal">
@@ -170,8 +142,8 @@
 
           <div class="step-card reveal">
             <div class="step-number">03</div>
-            <h3 class="step-title">Obtén resultados</h3>
-            <p class="step-description">Recibe respuestas, análisis de riesgos y contratos listos para descargar o editar en Word.</p>
+            <h3 class="step-title">Obt├®n resultados</h3>
+            <p class="step-description">Recibe respuestas, an├ílisis de riesgos y contratos listos para descargar o editar en Word.</p>
           </div>
 
         </div>
@@ -185,7 +157,7 @@
         <div class="footer-brand">
           <span class="footer-logo-text">LEXIT</span>
         </div>
-        <p class="footer-copy">© 2026 LEXIT AI. Todos los derechos reservados.</p>
+        <p class="footer-copy">┬® 2026 LEXIT AI. Todos los derechos reservados.</p>
       </div>
     </footer>
 
@@ -195,11 +167,7 @@
 <!-- --------------------------------------------------- -->
 
 <script setup lang="ts">
-<<<<<<< ours
 import { onMounted, onUnmounted, ref } from 'vue'
-=======
-import { ref, onMounted, onUnmounted } from 'vue'
->>>>>>> theirs
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '../stores/auth'
@@ -213,44 +181,33 @@ const router = useRouter()
 const authStore = useAuthStore()
 const { isAuthenticated } = storeToRefs(authStore)
 
-<<<<<<< ours
 const pageRoot = ref<HTMLElement | null>(null)
-
-const prefersReducedMotion = () =>
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-let handleMouseMove: ((e: MouseEvent) => void) | null = null
-const scrollTriggers: ScrollTrigger[] = []
-=======
 const authButtonsRef = ref<InstanceType<typeof AuthButtons> | null>(null)
 
 function abrirAuth() {
   authButtonsRef.value?.abrirLogin()
 }
 
-// El router usa modo hash (#/ruta) — un <a href="#producto"> normal lo
-// interpreta como navegación a una ruta inexistente y cae en el 404, así
-// que el scroll a las secciones se hace a mano en vez de dejarlo al navegador.
 function scrollToSection(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-// Revela las cards y encabezados de sección con una animación a medida que
-// entran en pantalla al hacer scroll, en vez de mostrarse todos de golpe.
-let observer: IntersectionObserver | null = null
->>>>>>> theirs
+const prefersReducedMotion = () =>
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+let handleMouseMove: ((e: MouseEvent) => void) | null = null
+const scrollTriggers: ScrollTrigger[] = []
 
 onMounted(() => {
   if (isAuthenticated.value) {
     void router.replace('/app/consultas')
     return
-<<<<<<< ours
   }
 
   const root = pageRoot.value
   if (!root || prefersReducedMotion()) return
 
-  // --- Entrada del hero: más dinámica (3D y elastic) ---
+  // --- Entrada del hero: m├ís din├ímica (3D y elastic) ---
   const heroLogo = root.querySelector('.hero-logo')
   const heroTexts = [
     '.hero-title',
@@ -283,7 +240,7 @@ onMounted(() => {
     stagger: 0.15,
   }, "-=0.9") // Empezar un poco antes de que termine el logo
 
-  // --- Feature cards: entrada elástica ---
+  // --- Feature cards: entrada el├ística ---
   const featureCards = root.querySelectorAll<HTMLElement>('.feature-card')
   gsap.set(featureCards, { opacity: 0, y: 50, scale: 0.9 })
   scrollTriggers.push(
@@ -417,7 +374,7 @@ onMounted(() => {
 
   window.addEventListener('mousemove', handleMouseMove, { passive: true })
 
-  // Scroll Parallax para los blobs (añade profundidad vertical al hacer scroll)
+  // Scroll Parallax para los blobs (a├▒ade profundidad vertical al hacer scroll)
   const innerBlobs = root.querySelectorAll<HTMLElement>('.blob')
   innerBlobs.forEach((blob, index) => {
     const speed = index === 0 ? 0.15 : index === 1 ? -0.2 : 0.1
@@ -454,29 +411,6 @@ onMounted(() => {
 onUnmounted(() => {
   if (handleMouseMove) window.removeEventListener('mousemove', handleMouseMove)
   scrollTriggers.forEach((st) => st.kill())
-=======
-  }
-
-  observer = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue
-        entry.target.classList.add('is-visible')
-        observer?.unobserve(entry.target)
-      }
-    },
-    // rootMargin negativo en la base: el elemento revela recién cuando ya
-    // entró bien a la vista (no apenas roza el borde inferior), para que
-    // el efecto se note mientras se sigue bajando, no antes de llegar.
-    { threshold: 0.1, rootMargin: '0px 0px -10% 0px' }
-  )
-
-  document.querySelectorAll('.reveal').forEach((el) => observer?.observe(el))
-})
-
-onUnmounted(() => {
-  observer?.disconnect()
->>>>>>> theirs
 })
 </script>
 
@@ -502,8 +436,8 @@ onUnmounted(() => {
 
 /* ==============================
    Blob decorations
-   - .blob-wrap: posición en pantalla + lo mueve GSAP (mouse parallax)
-   - .blob: animación orgánica de CSS (scale + micro-drift)
+   - .blob-wrap: posici├│n en pantalla + lo mueve GSAP (mouse parallax)
+   - .blob: animaci├│n org├ínica de CSS (scale + micro-drift)
    Separados para que ambos transforms no se peleen.
    ============================== */
 @keyframes blob {
@@ -649,7 +583,7 @@ onUnmounted(() => {
 }
 
 /* ==============================
-   Hero — sección oscura y atmosférica
+   Hero ÔÇö secci├│n oscura y atmosf├®rica
    ============================== */
 .hero-section {
   position: relative;
@@ -773,7 +707,7 @@ onUnmounted(() => {
   margin: 0 0 48px;
 }
 
-/* Vista previa ilustrativa — es un <button>: al hacer clic abre el login */
+/* Vista previa ilustrativa ÔÇö es un <button>: al hacer clic abre el login */
 .hero-mock {
   display: block;
   width: 100%;
@@ -918,7 +852,6 @@ onUnmounted(() => {
 }
 
 .feature-card {
-<<<<<<< ours
   background: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -948,30 +881,6 @@ onUnmounted(() => {
   width: 56px;
   height: 56px;
   border-radius: 16px;
-=======
-  background: #fff;
-  border: 1px solid rgba(27, 27, 30, 0.09);
-  border-radius: 16px;
-  padding: 32px 28px;
-  cursor: default;
-  transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
-}
-
-.feature-card:hover {
-  transform: translateY(-6px);
-  border-color: var(--accent);
-  box-shadow: 0 20px 42px rgba(27, 27, 30, 0.1);
-}
-
-.feature-card:active {
-  transform: translateY(-2px) scale(0.99);
-}
-
-.feature-icon-wrap {
-  width: 50px;
-  height: 50px;
-  border-radius: 12px;
->>>>>>> theirs
   display: flex;
   align-items: center;
   justify-content: center;
@@ -981,17 +890,9 @@ onUnmounted(() => {
   transition: background 0.25s, color 0.25s, transform 0.25s;
 }
 
-<<<<<<< ours
 .icon-teal   { background: rgba(57, 199, 216, 0.14); }
 .icon-pink   { background: rgba(255, 100, 176, 0.13); }
 .icon-purple { background: rgba(139, 92, 246, 0.13); }
-=======
-.feature-card:hover .feature-icon-wrap {
-  background: var(--accent);
-  color: #fff;
-  transform: scale(1.06);
-}
->>>>>>> theirs
 
 .feature-title {
   font-family: 'EB Garamond', serif;
@@ -1014,7 +915,6 @@ onUnmounted(() => {
 .steps-section {
   max-width: 1080px;
   margin: 0 auto;
-<<<<<<< ours
   padding: 70px 28px 40px;
 }
 
@@ -1039,9 +939,6 @@ onUnmounted(() => {
   font-weight: 600;
   margin: 0;
   color: #16161a;
-=======
-  padding: 60px 28px 60px;
->>>>>>> theirs
 }
 
 .steps-grid {
@@ -1051,7 +948,6 @@ onUnmounted(() => {
 }
 
 .step-card {
-<<<<<<< ours
   background: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -1069,46 +965,6 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-=======
-  position: relative;
-  background: #fff;
-  border: 1px solid rgba(27, 27, 30, 0.09);
-  border-radius: 16px;
-  padding: 32px 28px;
-  overflow: hidden;
-  cursor: default;
-  transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
-}
-
-.step-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: var(--accent);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.3s ease;
-}
-
-.step-card:hover {
-  transform: translateY(-6px);
-  border-color: var(--accent);
-  box-shadow: 0 20px 42px rgba(27, 27, 30, 0.1);
-}
-
-.step-card:hover::before {
-  transform: scaleX(1);
-}
-
-.step-card:active {
-  transform: translateY(-2px) scale(0.99);
-}
-
-.step-number {
->>>>>>> theirs
   font-family: 'EB Garamond', serif;
   font-size: 2.6rem;
   font-weight: 600;
@@ -1118,15 +974,9 @@ onUnmounted(() => {
   transition: color 0.25s;
 }
 
-<<<<<<< ours
 .step-1 { background: linear-gradient(135deg, #39c7d8 0%, #29a0af 100%); box-shadow: 0 4px 12px rgba(57, 199, 216, 0.3); }
 .step-2 { background: linear-gradient(135deg, #ff64b0 0%, #e04a92 100%); box-shadow: 0 4px 12px rgba(255, 100, 176, 0.3); }
 .step-3 { background: linear-gradient(135deg, #8b5cf6 0%, #6d42d3 100%); box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3); }
-=======
-.step-card:hover .step-number {
-  color: var(--accent);
-}
->>>>>>> theirs
 
 .step-title {
   font-family: 'EB Garamond', serif;
