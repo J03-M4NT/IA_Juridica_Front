@@ -13,6 +13,26 @@ export interface SesionConsulta {
   archivoAdjunto?: ArchivoAdjunto | null
 }
 
+// Elimina valores undefined de forma recursiva (Firestore los rechaza)
+// y desenpaqueta proxies de Vue.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function sanitize(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(sanitize)
+  } else if (obj !== null && typeof obj === 'object') {
+    if (obj instanceof Date) return obj
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const newObj: any = {}
+    Object.keys(obj).forEach(key => {
+      if (obj[key] !== undefined) {
+        newObj[key] = sanitize(obj[key])
+      }
+    })
+    return newObj
+  }
+  return obj
+}
+
 export async function guardarSesion(
   uid: string,
   sesionId: string,
@@ -22,13 +42,10 @@ export async function guardarSesion(
 ): Promise<void> {
   const docRef = doc(db, 'users', uid, 'consultas', sesionId)
   
-  // Transform dates to strings/timestamps if necessary, but Firestore
-  // accepts Date objects.
-  
   await setDoc(docRef, {
     titulo,
-    mensajes,
-    archivoAdjunto: archivoAdjunto || null,
+    mensajes: sanitize(mensajes),
+    archivoAdjunto: archivoAdjunto ? sanitize(archivoAdjunto) : null,
     fechaActualizacion: serverTimestamp()
   }, { merge: true })
 }

@@ -183,7 +183,7 @@ const drawerOpen = ref($q.screen.width > 1023)
 // al navegar evita que quede tapando la pantalla después de elegir una
 // opción del menú.
 function cerrarDrawerEnMobile() {
-  if ($q.screen.lt.lg) drawerOpen.value = false
+  if (window.innerWidth < 1024) drawerOpen.value = false
 }
 
 const handleScroll = () => { /* reserved for future scroll effects */ }

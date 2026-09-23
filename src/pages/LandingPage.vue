@@ -322,6 +322,18 @@ onMounted(() => {
     }),
   )
 
+  // --- Floating Mockup (Continua) ---
+  const heroMock = root.querySelector('.hero-mock')
+  if (heroMock) {
+    gsap.to(heroMock, {
+      y: 15,
+      duration: 3,
+      repeat: -1,
+      yoyo: true,
+      ease: 'sine.inOut'
+    })
+  }
+
   // --- Fondo reactivo al mouse (blob-wrap) y Scroll Parallax (blob inner) ---
   const wraps = root.querySelectorAll<HTMLElement>('.blob-wrap')
   const depths = [18, 26, 14]
@@ -331,16 +343,75 @@ onMounted(() => {
     y: gsap.quickTo(el, 'y', { duration: 0.9, ease: 'power3.out' }),
   }))
 
+  // Magnetic Buttons & 3D Cards variables
+  const magneticLinks = root.querySelectorAll<HTMLElement>('.header-nav-link')
+  const interactiveCards = root.querySelectorAll<HTMLElement>('.feature-card, .step-card')
+  const allCards = Array.from(interactiveCards)
+
+  // Prepare quickTo for 3D tilt
+  const tiltCards = allCards.map(card => {
+    gsap.set(card, { transformPerspective: 1000 })
+    return {
+      el: card,
+      rx: gsap.quickTo(card, 'rotationX', { duration: 0.5, ease: 'power3.out' }),
+      ry: gsap.quickTo(card, 'rotationY', { duration: 0.5, ease: 'power3.out' })
+    }
+  })
+
+  // Mockup hover events for glow effect
+  if (heroMock) {
+    heroMock.addEventListener('mouseenter', () => {
+      gsap.to(heroMock, { scale: 1.02, duration: 0.4, ease: 'back.out(2)', boxShadow: '0 25px 50px rgba(10, 37, 92, 0.2)' })
+    })
+    heroMock.addEventListener('mouseleave', () => {
+      gsap.to(heroMock, { scale: 1, duration: 0.4, ease: 'power2.out', boxShadow: '0 20px 40px rgba(10, 37, 92, 0.08)' })
+    })
+  }
+
+  // Magnetic events
+  magneticLinks.forEach(link => {
+    link.addEventListener('mousemove', (e) => {
+      const rect = link.getBoundingClientRect()
+      const x = e.clientX - rect.left - rect.width / 2
+      const y = e.clientY - rect.top - rect.height / 2
+      gsap.to(link, { x: x * 0.4, y: y * 0.4, duration: 0.3, ease: 'power2.out' })
+    })
+    link.addEventListener('mouseleave', () => {
+      gsap.to(link, { x: 0, y: 0, duration: 0.7, ease: 'elastic.out(1, 0.3)' })
+    })
+  })
+
   handleMouseMove = (e: MouseEvent) => {
     const cx = window.innerWidth / 2
     const cy = window.innerHeight / 2
     const nx = (e.clientX - cx) / cx
     const ny = (e.clientY - cy) / cy
 
+    // Blobs
     quickBlobs.forEach((q, i) => {
       const depth = depths[i] ?? 16
       q.x(nx * depth)
       q.y(ny * depth)
+    })
+
+    // 3D Cards Tilt effect
+    tiltCards.forEach(cardData => {
+      const rect = cardData.el.getBoundingClientRect()
+      // Check if mouse is hovering the card
+      if (e.clientX > rect.left && e.clientX < rect.right && e.clientY > rect.top && e.clientY < rect.bottom) {
+        const cardCx = rect.left + rect.width / 2
+        const cardCy = rect.top + rect.height / 2
+        // Calculate relative position to card center (-1 to 1)
+        const cnx = (e.clientX - cardCx) / (rect.width / 2)
+        const cny = (e.clientY - cardCy) / (rect.height / 2)
+        // Tilt intensity
+        cardData.rx(-cny * 10) // Rotate around X axis based on Y position
+        cardData.ry(cnx * 10)  // Rotate around Y axis based on X position
+      } else {
+        // Reset if not hovering
+        cardData.rx(0)
+        cardData.ry(0)
+      }
     })
   }
 
@@ -357,6 +428,22 @@ onMounted(() => {
       scrub: true,
       animation: gsap.to(blob, {
         y: () => window.innerHeight * speed,
+        ease: 'none'
+      })
+    })
+    scrollTriggers.push(st)
+  })
+
+  // Advanced text parallax
+  heroTexts.forEach((el, index) => {
+    const st = ScrollTrigger.create({
+      trigger: '.hero-section',
+      start: 'top top',
+      end: 'bottom top',
+      scrub: true,
+      animation: gsap.to(el, {
+        y: (index + 1) * -30,
+        opacity: 0,
         ease: 'none'
       })
     })
@@ -630,48 +717,46 @@ onUnmounted(() => {
   text-align: center;
 }
 
-<<<<<<< ours
 .hero-logo {
   height: 78px;
   width: 78px;
   display: block;
   margin: 0 auto 22px;
   filter: drop-shadow(0 8px 22px rgba(139, 92, 246, 0.22));
-=======
+}
+
 .hero-badge {
   display: inline-block;
-  padding: 7px 16px;
-  border-radius: 999px;
-  border: 1px solid rgba(250, 250, 247, 0.18);
-  background: rgba(250, 250, 247, 0.06);
-  backdrop-filter: blur(6px);
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: rgba(250, 250, 247, 0.85);
-  margin-bottom: 26px;
->>>>>>> theirs
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #C9D9F2;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin-bottom: 24px;
 }
 
 .hero-title {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Figtree', -apple-system, sans-serif;
   font-size: 3.6rem;
   line-height: 1.08;
-  font-weight: 600;
+  font-weight: 700;
   margin: 0 0 22px;
-  letter-spacing: -0.01em;
-<<<<<<< ours
-  background: linear-gradient(135deg, #16161a 0%, #3a3a44 100%);
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #FFFFFF 0%, #C9D9F2 100%);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-=======
-  color: #FAFAF7;
->>>>>>> theirs
 }
 
 .hero-title em {
-  font-style: italic;
-  color: #e8b381;
+  font-style: normal;
+  background: linear-gradient(135deg, #7EA2F2 0%, #4B79D8 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .hero-description {
