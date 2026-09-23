@@ -72,6 +72,19 @@ function esperar(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+// Detecta si el mensaje del usuario pide explícitamente un análisis de
+// riesgos del documento adjunto — dispara tanto el formato de respuesta de
+// consultarLexit como, desde ConsultasPage.vue, la generación del panel de
+// sugerencias estructurado. "riesgos" sola es demasiado ambigua (podría
+// ser una pregunta general sin relación al documento), así que solo cuenta
+// si aparece pegada a una palabra que señale el documento en sí.
+const ES_SOLICITUD_ANALISIS_REGEX =
+  /\b(analiza|anal[ií]zame|an[aá]lisis|revisa(r)?\s+(este|el|mi)?\s*contrato|cl[aá]usulas?\s+riesgosas?|riesgos?\s+(de|del|en)\s+(este|el|mi)?\s*(contrato|documento|acuerdo|archivo))\b/i
+
+export function esSolicitudDeAnalisisDeRiesgos(texto: string): boolean {
+  return ES_SOLICITUD_ANALISIS_REGEX.test(texto)
+}
+
 export const useConsultasStore = defineStore('consultas', {
   state: (): ConsultasState => ({
     pregunta: '',
@@ -133,11 +146,14 @@ export const useConsultasStore = defineStore('consultas', {
       let mensajeIA: Mensaje | null = null
 
       try {
-        // Si hay un PDF/Word recién adjuntado (analisisPendiente), es el
-        // turno que dispara el análisis de riesgos formal — la Cloud
-        // Function usa esto para decidir si agrega el bloque de formato
-        // (Cláusula/Nivel de riesgo/Base legal/Sugerencia).
-        const esSolicitudAnalisis = !!this.archivoAdjunto && this.analisisPendiente
+        // Dispara el análisis de riesgos formal (la Cloud Function usa esto
+        // para agregar el bloque de formato Cláusula/Nivel de riesgo/Base
+        // legal/Sugerencia) cuando: el usuario pidió explícitamente
+        // "analizar de nuevo" (analisisPendiente, ver volverAAnalizar), o
+        // el mensaje de ESTE turno pide análisis por su propio texto — no
+        // se dispara solo por tener un documento adjunto.
+        const esSolicitudAnalisis = !!this.archivoAdjunto &&
+          (this.analisisPendiente || esSolicitudDeAnalisisDeRiesgos(pregunta))
 
         // Se muestra de inmediato (vacío) y se va llenando con el efecto
         // "escribiéndose", para que no aparezca de golpe al terminar.
@@ -216,14 +232,15 @@ export const useConsultasStore = defineStore('consultas', {
       }
     },
 
+    // No dispara análisis automáticamente al adjuntar — eso ahora depende
+    // de la intención del mensaje que el usuario mande (ver
+    // esSolicitudDeAnalisisDeRiesgos en enviarConsulta).
     adjuntarPdf(nombre: string, texto: string) {
       this.archivoAdjunto = { nombre, texto, modificado: false }
-      this.analisisPendiente = true
     },
 
     adjuntarWord(nombre: string, html: string, fuenteDetectada?: string) {
       this.archivoAdjunto = { nombre, html, texto: extraerTextoVisibleDeHtml(html), modificado: false, fuenteDetectada }
-      this.analisisPendiente = true
     },
 
     // Se llama cuando termina la subida a Storage del .docx original (ver

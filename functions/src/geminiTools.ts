@@ -120,6 +120,100 @@ export const modificarPlantillaIA = onRequest(
 )
 
 // ================================
+// CHAT CONVERSACIONAL PARA COMPLETAR/EDITAR UN CONTRATO
+// (la IA analiza el contrato, pregunta un dato a la vez, y al final
+// devuelve el contrato completo actualizado)
+// ================================
+interface MensajeChatEdicion {
+  esIA: boolean
+  contenido: string
+}
+
+interface RespuestaChatEdicion {
+  tipo: 'pregunta' | 'documento_final'
+  mensaje: string
+  textoModificado?: string
+}
+
+export const chatEdicionContratoIA = onRequest(
+  { cors: true, secrets: [GEMINI_API_KEY], timeoutSeconds: 120 },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).send('Method not allowed')
+      return
+    }
+
+    try {
+      const { textoContrato, historialChat = [], respuestaUsuario } = req.body as {
+        textoContrato?: string
+        historialChat?: MensajeChatEdicion[]
+        respuestaUsuario?: string
+      }
+      if (!textoContrato?.trim()) {
+        res.status(400).json({ error: 'Falta textoContrato' })
+        return
+      }
+
+      const systemInstruction = `
+Eres un asistente legal que ayuda a un usuario a completar o modificar un contrato, conversando paso a paso.
+
+CONTRATO ACTUAL:
+${textoContrato}
+
+Tu trabajo:
+1. Analiza el contrato de arriba: identifica qué datos faltan por completar (espacios en blanco, líneas de puntos, placeholders tipo XXXX, campos vacíos) y qué el usuario podría querer modificar.
+2. Pregunta UNA sola cosa a la vez, en lenguaje natural y claro (ej. "¿Cuál es el nombre completo del arrendador?"), nunca varias preguntas juntas.
+3. No repitas una pregunta que ya fue respondida en la conversación.
+4. Cuando ya tengas suficiente información, o el usuario diga que ya terminó, que no quiere completar más, o pida ver el resultado, genera el CONTRATO COMPLETO actualizado con todos los cambios aplicados, conservando el resto del texto, la estructura y las cláusulas originales tal cual.
+
+Responde SIEMPRE y ÚNICAMENTE en JSON, con esta estructura exacta, sin texto fuera del JSON:
+{
+  "tipo": "pregunta" o "documento_final",
+  "mensaje": "el mensaje conversacional para mostrarle al usuario (la pregunta a hacer, o un breve resumen de que terminaste)",
+  "textoModificado": "SOLO si tipo es documento_final: el contrato completo con todos los cambios aplicados, listo para reemplazar al original. Omite este campo si tipo es pregunta."
+}
+`
+
+      const model = obtenerModeloGemini()
+      const chat = model.startChat({
+        history: historialChat.map(m => ({
+          role: m.esIA ? 'model' : 'user',
+          parts: [{ text: m.contenido }]
+        })),
+        generationConfig: { maxOutputTokens: 4000 },
+        systemInstruction: { role: 'user', parts: [{ text: systemInstruction }] }
+      })
+
+      const mensajeUsuario = respuestaUsuario?.trim() ||
+        'Analiza el contrato y hazme la primera pregunta para completarlo o modificarlo.'
+
+      const result = await chat.sendMessage(mensajeUsuario)
+      const text = result.response.text()
+      const clean = text.replace(/```json|```/g, '').trim()
+      const parsed = JSON.parse(clean) as Partial<RespuestaChatEdicion>
+
+      if (parsed.tipo !== 'pregunta' && parsed.tipo !== 'documento_final') {
+        throw new Error('Respuesta de la IA con formato inesperado')
+      }
+      if (!parsed.mensaje) {
+        throw new Error('Respuesta de la IA sin mensaje')
+      }
+
+      const respuesta: RespuestaChatEdicion = {
+        tipo: parsed.tipo,
+        mensaje: parsed.mensaje,
+        ...(parsed.textoModificado !== undefined ? { textoModificado: parsed.textoModificado } : {})
+      }
+      res.json(respuesta)
+    } catch (err) {
+      const error = err as Error
+      logger.error('❌ Error en chatEdicionContratoIA:', error.message)
+      res.status(500).json({ error: error.message })
+    }
+  }
+)
+
+// ================================
 // RESUMEN DE NORMAS DEL DÍA
 // ================================
 export const resumirNormasDelDiaIA = onRequest(
