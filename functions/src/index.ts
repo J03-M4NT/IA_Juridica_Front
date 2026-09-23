@@ -638,3 +638,86 @@ export const estadisticasPinecone = onRequest(
     }
   }
 )
+
+// ================================
+// LISTAR DOCUMENTOS INDEXADOS (panel Admin)
+// La lista antes vivía en el localStorage del navegador de quien subió
+// cada PDF, así que cada admin solo veía lo suyo. Ahora se reconstruye
+// desde el propio índice: los IDs siguen el patrón `${documentoId}_chunk_N`
+// (ver guardarDocumentoEnPinecone), así que se agrupan por ese prefijo y
+// se lee el nombre/tipo del primer chunk de cada documento.
+// ================================
+interface DocumentoIndexadoResumen {
+  id: string
+  nombre: string
+  tipo: string
+  chunks: number
+}
+
+export const listarDocumentosPinecone = onRequest(
+  { cors: ORIGENES_PERMITIDOS, secrets: [PINECONE_API_KEY], timeoutSeconds: 120 },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).send('Method not allowed')
+      return
+    }
+
+    const uid = await autorizar(req, res, { soloAdmin: true })
+    if (!uid) return
+
+    try {
+      const pinecone = new Pinecone({ apiKey: PINECONE_API_KEY.value() })
+      const idx = pinecone.index(PINECONE_INDEX, PINECONE_HOST)
+
+      // 1. Todos los IDs, agrupados por documento
+      const chunksPorDocumento = new Map<string, string[]>()
+      let paginationToken: string | undefined = undefined
+      do {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pagina: any = await idx.listPaginated({
+          limit: 100,
+          ...(paginationToken ? { paginationToken } : {})
+        })
+        for (const v of (pagina.vectors ?? []) as { id?: string }[]) {
+          if (!v.id) continue
+          const separador = v.id.lastIndexOf('_chunk_')
+          const documentoId = separador === -1 ? v.id : v.id.slice(0, separador)
+          const lista = chunksPorDocumento.get(documentoId) ?? []
+          lista.push(v.id)
+          chunksPorDocumento.set(documentoId, lista)
+        }
+        paginationToken = pagina.pagination?.next
+      } while (paginationToken)
+
+      // 2. Nombre y tipo, leídos de un chunk representativo por documento
+      const representantes = [...chunksPorDocumento.values()].map(ids => ids[0]!)
+      const metadatos = new Map<string, Record<string, unknown>>()
+      for (let i = 0; i < representantes.length; i += 100) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const resultado: any = await idx.fetch({ ids: representantes.slice(i, i + 100) })
+        for (const [id, record] of Object.entries(resultado.records ?? {})) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          metadatos.set(id, ((record as any)?.metadata ?? {}) as Record<string, unknown>)
+        }
+      }
+
+      const documentos: DocumentoIndexadoResumen[] = [...chunksPorDocumento.entries()]
+        .map(([documentoId, ids]) => {
+          const meta = metadatos.get(ids[0]!) ?? {}
+          return {
+            id: documentoId,
+            nombre: typeof meta.nombreDocumento === 'string' && meta.nombreDocumento ? meta.nombreDocumento : documentoId,
+            tipo: typeof meta.tipoDocumento === 'string' ? meta.tipoDocumento : '',
+            chunks: ids.length
+          }
+        })
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+
+      res.json({ documentos })
+    } catch (err) {
+      const error = err as Error
+      logger.error('❌ Error en listarDocumentosPinecone:', error.message)
+      res.status(500).json({ error: error.message })
+    }
+  }
+)
