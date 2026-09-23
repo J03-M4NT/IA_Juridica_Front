@@ -81,30 +81,11 @@
           <h2 class="section-title">Una plataforma, tres pilares</h2>
         </div>
 
-<<<<<<< ours
-          <article class="feature-card">
-            <div class="feature-icon-wrap icon-teal">
-              <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#1fa8bb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <path d="M14 2v6h6"/>
-                <path d="M8 13h8"/>
-                <path d="M8 17h5"/>
-              </svg>
-            </div>
-            <h3 class="feature-title">Análisis de PDF</h3>
-            <p class="feature-description">Extrae información clave de contratos y documentos legales automáticamente.</p>
-          </article>
-
-          <article class="feature-card">
-            <div class="feature-icon-wrap icon-pink">
-              <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#e0508f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-=======
         <div class="features-grid">
 
-          <article class="feature-card reveal">
+          <article class="feature-card">
             <div class="feature-icon-wrap">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
->>>>>>> theirs
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 <path d="M8 9h8"/>
                 <path d="M8 13h5"/>
@@ -114,15 +95,9 @@
             <p class="feature-description">Chatea con una IA especializada en derecho peruano — o adjunta un contrato (PDF o Word) para un análisis de riesgos cláusula por cláusula, con base legal citada.</p>
           </article>
 
-<<<<<<< ours
           <article class="feature-card">
-            <div class="feature-icon-wrap icon-purple">
-              <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#7c47e0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-=======
-          <article class="feature-card reveal">
             <div class="feature-icon-wrap">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
->>>>>>> theirs
                 <path d="M3 7h18"/>
                 <path d="M3 7l2-3h14l2 3"/>
                 <path d="M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/>
@@ -133,7 +108,7 @@
             <p class="feature-description">Elige una plantilla y complétala conversando con la IA, o edítala tú mismo. Descárgala lista, con marca de agua, o sigue editándola en Word con el complemento de LEXIT.</p>
           </article>
 
-          <article class="feature-card reveal">
+          <article class="feature-card">
             <div class="feature-icon-wrap">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
@@ -156,19 +131,19 @@
 
         <div class="steps-grid">
 
-          <div class="step-card reveal">
+          <div class="step-card">
             <div class="step-number">01</div>
             <h3 class="step-title">Crea tu cuenta</h3>
             <p class="step-description">Regístrate gratis en segundos y accede a todas las herramientas.</p>
           </div>
 
-          <div class="step-card reveal">
+          <div class="step-card">
             <div class="step-number">02</div>
             <h3 class="step-title">Elige tu herramienta</h3>
             <p class="step-description">Haz una consulta, adjunta un contrato para analizarlo, o completa una plantilla con ayuda de la IA.</p>
           </div>
 
-          <div class="step-card reveal">
+          <div class="step-card">
             <div class="step-number">03</div>
             <h3 class="step-title">Obtén resultados</h3>
             <p class="step-description">Recibe respuestas, análisis de riesgos y contratos listos para descargar o editar en Word.</p>
@@ -195,11 +170,7 @@
 <!-- --------------------------------------------------- -->
 
 <script setup lang="ts">
-<<<<<<< ours
 import { onMounted, onUnmounted, ref } from 'vue'
-=======
-import { ref, onMounted, onUnmounted } from 'vue'
->>>>>>> theirs
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '../stores/auth'
@@ -213,7 +184,6 @@ const router = useRouter()
 const authStore = useAuthStore()
 const { isAuthenticated } = storeToRefs(authStore)
 
-<<<<<<< ours
 const pageRoot = ref<HTMLElement | null>(null)
 
 const prefersReducedMotion = () =>
@@ -221,7 +191,7 @@ const prefersReducedMotion = () =>
 
 let handleMouseMove: ((e: MouseEvent) => void) | null = null
 const scrollTriggers: ScrollTrigger[] = []
-=======
+
 const authButtonsRef = ref<InstanceType<typeof AuthButtons> | null>(null)
 
 function abrirAuth() {
@@ -238,15 +208,31 @@ function scrollToSection(id: string) {
 // Revela las cards y encabezados de sección con una animación a medida que
 // entran en pantalla al hacer scroll, en vez de mostrarse todos de golpe.
 let observer: IntersectionObserver | null = null
->>>>>>> theirs
 
 onMounted(() => {
   if (isAuthenticated.value) {
     void router.replace('/app/consultas')
     return
-<<<<<<< ours
   }
 
+  observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue
+        entry.target.classList.add('is-visible')
+        observer?.unobserve(entry.target)
+      }
+    },
+    // rootMargin negativo en la base: el elemento revela recién cuando ya
+    // entró bien a la vista (no apenas roza el borde inferior), para que
+    // el efecto se note mientras se sigue bajando, no antes de llegar.
+    { threshold: 0.1, rootMargin: '0px 0px -10% 0px' }
+  )
+
+  document.querySelectorAll('.reveal').forEach((el) => observer?.observe(el))
+
+  // Animaciones GSAP (hero, tarjetas, parallax) — se omiten si el usuario
+  // pidió reducir el movimiento en su sistema.
   const root = pageRoot.value
   if (!root || prefersReducedMotion()) return
 
@@ -452,31 +438,9 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  observer?.disconnect()
   if (handleMouseMove) window.removeEventListener('mousemove', handleMouseMove)
   scrollTriggers.forEach((st) => st.kill())
-=======
-  }
-
-  observer = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue
-        entry.target.classList.add('is-visible')
-        observer?.unobserve(entry.target)
-      }
-    },
-    // rootMargin negativo en la base: el elemento revela recién cuando ya
-    // entró bien a la vista (no apenas roza el borde inferior), para que
-    // el efecto se note mientras se sigue bajando, no antes de llegar.
-    { threshold: 0.1, rootMargin: '0px 0px -10% 0px' }
-  )
-
-  document.querySelectorAll('.reveal').forEach((el) => observer?.observe(el))
-})
-
-onUnmounted(() => {
-  observer?.disconnect()
->>>>>>> theirs
 })
 </script>
 
@@ -918,7 +882,6 @@ onUnmounted(() => {
 }
 
 .feature-card {
-<<<<<<< ours
   background: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -948,30 +911,6 @@ onUnmounted(() => {
   width: 56px;
   height: 56px;
   border-radius: 16px;
-=======
-  background: #fff;
-  border: 1px solid rgba(27, 27, 30, 0.09);
-  border-radius: 16px;
-  padding: 32px 28px;
-  cursor: default;
-  transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
-}
-
-.feature-card:hover {
-  transform: translateY(-6px);
-  border-color: var(--accent);
-  box-shadow: 0 20px 42px rgba(27, 27, 30, 0.1);
-}
-
-.feature-card:active {
-  transform: translateY(-2px) scale(0.99);
-}
-
-.feature-icon-wrap {
-  width: 50px;
-  height: 50px;
-  border-radius: 12px;
->>>>>>> theirs
   display: flex;
   align-items: center;
   justify-content: center;
@@ -981,17 +920,11 @@ onUnmounted(() => {
   transition: background 0.25s, color 0.25s, transform 0.25s;
 }
 
-<<<<<<< ours
-.icon-teal   { background: rgba(57, 199, 216, 0.14); }
-.icon-pink   { background: rgba(255, 100, 176, 0.13); }
-.icon-purple { background: rgba(139, 92, 246, 0.13); }
-=======
 .feature-card:hover .feature-icon-wrap {
   background: var(--accent);
   color: #fff;
   transform: scale(1.06);
 }
->>>>>>> theirs
 
 .feature-title {
   font-family: 'EB Garamond', serif;
@@ -1014,34 +947,7 @@ onUnmounted(() => {
 .steps-section {
   max-width: 1080px;
   margin: 0 auto;
-<<<<<<< ours
-  padding: 70px 28px 40px;
-}
-
-.steps-header {
-  text-align: center;
-  margin-bottom: 46px;
-}
-
-.steps-label {
-  display: inline-block;
-  font-size: 0.82rem;
-  font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: #8b5cf6;
-  margin-bottom: 12px;
-}
-
-.steps-title {
-  font-family: 'EB Garamond', serif;
-  font-size: 2.3rem;
-  font-weight: 600;
-  margin: 0;
-  color: #16161a;
-=======
   padding: 60px 28px 60px;
->>>>>>> theirs
 }
 
 .steps-grid {
@@ -1051,7 +957,8 @@ onUnmounted(() => {
 }
 
 .step-card {
-<<<<<<< ours
+  position: relative;
+  overflow: hidden;
   background: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -1059,25 +966,7 @@ onUnmounted(() => {
   border-radius: 20px;
   padding: 30px 26px;
   box-shadow: 0 4px 12px rgba(27, 27, 30, 0.02);
-}
-
-.step-number {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-=======
-  position: relative;
-  background: #fff;
-  border: 1px solid rgba(27, 27, 30, 0.09);
-  border-radius: 16px;
-  padding: 32px 28px;
-  overflow: hidden;
-  cursor: default;
-  transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+  transition: border-color 0.25s, box-shadow 0.25s;
 }
 
 .step-card::before {
@@ -1108,7 +997,6 @@ onUnmounted(() => {
 }
 
 .step-number {
->>>>>>> theirs
   font-family: 'EB Garamond', serif;
   font-size: 2.6rem;
   font-weight: 600;
@@ -1118,15 +1006,9 @@ onUnmounted(() => {
   transition: color 0.25s;
 }
 
-<<<<<<< ours
-.step-1 { background: linear-gradient(135deg, #39c7d8 0%, #29a0af 100%); box-shadow: 0 4px 12px rgba(57, 199, 216, 0.3); }
-.step-2 { background: linear-gradient(135deg, #ff64b0 0%, #e04a92 100%); box-shadow: 0 4px 12px rgba(255, 100, 176, 0.3); }
-.step-3 { background: linear-gradient(135deg, #8b5cf6 0%, #6d42d3 100%); box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3); }
-=======
 .step-card:hover .step-number {
   color: var(--accent);
 }
->>>>>>> theirs
 
 .step-title {
   font-family: 'EB Garamond', serif;
