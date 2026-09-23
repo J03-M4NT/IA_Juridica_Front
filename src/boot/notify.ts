@@ -10,5 +10,4 @@ export default boot(() => {
   });
 });
 
-// Para poder usar Notify fuera de componentes Vue
 export { Notify };

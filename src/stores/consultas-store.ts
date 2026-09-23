@@ -2,9 +2,11 @@ import { defineStore } from 'pinia'
 import { getErrorMessage } from '../utils/errors'
 import type { FragmentoResultado } from '../services/pineconeService'
 import { consultarLexit } from '../services/consultaLexitService'
+import { guardarSesion, obtenerHistorial, type SesionConsulta } from '../services/historialService'
+import { useAuthStore } from './auth'
 import { extraerTextoVisibleDeHtml, reemplazarEnHtml } from '../utils/htmlTexto'
 
-interface Mensaje {
+export interface Mensaje {
   contenido: string
   esIA: boolean
   timestamp: Date
@@ -12,7 +14,7 @@ interface Mensaje {
   fuentes?: FragmentoResultado[]
 }
 
-interface ArchivoAdjunto {
+export interface ArchivoAdjunto {
   nombre: string
   // Siempre presente (plano) — para PDF es la única fuente; para Word se
   // DERIVA de html cada vez que este cambia (ver sincronizarTextoDesdeHtml),
@@ -56,6 +58,8 @@ interface ConsultasState {
   fragmentosEncontrados: number
   archivoAdjunto: ArchivoAdjunto | null
   analisisPendiente: boolean
+  sesionActualId: string | null
+  historialSesiones: SesionConsulta[]
 }
 
 // Ritmo del efecto "escribiéndose" al mostrar la respuesta (ver
@@ -97,6 +101,9 @@ export const useConsultasStore = defineStore('consultas', {
     fragmentosEncontrados: 0,
     archivoAdjunto: null,
     analisisPendiente: false
+    ,
+    sesionActualId: null,
+    historialSesiones: []
   }),
 
   actions: {
@@ -227,9 +234,40 @@ export const useConsultasStore = defineStore('consultas', {
         }
         this.mensajes = [...this.mensajes]
         this.error = `Error al consultar la IA jurídica: ${message}`
+
       } finally {
+        const auth = useAuthStore()
+        if (auth.user?.uid) {
+          if (!this.sesionActualId) {
+            this.sesionActualId = Date.now().toString()
+            const primerUserMsg = this.mensajes.find(m => !m.esIA)
+            const titulo = primerUserMsg ? primerUserMsg.contenido.substring(0, 30) + (primerUserMsg.contenido.length > 30 ? '...' : '') : 'Nueva Consulta'
+            
+            this.historialSesiones.unshift({
+              id: this.sesionActualId,
+              titulo,
+              fechaActualizacion: new Date(),
+              mensajes: [...this.mensajes],
+              archivoAdjunto: this.archivoAdjunto || null
+            })
+          } else {
+            const session = this.historialSesiones.find(s => s.id === this.sesionActualId)
+            if (session) {
+              session.mensajes = [...this.mensajes]
+              session.fechaActualizacion = new Date()
+              session.archivoAdjunto = this.archivoAdjunto || null
+            }
+          }
+          
+          const session = this.historialSesiones.find(s => s.id === this.sesionActualId)
+          if (session) {
+             guardarSesion(auth.user.uid, session.id, session.titulo, session.mensajes, session.archivoAdjunto || null).catch(console.error)
+          }
+        }
+        
         this.loading = false
       }
+
     },
 
     // No dispara análisis automáticamente al adjuntar — eso ahora depende
@@ -255,6 +293,7 @@ export const useConsultasStore = defineStore('consultas', {
     quitarAdjunto() {
       this.archivoAdjunto = null
       this.analisisPendiente = false
+      this.sesionActualId = null
     },
 
     volverAAnalizar() {
@@ -308,6 +347,32 @@ export const useConsultasStore = defineStore('consultas', {
       sincronizarTextoDesdeHtml(this.archivoAdjunto)
     },
 
+
+    async cargarHistorial() {
+      const auth = useAuthStore()
+      if (auth.user?.uid) {
+        try {
+          this.historialSesiones = await obtenerHistorial(auth.user.uid)
+        } catch (error) {
+          console.error('Error cargando historial', error)
+        }
+      }
+    },
+    
+    cargarSesion(id: string) {
+      const session = this.historialSesiones.find(s => s.id === id)
+      if (session) {
+        this.sesionActualId = id
+        this.mensajes = [...session.mensajes]
+        this.archivoAdjunto = session.archivoAdjunto || null
+      }
+    },
+    
+    nuevaSesion() {
+      this.limpiar()
+      this.iniciarSesion()
+    },
+
     limpiar() {
       this.pregunta = ''
       this.respuesta = ''
@@ -318,6 +383,7 @@ export const useConsultasStore = defineStore('consultas', {
       this.fragmentosEncontrados = 0
       this.archivoAdjunto = null
       this.analisisPendiente = false
+      this.sesionActualId = null
     }
   }
 })

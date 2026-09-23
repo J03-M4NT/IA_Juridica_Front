@@ -1,5 +1,10 @@
 <template>
-  <div class="landing-page">
+  <div class="landing-page" ref="pageRoot">
+
+    <!-- Blob decorations -->
+    <div class="blob-wrap blob-wrap-1"><div class="blob blob-1"></div></div>
+    <div class="blob-wrap blob-wrap-2"><div class="blob blob-2"></div></div>
+    <div class="blob-wrap blob-wrap-3"><div class="blob blob-3"></div></div>
 
     <!-- Header -->
     <header class="landing-header">
@@ -76,11 +81,30 @@
           <h2 class="section-title">Una plataforma, tres pilares</h2>
         </div>
 
+<<<<<<< ours
+          <article class="feature-card">
+            <div class="feature-icon-wrap icon-teal">
+              <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#1fa8bb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <path d="M14 2v6h6"/>
+                <path d="M8 13h8"/>
+                <path d="M8 17h5"/>
+              </svg>
+            </div>
+            <h3 class="feature-title">Análisis de PDF</h3>
+            <p class="feature-description">Extrae información clave de contratos y documentos legales automáticamente.</p>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-icon-wrap icon-pink">
+              <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#e0508f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+=======
         <div class="features-grid">
 
           <article class="feature-card reveal">
             <div class="feature-icon-wrap">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+>>>>>>> theirs
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 <path d="M8 9h8"/>
                 <path d="M8 13h5"/>
@@ -90,9 +114,15 @@
             <p class="feature-description">Chatea con una IA especializada en derecho peruano — o adjunta un contrato (PDF o Word) para un análisis de riesgos cláusula por cláusula, con base legal citada.</p>
           </article>
 
+<<<<<<< ours
+          <article class="feature-card">
+            <div class="feature-icon-wrap icon-purple">
+              <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#7c47e0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+=======
           <article class="feature-card reveal">
             <div class="feature-icon-wrap">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+>>>>>>> theirs
                 <path d="M3 7h18"/>
                 <path d="M3 7l2-3h14l2 3"/>
                 <path d="M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/>
@@ -165,16 +195,33 @@
 <!-- --------------------------------------------------- -->
 
 <script setup lang="ts">
+<<<<<<< ours
+import { onMounted, onUnmounted, ref } from 'vue'
+=======
 import { ref, onMounted, onUnmounted } from 'vue'
+>>>>>>> theirs
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '../stores/auth'
 import AuthButtons from '../components/Auth/AuthButtons.vue'
+import { gsap } from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+
+gsap.registerPlugin(ScrollTrigger)
 
 const router = useRouter()
 const authStore = useAuthStore()
 const { isAuthenticated } = storeToRefs(authStore)
 
+<<<<<<< ours
+const pageRoot = ref<HTMLElement | null>(null)
+
+const prefersReducedMotion = () =>
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+let handleMouseMove: ((e: MouseEvent) => void) | null = null
+const scrollTriggers: ScrollTrigger[] = []
+=======
 const authButtonsRef = ref<InstanceType<typeof AuthButtons> | null>(null)
 
 function abrirAuth() {
@@ -191,11 +238,223 @@ function scrollToSection(id: string) {
 // Revela las cards y encabezados de sección con una animación a medida que
 // entran en pantalla al hacer scroll, en vez de mostrarse todos de golpe.
 let observer: IntersectionObserver | null = null
+>>>>>>> theirs
 
 onMounted(() => {
   if (isAuthenticated.value) {
     void router.replace('/app/consultas')
     return
+<<<<<<< ours
+  }
+
+  const root = pageRoot.value
+  if (!root || prefersReducedMotion()) return
+
+  // --- Entrada del hero: más dinámica (3D y elastic) ---
+  const heroLogo = root.querySelector('.hero-logo')
+  const heroTexts = [
+    '.hero-title',
+    '.hero-subtitle',
+    '.hero-heading',
+    '.hero-description',
+  ]
+    .map((sel) => root.querySelector(sel))
+    .filter(Boolean) as HTMLElement[]
+
+  const tlHero = gsap.timeline({ delay: 0.1 })
+  
+  if (heroLogo) {
+    gsap.set(heroLogo, { scale: 0.5, opacity: 0 })
+    tlHero.to(heroLogo, {
+      scale: 1,
+      opacity: 1,
+      duration: 1.2,
+      ease: 'elastic.out(1, 0.5)'
+    })
+  }
+
+  gsap.set(heroTexts, { opacity: 0, y: 40, rotationX: -45, transformPerspective: 800 })
+  tlHero.to(heroTexts, {
+    opacity: 1,
+    y: 0,
+    rotationX: 0,
+    duration: 1,
+    ease: 'power3.out',
+    stagger: 0.15,
+  }, "-=0.9") // Empezar un poco antes de que termine el logo
+
+  // --- Feature cards: entrada elástica ---
+  const featureCards = root.querySelectorAll<HTMLElement>('.feature-card')
+  gsap.set(featureCards, { opacity: 0, y: 50, scale: 0.9 })
+  scrollTriggers.push(
+    ScrollTrigger.create({
+      trigger: '.features-grid',
+      start: 'top 85%',
+      once: true,
+      onEnter: () =>
+        gsap.to(featureCards, {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.8,
+          ease: 'back.out(1.5)',
+          stagger: 0.15,
+        }),
+    }),
+  )
+
+  // --- Step cards: rebote secuencial ---
+  const stepCards = root.querySelectorAll<HTMLElement>('.step-card')
+  gsap.set(stepCards, { opacity: 0, y: 60 })
+  scrollTriggers.push(
+    ScrollTrigger.create({
+      trigger: '.steps-grid',
+      start: 'top 85%',
+      once: true,
+      onEnter: () =>
+        gsap.to(stepCards, {
+          opacity: 1,
+          y: 0,
+          duration: 0.9,
+          ease: 'elastic.out(1, 0.75)',
+          stagger: 0.2,
+        }),
+    }),
+  )
+
+  // --- Floating Mockup (Continua) ---
+  const heroMock = root.querySelector('.hero-mock')
+  if (heroMock) {
+    gsap.to(heroMock, {
+      y: 15,
+      duration: 3,
+      repeat: -1,
+      yoyo: true,
+      ease: 'sine.inOut'
+    })
+  }
+
+  // --- Fondo reactivo al mouse (blob-wrap) y Scroll Parallax (blob inner) ---
+  const wraps = root.querySelectorAll<HTMLElement>('.blob-wrap')
+  const depths = [18, 26, 14]
+
+  const quickBlobs = Array.from(wraps).map((el) => ({
+    x: gsap.quickTo(el, 'x', { duration: 0.9, ease: 'power3.out' }),
+    y: gsap.quickTo(el, 'y', { duration: 0.9, ease: 'power3.out' }),
+  }))
+
+  // Magnetic Buttons & 3D Cards variables
+  const magneticLinks = root.querySelectorAll<HTMLElement>('.header-nav-link')
+  const interactiveCards = root.querySelectorAll<HTMLElement>('.feature-card, .step-card')
+  const allCards = Array.from(interactiveCards)
+
+  // Prepare quickTo for 3D tilt
+  const tiltCards = allCards.map(card => {
+    gsap.set(card, { transformPerspective: 1000 })
+    return {
+      el: card,
+      rx: gsap.quickTo(card, 'rotationX', { duration: 0.5, ease: 'power3.out' }),
+      ry: gsap.quickTo(card, 'rotationY', { duration: 0.5, ease: 'power3.out' })
+    }
+  })
+
+  // Mockup hover events for glow effect
+  if (heroMock) {
+    heroMock.addEventListener('mouseenter', () => {
+      gsap.to(heroMock, { scale: 1.02, duration: 0.4, ease: 'back.out(2)', boxShadow: '0 25px 50px rgba(10, 37, 92, 0.2)' })
+    })
+    heroMock.addEventListener('mouseleave', () => {
+      gsap.to(heroMock, { scale: 1, duration: 0.4, ease: 'power2.out', boxShadow: '0 20px 40px rgba(10, 37, 92, 0.08)' })
+    })
+  }
+
+  // Magnetic events
+  magneticLinks.forEach(link => {
+    link.addEventListener('mousemove', (e) => {
+      const rect = link.getBoundingClientRect()
+      const x = e.clientX - rect.left - rect.width / 2
+      const y = e.clientY - rect.top - rect.height / 2
+      gsap.to(link, { x: x * 0.4, y: y * 0.4, duration: 0.3, ease: 'power2.out' })
+    })
+    link.addEventListener('mouseleave', () => {
+      gsap.to(link, { x: 0, y: 0, duration: 0.7, ease: 'elastic.out(1, 0.3)' })
+    })
+  })
+
+  handleMouseMove = (e: MouseEvent) => {
+    const cx = window.innerWidth / 2
+    const cy = window.innerHeight / 2
+    const nx = (e.clientX - cx) / cx
+    const ny = (e.clientY - cy) / cy
+
+    // Blobs
+    quickBlobs.forEach((q, i) => {
+      const depth = depths[i] ?? 16
+      q.x(nx * depth)
+      q.y(ny * depth)
+    })
+
+    // 3D Cards Tilt effect
+    tiltCards.forEach(cardData => {
+      const rect = cardData.el.getBoundingClientRect()
+      // Check if mouse is hovering the card
+      if (e.clientX > rect.left && e.clientX < rect.right && e.clientY > rect.top && e.clientY < rect.bottom) {
+        const cardCx = rect.left + rect.width / 2
+        const cardCy = rect.top + rect.height / 2
+        // Calculate relative position to card center (-1 to 1)
+        const cnx = (e.clientX - cardCx) / (rect.width / 2)
+        const cny = (e.clientY - cardCy) / (rect.height / 2)
+        // Tilt intensity
+        cardData.rx(-cny * 10) // Rotate around X axis based on Y position
+        cardData.ry(cnx * 10)  // Rotate around Y axis based on X position
+      } else {
+        // Reset if not hovering
+        cardData.rx(0)
+        cardData.ry(0)
+      }
+    })
+  }
+
+  window.addEventListener('mousemove', handleMouseMove, { passive: true })
+
+  // Scroll Parallax para los blobs (añade profundidad vertical al hacer scroll)
+  const innerBlobs = root.querySelectorAll<HTMLElement>('.blob')
+  innerBlobs.forEach((blob, index) => {
+    const speed = index === 0 ? 0.15 : index === 1 ? -0.2 : 0.1
+    const st = ScrollTrigger.create({
+      trigger: root,
+      start: 'top top',
+      end: 'bottom top',
+      scrub: true,
+      animation: gsap.to(blob, {
+        y: () => window.innerHeight * speed,
+        ease: 'none'
+      })
+    })
+    scrollTriggers.push(st)
+  })
+
+  // Advanced text parallax
+  heroTexts.forEach((el, index) => {
+    const st = ScrollTrigger.create({
+      trigger: '.hero-section',
+      start: 'top top',
+      end: 'bottom top',
+      scrub: true,
+      animation: gsap.to(el, {
+        y: (index + 1) * -30,
+        opacity: 0,
+        ease: 'none'
+      })
+    })
+    scrollTriggers.push(st)
+  })
+})
+
+onUnmounted(() => {
+  if (handleMouseMove) window.removeEventListener('mousemove', handleMouseMove)
+  scrollTriggers.forEach((st) => st.kill())
+=======
   }
 
   observer = new IntersectionObserver(
@@ -217,6 +476,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   observer?.disconnect()
+>>>>>>> theirs
 })
 </script>
 
@@ -240,9 +500,50 @@ onUnmounted(() => {
   -webkit-font-smoothing: antialiased;
 }
 
-@keyframes floatUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+/* ==============================
+   Blob decorations
+   - .blob-wrap: posición en pantalla + lo mueve GSAP (mouse parallax)
+   - .blob: animación orgánica de CSS (scale + micro-drift)
+   Separados para que ambos transforms no se peleen.
+   ============================== */
+@keyframes blob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(12px, -10px) scale(1.06); }
+}
+
+.blob-wrap {
+  position: absolute;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.blob-wrap-1 { top: -120px; right: -80px; width: 420px; height: 420px; }
+.blob-wrap-2 { top: 180px; left: -140px; width: 380px; height: 380px; }
+.blob-wrap-3 { top: 520px; right: -100px; width: 340px; height: 340px; }
+
+.blob {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  filter: blur(8px);
+}
+
+.blob-1 {
+  background: radial-gradient(circle at 30% 30%, rgba(57, 199, 216, 0.28), transparent 70%);
+}
+
+.blob-2 {
+  background: radial-gradient(circle at 40% 40%, rgba(255, 100, 176, 0.20), transparent 70%);
+}
+
+.blob-3 {
+  background: radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.18), transparent 70%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .blob-1 { animation: blob 14s ease-in-out infinite; }
+  .blob-2 { animation: blob 18s ease-in-out infinite; }
+  .blob-3 { animation: blob 16s ease-in-out infinite; }
 }
 
 @keyframes driftGlow {
@@ -416,32 +717,46 @@ onUnmounted(() => {
   text-align: center;
 }
 
+.hero-logo {
+  height: 78px;
+  width: 78px;
+  display: block;
+  margin: 0 auto 22px;
+  filter: drop-shadow(0 8px 22px rgba(139, 92, 246, 0.22));
+}
+
 .hero-badge {
   display: inline-block;
-  padding: 7px 16px;
-  border-radius: 999px;
-  border: 1px solid rgba(250, 250, 247, 0.18);
-  background: rgba(250, 250, 247, 0.06);
-  backdrop-filter: blur(6px);
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: rgba(250, 250, 247, 0.85);
-  margin-bottom: 26px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #C9D9F2;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin-bottom: 24px;
 }
 
 .hero-title {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Figtree', -apple-system, sans-serif;
   font-size: 3.6rem;
   line-height: 1.08;
-  font-weight: 600;
+  font-weight: 700;
   margin: 0 0 22px;
-  letter-spacing: -0.01em;
-  color: #FAFAF7;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #FFFFFF 0%, #C9D9F2 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .hero-title em {
-  font-style: italic;
-  color: #e8b381;
+  font-style: normal;
+  background: linear-gradient(135deg, #7EA2F2 0%, #4B79D8 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .hero-description {
@@ -603,6 +918,37 @@ onUnmounted(() => {
 }
 
 .feature-card {
+<<<<<<< ours
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 20px;
+  padding: 30px 26px;
+  box-shadow: 0 4px 12px rgba(27, 27, 30, 0.02);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(255, 255, 255, 1);
+}
+
+.feature-card:nth-child(1):hover {
+  box-shadow: 0 16px 40px rgba(57, 199, 216, 0.25);
+}
+.feature-card:nth-child(2):hover {
+  box-shadow: 0 16px 40px rgba(255, 100, 176, 0.22);
+}
+.feature-card:nth-child(3):hover {
+  box-shadow: 0 16px 40px rgba(139, 92, 246, 0.22);
+}
+
+.feature-icon-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+=======
   background: #fff;
   border: 1px solid rgba(27, 27, 30, 0.09);
   border-radius: 16px;
@@ -625,6 +971,7 @@ onUnmounted(() => {
   width: 50px;
   height: 50px;
   border-radius: 12px;
+>>>>>>> theirs
   display: flex;
   align-items: center;
   justify-content: center;
@@ -634,11 +981,17 @@ onUnmounted(() => {
   transition: background 0.25s, color 0.25s, transform 0.25s;
 }
 
+<<<<<<< ours
+.icon-teal   { background: rgba(57, 199, 216, 0.14); }
+.icon-pink   { background: rgba(255, 100, 176, 0.13); }
+.icon-purple { background: rgba(139, 92, 246, 0.13); }
+=======
 .feature-card:hover .feature-icon-wrap {
   background: var(--accent);
   color: #fff;
   transform: scale(1.06);
 }
+>>>>>>> theirs
 
 .feature-title {
   font-family: 'EB Garamond', serif;
@@ -661,7 +1014,34 @@ onUnmounted(() => {
 .steps-section {
   max-width: 1080px;
   margin: 0 auto;
+<<<<<<< ours
+  padding: 70px 28px 40px;
+}
+
+.steps-header {
+  text-align: center;
+  margin-bottom: 46px;
+}
+
+.steps-label {
+  display: inline-block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #8b5cf6;
+  margin-bottom: 12px;
+}
+
+.steps-title {
+  font-family: 'EB Garamond', serif;
+  font-size: 2.3rem;
+  font-weight: 600;
+  margin: 0;
+  color: #16161a;
+=======
   padding: 60px 28px 60px;
+>>>>>>> theirs
 }
 
 .steps-grid {
@@ -671,6 +1051,25 @@ onUnmounted(() => {
 }
 
 .step-card {
+<<<<<<< ours
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 20px;
+  padding: 30px 26px;
+  box-shadow: 0 4px 12px rgba(27, 27, 30, 0.02);
+}
+
+.step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+=======
   position: relative;
   background: #fff;
   border: 1px solid rgba(27, 27, 30, 0.09);
@@ -709,6 +1108,7 @@ onUnmounted(() => {
 }
 
 .step-number {
+>>>>>>> theirs
   font-family: 'EB Garamond', serif;
   font-size: 2.6rem;
   font-weight: 600;
@@ -718,9 +1118,15 @@ onUnmounted(() => {
   transition: color 0.25s;
 }
 
+<<<<<<< ours
+.step-1 { background: linear-gradient(135deg, #39c7d8 0%, #29a0af 100%); box-shadow: 0 4px 12px rgba(57, 199, 216, 0.3); }
+.step-2 { background: linear-gradient(135deg, #ff64b0 0%, #e04a92 100%); box-shadow: 0 4px 12px rgba(255, 100, 176, 0.3); }
+.step-3 { background: linear-gradient(135deg, #8b5cf6 0%, #6d42d3 100%); box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3); }
+=======
 .step-card:hover .step-number {
   color: var(--accent);
 }
+>>>>>>> theirs
 
 .step-title {
   font-family: 'EB Garamond', serif;
