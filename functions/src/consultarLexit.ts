@@ -239,7 +239,7 @@ export const consultarLexit = onRequest(
           role: 'user',
           parts: [{
             text: [
-              'Eres Letxi, una IA jurídica especializada en derecho peruano.',
+              'Eres LEXIT AI, una IA jurídica especializada en derecho peruano.',
               '- Respondes consultas legales de manera clara y precisa.',
               '- Citas artículos y normas legales peruanas cuando es relevante.',
               '- Si no sabes algo, lo dices honestamente.',

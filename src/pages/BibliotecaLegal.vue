@@ -1,10 +1,18 @@
 <template>
-  <q-page class="normas-page" :class="{ 'normas-page--split': normaSeleccionada }">
+  <q-page class="normas-page">
+
+    <!-- Envuelve header + error + layout: mantiene la columna de lectura
+         angosta y centrada, mientras la página (.normas-page) en sí usa
+         todo el ancho para el fondo oscuro (ver .q-page.normas-page más
+         abajo) — sin este wrapper, el fondo quedaría acotado al mismo
+         ancho angosto y se vería el fondo claro del contenedor a los
+         costados en pantallas anchas. -->
+    <div class="normas-content" :class="{ 'normas-content--split': normaSeleccionada }">
 
     <!-- Section header -->
     <div class="page-header">
       <div class="section-icon-wrap icon-orange">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#B5502E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#5FBF8F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
         </svg>
@@ -167,6 +175,8 @@
 
     </div>
 
+    </div>
+
   </q-page>
 </template>
 
@@ -321,14 +331,52 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* ==============================
+   Paleta oscura verde esmeralda de esta página — variables propias, con
+   prefijo ln-, definidas solo dentro de .normas-page. No se tocan las
+   variables globales (--surface, --bg, etc. en src/css/app.scss), así que
+   el resto de la app sigue con el tema claro de siempre. Un tercer color
+   distinto (Contratos: terracota, Consultas: azul, Normas: verde) para
+   que cada sección se distinga a simple vista.
+   ============================== */
 .normas-page {
+  --ln-bg: #0f1712;
+  --ln-surface: #16211a;
+  --ln-surface-alt: #121b15;
+  --ln-surface-sunken: #0b110d;
+  --ln-border: rgba(255, 255, 255, 0.08);
+  --ln-border-strong: rgba(255, 255, 255, 0.16);
+  --ln-text: #eef2ec;
+  --ln-text-muted: #a9bcae;
+  --ln-text-faint: #7e9084;
+  --ln-accent: #4FAE7D;
+  --ln-accent-hover: #3E9268;
+  --ln-accent-soft: rgba(79, 174, 125, 0.14);
+  --ln-accent-soft-strong: rgba(79, 174, 125, 0.26);
+
+  animation: floatUp 0.5s ease-out both;
+}
+
+/* .q-page trae max-width:1400px + margin:0 auto de MainLayout.vue (regla
+   compartida por toda la app) — sin anularla acá, en pantallas anchas se
+   ve el fondo claro de .page-container detrás del área oscura (mismo bug
+   ya resuelto en ContratosPage.vue/ConsultasPage.vue). La columna de
+   lectura angosta (antes en .normas-page) se movió a .normas-content
+   (ver más abajo), así el fondo oscuro llega de borde a borde mientras el
+   contenido se mantiene legible y centrado. */
+.q-page.normas-page {
+  background: var(--ln-bg);
+  max-width: none;
+  margin: 0;
+}
+
+.normas-content {
   max-width: 920px;
   margin: 0 auto;
-  animation: floatUp 0.5s ease-out both;
   transition: max-width 0.25s ease;
 }
 
-.normas-page--split {
+.normas-content--split {
   max-width: 1360px;
 }
 
@@ -361,10 +409,10 @@ onMounted(() => {
   height: calc(100vh - 140px);
   display: flex;
   flex-direction: column;
-  background: var(--surface);
-  border: 1px solid var(--border-color);
+  background: var(--ln-surface);
+  border: 1px solid var(--ln-border);
   border-radius: var(--border-radius);
-  box-shadow: var(--shadow-medium);
+  box-shadow: 0 12px 32px -14px rgba(0, 0, 0, 0.55);
   overflow: hidden;
 }
 
@@ -374,7 +422,7 @@ onMounted(() => {
   justify-content: space-between;
   gap: 10px;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--ln-border);
   flex-shrink: 0;
 }
 
@@ -382,7 +430,7 @@ onMounted(() => {
   font-family: 'Figtree', sans-serif;
   font-size: 0.86rem;
   font-weight: 600;
-  color: var(--ink);
+  color: var(--ln-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -404,14 +452,14 @@ onMounted(() => {
   border-radius: var(--border-radius-small);
   border: none;
   background: none;
-  color: var(--text-secondary);
+  color: var(--ln-text-muted);
   cursor: pointer;
   transition: background-color 0.18s, color 0.18s;
 }
 
 .pdf-panel-boton:hover {
-  background: var(--surface-alt);
-  color: var(--ink);
+  background: var(--ln-surface-alt);
+  color: var(--ln-text);
 }
 
 .pdf-panel-body {
@@ -428,7 +476,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  color: var(--text-secondary);
+  color: var(--ln-text-muted);
   font-size: 0.9rem;
   text-align: center;
   padding: 20px;
@@ -471,9 +519,9 @@ onMounted(() => {
   align-items: center;
   gap: 7px;
   padding: 9px 16px;
-  background: var(--surface);
-  color: var(--ink);
-  border: 1px solid var(--border-color);
+  background: var(--ln-surface);
+  color: var(--ln-text);
+  border: 1px solid var(--ln-border);
   border-radius: var(--border-radius-small);
   font-family: 'Figtree', sans-serif;
   font-size: 0.86rem;
@@ -484,13 +532,13 @@ onMounted(() => {
 }
 
 .refresh-btn:hover:not(:disabled) {
-  border-color: var(--border-color-strong);
-  background: var(--surface-alt);
+  border-color: var(--ln-border-strong);
+  background: var(--ln-surface-alt);
 }
 
 .refresh-btn:disabled {
   cursor: default;
-  color: var(--text-muted);
+  color: var(--ln-text-faint);
 }
 
 .refresh-icon--spinning {
@@ -498,7 +546,7 @@ onMounted(() => {
 }
 
 .refresh-error {
-  color: #C23B2E;
+  color: #e2685a;
   font-size: 0.86rem;
   margin: -14px 0 20px;
 }
@@ -513,31 +561,31 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-.icon-orange { background: var(--accent-soft); }
+.icon-orange { background: var(--ln-accent-soft); }
 
 .page-title {
   font-family: 'EB Garamond', serif;
   font-size: 2rem;
   font-weight: 600;
   margin: 0;
-  color: var(--ink);
+  color: var(--ln-text);
 }
 
 .page-subtitle {
   margin: 2px 0 0;
-  color: var(--text-secondary);
+  color: var(--ln-text-muted);
   font-size: 1rem;
 }
 
 /* Loading / empty / error state */
 .estado-card {
-  background: var(--surface);
-  border: 1px solid var(--border-color);
+  background: var(--ln-surface);
+  border: 1px solid var(--ln-border);
   border-radius: var(--border-radius);
-  box-shadow: var(--shadow-light);
+  box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.5);
   padding: 40px 28px;
   text-align: center;
-  color: var(--text-secondary);
+  color: var(--ln-text-muted);
 }
 
 .estado-card--chica {
@@ -549,43 +597,45 @@ onMounted(() => {
   margin: 0;
 }
 
-/* Filtro por sector */
+/* Filtro por sector — chips chicos: con hasta 16 sectores en un día,
+   el tamaño anterior (padding 7px/14px, 0.82rem) ocupaba varias filas
+   completas antes de llegar a la lista de normas. */
 .sectores-filtro {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 18px;
+  gap: 5px;
+  margin-bottom: 14px;
 }
 
 .sector-chip {
-  background: var(--surface);
-  border: 1px solid var(--border-color);
-  color: var(--text-secondary);
+  background: var(--ln-surface);
+  border: 1px solid var(--ln-border);
+  color: var(--ln-text-muted);
   border-radius: 999px;
-  padding: 7px 14px;
+  padding: 4px 10px;
   font-family: 'Figtree', sans-serif;
-  font-size: 0.82rem;
+  font-size: 0.7rem;
   font-weight: 600;
   cursor: pointer;
   transition: border-color 0.18s, background-color 0.18s, color 0.18s;
 }
 
 .sector-chip:hover {
-  border-color: var(--border-color-strong);
-  background: var(--surface-alt);
+  border-color: var(--ln-border-strong);
+  background: var(--ln-surface-alt);
 }
 
 .sector-chip--activo {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+  background: var(--ln-accent);
+  border-color: var(--ln-accent);
+  color: #0d1712;
 }
 
 .estado-titulo {
   font-family: 'EB Garamond', serif;
   font-size: 1.2rem;
   font-weight: 600;
-  color: var(--ink);
+  color: var(--ln-text);
   margin: 0 0 6px;
 }
 
@@ -598,8 +648,8 @@ onMounted(() => {
   width: 28px;
   height: 28px;
   margin: 0 auto 14px;
-  border: 3px solid var(--border-color);
-  border-top-color: var(--accent);
+  border: 3px solid var(--ln-border);
+  border-top-color: var(--ln-accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -613,29 +663,29 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   padding: 11px 20px;
-  background: var(--ink);
-  color: var(--surface);
+  background: var(--ln-accent);
+  color: #0d1712;
   border-radius: var(--border-radius-small);
   font-family: 'Figtree', sans-serif;
   font-size: 0.92rem;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: var(--shadow-light);
+  box-shadow: 0 4px 14px -4px rgba(79, 174, 125, 0.45);
   text-decoration: none;
   transition: background-color 0.18s, box-shadow 0.18s;
 }
 
 .open-btn:hover {
-  background: var(--ink-soft);
-  box-shadow: var(--shadow-medium);
+  background: var(--ln-accent-hover);
+  color: #fff;
 }
 
 /* Resumen con IA */
 .resumen-card {
-  background: var(--surface);
-  border: 1px solid var(--accent-soft-strong);
+  background: var(--ln-surface);
+  border: 1px solid var(--ln-accent-soft-strong);
   border-radius: var(--border-radius);
-  box-shadow: var(--shadow-light);
+  box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.5);
   padding: 22px 24px;
   margin-bottom: 18px;
 }
@@ -644,7 +694,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 9px;
-  color: var(--accent);
+  color: var(--ln-accent);
   margin-bottom: 12px;
 }
 
@@ -652,7 +702,7 @@ onMounted(() => {
   font-family: 'EB Garamond', serif;
   font-size: 1.2rem;
   font-weight: 600;
-  color: var(--ink);
+  color: var(--ln-text);
   margin: 0;
 }
 
@@ -660,7 +710,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: var(--text-secondary);
+  color: var(--ln-text-muted);
   font-size: 0.92rem;
 }
 
@@ -675,7 +725,7 @@ onMounted(() => {
 .resumen-texto {
   font-size: 0.95rem;
   line-height: 1.6;
-  color: var(--ink-soft);
+  color: var(--ln-text);
   margin: 0 0 16px;
 }
 
@@ -684,13 +734,13 @@ onMounted(() => {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--ln-accent);
   margin: 0 0 10px;
 }
 
 .destacada-item {
   padding: 10px 14px;
-  background: var(--accent-soft);
+  background: var(--ln-accent-soft);
   border-radius: var(--border-radius-small);
   margin-bottom: 8px;
 }
@@ -701,13 +751,13 @@ onMounted(() => {
 
 .destacada-titulo {
   font-weight: 600;
-  color: var(--ink);
+  color: var(--ln-text);
   margin: 0 0 3px;
   font-size: 0.92rem;
 }
 
 .destacada-razon {
-  color: var(--text-secondary);
+  color: var(--ln-text-muted);
   font-size: 0.88rem;
   margin: 0;
 }
@@ -720,22 +770,22 @@ onMounted(() => {
 }
 
 .norma-card {
-  background: var(--surface);
-  border: 1px solid var(--border-color);
+  background: var(--ln-surface);
+  border: 1px solid var(--ln-border);
   border-radius: var(--border-radius);
-  box-shadow: var(--shadow-light);
+  box-shadow: 0 6px 18px -10px rgba(0, 0, 0, 0.5);
   padding: 18px 22px;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .norma-card:hover {
-  border-color: var(--border-color-strong);
-  box-shadow: var(--shadow-medium);
+  border-color: var(--ln-border-strong);
+  box-shadow: 0 10px 26px -12px rgba(0, 0, 0, 0.6);
 }
 
 .norma-card--activa {
-  border-color: var(--accent);
-  box-shadow: var(--shadow-medium);
+  border-color: var(--ln-accent);
+  box-shadow: 0 10px 26px -12px rgba(0, 0, 0, 0.6);
 }
 
 .norma-card-head {
@@ -752,15 +802,15 @@ onMounted(() => {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--accent);
-  background: var(--accent-soft);
+  color: var(--ln-accent);
+  background: var(--ln-accent-soft);
   padding: 3px 10px;
   border-radius: var(--border-radius-small);
 }
 
 .norma-fecha {
   font-size: 0.82rem;
-  color: var(--text-muted);
+  color: var(--ln-text-faint);
   flex-shrink: 0;
 }
 
@@ -775,20 +825,20 @@ onMounted(() => {
   font-family: 'EB Garamond', serif;
   font-size: 1.15rem;
   font-weight: 600;
-  color: var(--ink);
+  color: var(--ln-text);
   text-decoration: none;
   margin-bottom: 6px;
 }
 
 .norma-titulo:hover {
-  color: var(--accent);
+  color: var(--ln-accent);
   text-decoration: underline;
 }
 
 .norma-sumilla {
   font-size: 0.92rem;
   line-height: 1.55;
-  color: var(--text-secondary);
+  color: var(--ln-text-muted);
   margin: 0;
 }
 

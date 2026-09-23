@@ -1,16 +1,18 @@
 <template>
   <q-page class="consultas-page" :class="{ 'consultas-page--with-pdf': store.archivoAdjunto }">
 
-    <!-- Section header -->
-    <div class="page-header">
+    <!-- Section header — se encoge y se atenúa al bajar en el chat, para
+         devolverle espacio a la conversación sin perder el título del
+         todo (ver onMessagesScroll). -->
+    <div class="page-header" :class="{ 'page-header--compact': chatDesplazado }">
       <div class="section-icon-wrap icon-blue">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#B5502E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7EA2F2" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
       </div>
       <div>
         <h1 class="page-title">Consultas Jurídicas</h1>
-        <p class="page-subtitle">Haz preguntas sobre leyes y contratos</p>
+        <p class="page-subtitle">Haz preguntas sobre leyes, o adjunta un contrato para analizarlo</p>
       </div>
     </div>
 
@@ -38,7 +40,7 @@
       </div>
 
       <!-- Messages area -->
-      <div class="messages-area" ref="messagesBox">
+      <div class="messages-area" ref="messagesBox" @scroll="onMessagesScroll">
         <div v-for="(mensaje, index) in mensajes" :key="index" class="message-wrapper">
 
           <!-- AI message: bloque de texto simple, sin avatar ni burbuja -->
@@ -179,7 +181,19 @@
     </div>
 
     <!-- Documento: previsualización tipo Word, con cambios en amarillo y
-         riesgos en rojo marcados directamente sobre el texto. -->
+         riesgos en rojo marcados directamente sobre el texto.
+         DESHABILITADO a pedido del usuario: ya no se muestra automáticamente
+         al adjuntar — el chat debe quedar a ancho completo hasta que se pida
+         un análisis, momento en el que el panel de sugerencias (más abajo)
+         es la única superficie lateral que aparece. Todo el marcado/lógica
+         de este panel (pestañas, edición manual, "Descargar documento") se
+         deja intacto sin usar, por si se vuelve a necesitar más adelante. -->
+    <!-- El <template v-if="false"> exterior es lo que realmente lo
+         deshabilita; el v-if="store.archivoAdjunto" del div interior se
+         deja como estaba para que TypeScript lo siga infiriendo como no
+         nulo dentro del bloque (si no, cada store.archivoAdjunto.* de acá
+         abajo marcaría error de tipos). -->
+    <template v-if="false">
     <div v-if="store.archivoAdjunto" class="documento-panel">
       <div class="documento-panel-header">
         <div class="documento-panel-titulo">
@@ -187,7 +201,7 @@
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <path d="M14 2v6h6"/>
           </svg>
-          {{ store.archivoAdjunto.nombre }}
+          {{ store.archivoAdjunto?.nombre }}
         </div>
 
         <div class="documento-panel-acciones">
@@ -223,20 +237,6 @@
             </button>
           </div>
 
-          <div v-if="esWordAdjunto && store.archivoAdjunto?.storagePathDocx" class="documento-abrir-word-wrap">
-            <button type="button" class="documento-abrir-word" :disabled="abriendoEnWord" @click="abrirEnWord">
-              <q-spinner v-if="abriendoEnWord" size="14px" />
-              <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 3v4a1 1 0 0 0 1 1h4"/>
-                <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/>
-                <path d="M9 13h6M9 17h6M9 9h1"/>
-              </svg>
-              Descargar y abrir en Word
-            </button>
-            <span class="documento-abrir-word-hint">Se descargará el archivo — ábrelo desde tu carpeta de Descargas para editarlo con control de cambios reales en Word</span>
-            <span v-if="errorAbrirWord" class="documento-abrir-word-error">{{ errorAbrirWord }}</span>
-          </div>
-
           <button type="button" class="documento-descargar" :disabled="descargandoDocumento" @click="descargarDocumento">
             <q-spinner v-if="descargandoDocumento" size="14px" />
             <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -253,14 +253,6 @@
              estructura real (mammoth conserva negritas/listas/tablas), con
              las marcas de sugerencia superpuestas, y es editable ahí mismo. -->
         <template v-if="esWordAdjunto">
-          <div v-if="!cargandoSugerencias && !sugerencias.length && !sugerenciasAplicadas.length" class="documento-hint">
-            <span v-if="errorSugerencias">{{ errorSugerencias }} — <button type="button" class="documento-hint-link" @click="generarSugerencias">reintentar</button></span>
-            <span v-else>
-              Sin marcas todavía —
-              <button type="button" class="documento-hint-link" @click="generarSugerencias">genera sugerencias de cambios</button>
-              para verlas resaltadas aquí.
-            </span>
-          </div>
           <div class="documento-page">
             <div
               ref="documentoEditableRef"
@@ -299,14 +291,6 @@
           </div>
 
           <template v-else>
-            <div v-if="!cargandoSugerencias && !sugerencias.length && !sugerenciasAplicadas.length" class="documento-hint">
-              <span v-if="errorSugerencias">{{ errorSugerencias }} — <button type="button" class="documento-hint-link" @click="generarSugerencias">reintentar</button></span>
-              <span v-else>
-                Sin marcas todavía —
-                <button type="button" class="documento-hint-link" @click="generarSugerencias">genera sugerencias de cambios</button>
-                para verlas resaltadas aquí.
-              </span>
-            </div>
             <div class="documento-page">
               <!-- Editando: editable, con marcas de cambios/riesgos visibles -->
               <div
@@ -329,52 +313,90 @@
         </template>
       </div>
     </div>
+    </template>
 
-    <!-- Sugerencias: aparecen al costado del documento, sin pestañas -->
-    <div v-if="cargandoSugerencias || sugerencias.length || sugerenciasAplicadas.length || sugerenciasDescartadas.length" class="sugerencias-rail">
-      <div class="sugerencias-rail-header">
-        Sugerencias{{ sugerencias.length ? ` (${sugerencias.length})` : '' }}
+    <!-- Sugerencias: solo lectura — el análisis de riesgos de la IA. Aplicar
+         cambios reales ahora se hace en Word (ver el CTA arriba), no acá.
+         La lógica de aplicar/descartar/deshacer sigue existiendo en el
+         script (aplicarSugerencia, descartarSugerencia, deshacerSugerencia,
+         reconsiderarSugerencia, sugerenciasAplicadas, sugerenciasDescartadas)
+         por si se vuelve a necesitar — solo dejó de usarse desde esta vista. -->
+    <div v-if="cargandoSugerencias || sugerencias.length || errorSugerencias" class="sugerencias-rail">
+
+      <div v-if="store.archivoAdjunto?.storagePathDocx" class="sugerencias-cta">
+        <button type="button" class="sugerencias-cta-btn" :disabled="abriendoEnWord" @click="abrirEnWord">
+          <q-spinner v-if="abriendoEnWord" size="16px" color="white" />
+          <svg v-else width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 3v4a1 1 0 0 0 1 1h4"/>
+            <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/>
+            <path d="M9 13h6M9 17h6M9 9h1"/>
+          </svg>
+          Descargar y abrir en Word
+        </button>
+        <p class="sugerencias-cta-hint">Único camino para aplicar estos cambios — ábrelo en Word con control de cambios real.</p>
+        <p v-if="errorAbrirWord" class="documento-abrir-word-error">{{ errorAbrirWord }}</p>
       </div>
+
+      <div class="sugerencias-rail-header">Sugerencias</div>
+
       <div class="sugerencias-rail-body">
-        <div v-if="cargandoSugerencias" class="pdf-panel-status">
-          <q-spinner-dots color="primary" size="36px" />
-          <p>Generando sugerencias…</p>
+        <div v-if="cargandoSugerencias" class="sugerencias-cargando">
+          <q-spinner-dots color="primary" size="28px" />
+          <p class="sugerencias-cargando-titulo">Analizando el contrato</p>
+          <p class="sugerencias-cargando-sub">LexIT está revisando las cláusulas y evaluando riesgos…</p>
         </div>
-        <div v-else class="sugerencias-list">
-          <div v-for="s in sugerencias" :id="`sugerencia-${s.id}`" :key="s.id" class="sugerencia-card">
-            <div class="sugerencia-clausula">{{ s.clausula }}</div>
-            <p class="sugerencia-original">{{ s.textoOriginal }}</p>
-            <p v-if="s.textoSugerido" class="sugerencia-nuevo">{{ s.textoSugerido }}</p>
-            <p class="sugerencia-explicacion">{{ s.explicacion }}</p>
-            <p v-if="s.error" class="sugerencia-error">{{ s.error }}</p>
-            <div class="sugerencia-acciones">
-              <button type="button" class="sugerencia-descartar" @click="descartarSugerencia(s.id)">Descartar</button>
-              <button type="button" class="sugerencia-aplicar" @click="aplicarSugerencia(s)">Aplicar</button>
+        <div v-else-if="errorSugerencias" class="sugerencias-error-state">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <p class="sugerencias-error-titulo">No se pudo generar el análisis</p>
+          <p class="sugerencias-error-sub">{{ errorSugerencias }}</p>
+          <button type="button" class="sugerencias-reintentar-btn" @click="generarSugerencias">Reintentar</button>
+        </div>
+        <template v-else>
+          <div class="sugerencias-metricas">
+            <div class="metrica-bloque">
+              <span class="metrica-numero">{{ conteoSugerencias.total }}</span>
+              <span class="metrica-label">Total</span>
+            </div>
+            <div class="metrica-bloque metrica-bloque--alto">
+              <span class="metrica-numero">{{ conteoSugerencias.alto }}</span>
+              <span class="metrica-label">Alto</span>
+            </div>
+            <div class="metrica-bloque metrica-bloque--medio">
+              <span class="metrica-numero">{{ conteoSugerencias.medio }}</span>
+              <span class="metrica-label">Medio</span>
+            </div>
+            <div class="metrica-bloque metrica-bloque--bajo">
+              <span class="metrica-numero">{{ conteoSugerencias.bajo }}</span>
+              <span class="metrica-label">Bajo</span>
             </div>
           </div>
 
-          <div v-for="s in sugerenciasAplicadas" :id="`sugerencia-${s.id}`" :key="s.id" class="sugerencia-card sugerencia-card--aplicada">
-            <div class="sugerencia-clausula">{{ s.clausula }}</div>
-            <p class="sugerencia-aplicada-label">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 6L9 17l-5-5"/>
-              </svg>
-              Cambio aplicado
-            </p>
-            <p v-if="s.error" class="sugerencia-error">{{ s.error }}</p>
-            <div class="sugerencia-acciones">
-              <button type="button" class="sugerencia-deshacer" @click="deshacerSugerencia(s)">Deshacer</button>
-            </div>
-          </div>
+          <div class="sugerencias-list">
+            <div v-for="s in sugerencias" :id="`sugerencia-${s.id}`" :key="s.id" class="sugerencia-card">
+              <div class="sugerencia-card-top">
+                <div class="sugerencia-clausula">{{ s.clausula }}</div>
+                <span class="riesgo-badge" :class="s.nivel ? `riesgo-badge--${s.nivel}` : 'riesgo-badge--cambio'">
+                  {{ s.nivel ? `Riesgo ${s.nivel}` : 'Cambio sugerido' }}
+                </span>
+              </div>
 
-          <div v-for="s in sugerenciasDescartadas" :id="`sugerencia-${s.id}`" :key="s.id" class="sugerencia-card sugerencia-card--descartada">
-            <div class="sugerencia-clausula">{{ s.clausula }}</div>
-            <p class="sugerencia-descartada-label">Descartada</p>
-            <div class="sugerencia-acciones">
-              <button type="button" class="sugerencia-reconsiderar" @click="reconsiderarSugerencia(s.id)">Reconsiderar</button>
+              <p class="sugerencia-explicacion">
+                <strong>{{ s.tipo === 'riesgo' ? 'Por qué es riesgosa:' : 'Por qué se sugiere:' }}</strong>
+                {{ s.explicacion }}
+              </p>
+
+              <p v-if="s.textoSugerido" class="sugerencia-nuevo">
+                <strong>Así se podría redactar mejor:</strong> {{ s.textoSugerido }}
+              </p>
+
+              <p class="sugerencia-original">
+                <strong>Texto actual:</strong> &ldquo;{{ s.textoOriginal }}&rdquo;
+              </p>
             </div>
           </div>
-        </div>
+        </template>
       </div>
     </div>
 
@@ -385,7 +407,7 @@
 
 <script setup lang="ts">
 import { ref, shallowRef, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
-import { useConsultasStore } from '../stores/consultas-store'
+import { useConsultasStore, esSolicitudDeAnalisisDeRiesgos } from '../stores/consultas-store'
 import { useAuthStore } from '../stores/auth'
 import { storeToRefs } from 'pinia'
 import { extraerTextoPDF } from '../utils/pdfExtractor'
@@ -402,6 +424,14 @@ const pregunta = ref('')
 
 const { mensajes } = storeToRefs(store)
 const messagesBox = ref<HTMLElement | null>(null)
+
+// Puramente visual: encoge/atenúa el encabezado mientras se baja en el
+// chat, para devolverle espacio a la conversación (ver .page-header--compact).
+const chatDesplazado = ref(false)
+
+function onMessagesScroll(event: Event) {
+  chatDesplazado.value = (event.target as HTMLElement).scrollTop > 16
+}
 
 const copiedIndex = ref<number | null>(null)
 
@@ -444,6 +474,29 @@ const sugerenciasDescartadas = ref<SugerenciaConError[]>([])
 const cargandoSugerencias = ref(false)
 const errorSugerencias = ref('')
 
+// El panel de documento (.documento-panel) está deshabilitado (v-if false)
+// a pedido del usuario — este computed ya no tiene consumidor mientras
+// siga así, se deja sin usar en vez de borrarlo por si se reactiva ese
+// panel más adelante.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const mostrandoAnalisisRiesgos = computed(() =>
+  cargandoSugerencias.value || sugerencias.value.length > 0 || !!errorSugerencias.value
+)
+
+// Franja de métricas del panel de sugerencias (solo lectura) — cuenta por
+// nivel de riesgo; las de tipo "cambio" (sin nivel) solo suman al total.
+const conteoSugerencias = computed(() => {
+  let alto = 0
+  let medio = 0
+  let bajo = 0
+  for (const s of sugerencias.value) {
+    if (s.nivel === 'alto') alto++
+    else if (s.nivel === 'medio') medio++
+    else if (s.nivel === 'bajo') bajo++
+  }
+  return { total: sugerencias.value.length, alto, medio, bajo }
+})
+
 function limpiarSugerencias() {
   sugerencias.value = []
   sugerenciasAplicadas.value = []
@@ -480,6 +533,12 @@ async function generarSugerencias() {
   }
 }
 
+// descartarSugerencia/reconsiderarSugerencia/aplicarSugerencia/
+// deshacerSugerencia: el panel de Sugerencias pasó a ser de solo lectura
+// (ver la vista en el template) — esta lógica de aplicar/descartar en el
+// navegador se deja intacta y sin usar, no se borra, por si se vuelve a
+// necesitar más adelante.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function descartarSugerencia(id: string) {
   const s = sugerencias.value.find(item => item.id === id)
   if (!s) return
@@ -487,6 +546,7 @@ function descartarSugerencia(id: string) {
   sugerenciasDescartadas.value = [...sugerenciasDescartadas.value, s]
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function reconsiderarSugerencia(id: string) {
   const s = sugerenciasDescartadas.value.find(item => item.id === id)
   if (!s) return
@@ -495,6 +555,7 @@ function reconsiderarSugerencia(id: string) {
   sugerencias.value = [...sugerencias.value, s]
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function aplicarSugerencia(s: SugerenciaConError) {
   flushEdicionPendiente()
   const adjuntoAntes = store.archivoAdjunto
@@ -525,6 +586,7 @@ function aplicarSugerencia(s: SugerenciaConError) {
 // sugerencia (nada más lo tocó desde entonces), se restaura directamente
 // la foto guardada en aplicarSugerencia — sin depender de encontrar el
 // fragmento como string.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function deshacerSugerencia(s: SugerenciaConError) {
   flushEdicionPendiente()
 
@@ -1039,6 +1101,11 @@ function quitarAdjunto() {
 onUnmounted(() => {
   intentoExtraccion++
   if (debounceEdicionId !== null) clearTimeout(debounceEdicionId)
+  // El documento adjunto es de esta sesión de Consultas — si el usuario
+  // navega a otra pestaña (Contratos, Normas) y vuelve, no debe seguir
+  // apareciendo (store.archivoAdjunto es estado de Pinia, sobrevive a la
+  // navegación por sí solo si no se limpia acá).
+  quitarAdjunto()
 })
 
 function formatTimestamp(ts: Date | string): string {
@@ -1065,8 +1132,18 @@ async function enviarConsulta() {
     (store.archivoAdjunto ? 'Analiza este contrato y sus riesgos.' : '')
 
   if (mensaje) {
+    // Misma intención, un solo disparo: si este mensaje pide análisis de
+    // riesgos, se genera el panel de sugerencias estructurado junto con la
+    // respuesta del chat — en paralelo, no como un segundo paso manual.
+    // Se evalúa ANTES de llamar a store.enviarConsulta porque esa llamada
+    // consume/limpia analisisPendiente al terminar.
+    const pideAnalisisDeRiesgos = !!store.archivoAdjunto &&
+      (store.analisisPendiente || esSolicitudDeAnalisisDeRiesgos(mensaje))
+
     try {
-      await store.enviarConsulta(mensaje)
+      const tareas: Promise<unknown>[] = [store.enviarConsulta(mensaje)]
+      if (pideAnalisisDeRiesgos) tareas.push(generarSugerencias())
+      await Promise.all(tareas)
       pregunta.value = ''
       await nextTick()
       if (messagesBox.value) messagesBox.value.scrollTop = messagesBox.value.scrollHeight
@@ -1105,10 +1182,58 @@ watch(mensajes, async () => {
 </script>
 
 <style scoped>
+/* ==============================
+   Paleta oscura azul de esta página — variables propias, con prefijo lc-,
+   definidas solo dentro de .consultas-page. No se tocan las variables
+   globales (--surface, --bg, etc. en src/css/app.scss), así que el resto
+   de la app sigue con el tema claro de siempre. Distinta de la paleta
+   cálida/terracota de Contratos a propósito — un azul noche elegante,
+   con la terracota de marca como acento cálido puntual (ver
+   --lc-accent-warm, usado en detalles chicos, no como color base).
+   ============================== */
 .consultas-page {
-  max-width: 1100px;
-  margin: 0 auto;
+  --lc-bg: #10151f;
+  --lc-surface: #182234;
+  --lc-surface-alt: #131b29;
+  --lc-surface-sunken: #0c111a;
+  --lc-border: rgba(255, 255, 255, 0.08);
+  --lc-border-strong: rgba(255, 255, 255, 0.16);
+  --lc-text: #eef1f7;
+  --lc-text-muted: #a9b4c7;
+  --lc-text-faint: #78839c;
+  --lc-accent: #5B8DEF;
+  --lc-accent-hover: #4874D1;
+  --lc-accent-soft: rgba(91, 141, 239, 0.14);
+  --lc-accent-soft-strong: rgba(91, 141, 239, 0.26);
+  --lc-accent-warm: #D97A4D;
+  --lc-accent-warm-soft: rgba(217, 122, 77, 0.16);
+
+  /* El max-width:none real vive en ".q-page.consultas-page" más abajo —
+     acá no alcanza, empata en especificidad con la regla global ".q-page"
+     de MainLayout.vue (max-width:1400px) y puede perder según el orden de
+     carga de cada archivo. */
   animation: floatUp 0.5s ease-out both;
+  display: flex;
+  flex-direction: column;
+  /* 94px = el padding vertical de .q-page en MainLayout.vue (34px arriba +
+     60px abajo). Sin fijar esta altura, el encabezado + el chat empujan el
+     contenido más allá del viewport y es la PÁGINA la que hace scroll,
+     arrastrando el composer con ella — en vez de quedarse quieto abajo
+     mientras solo se desplazan los mensajes. */
+  height: calc(100vh - 94px);
+  min-height: 560px;
+  overflow: hidden;
+}
+
+/* .q-page trae max-width:1400px + margin:0 auto de MainLayout.vue (regla
+   compartida por toda la app) — sin anularla acá, en pantallas anchas se
+   ve el fondo claro de .page-container detrás del área oscura (mismo bug
+   ya resuelto en ContratosPage.vue). Mayor especificidad que ".q-page"
+   (dos clases contra una) para que gane sin tocar esa regla compartida. */
+.q-page.consultas-page {
+  background: var(--lc-bg);
+  max-width: none;
+  margin: 0;
 }
 
 @keyframes floatUp {
@@ -1123,62 +1248,99 @@ watch(mensajes, async () => {
 }
 
 .page-header {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  margin-bottom: 22px;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--lc-border);
   text-align: center;
+  transition: opacity 0.25s ease, transform 0.25s ease, margin-bottom 0.25s ease, padding-bottom 0.25s ease;
+}
+
+/* Al bajar en el chat, el encabezado se encoge y atenúa en vez de ocupar
+   su espacio completo todo el tiempo (ver onMessagesScroll). */
+.page-header--compact {
+  opacity: 0.4;
+  transform: scale(0.92);
+  margin-bottom: 6px;
+  padding-bottom: 8px;
+}
+
+.page-header--compact:hover {
+  opacity: 0.9;
 }
 
 .section-icon-wrap {
-  width: 52px;
-  height: 52px;
-  border-radius: var(--border-radius);
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px var(--lc-accent-soft-strong);
+  transition: width 0.25s ease, height 0.25s ease;
 }
 
-.icon-blue { background: var(--accent-soft); }
+.section-icon-wrap svg {
+  width: 22px;
+  height: 22px;
+}
+
+.icon-blue { background: var(--lc-accent-soft); }
 
 .page-title {
-  font-family: 'EB Garamond', serif;
-  font-size: 2rem;
+  font-family: 'Fraunces', 'EB Garamond', serif;
+  font-optical-sizing: auto;
+  font-size: 1.7rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
   margin: 0;
-  color: #16161a;
+  color: var(--lc-text);
 }
 
 .page-subtitle {
-  margin: 2px 0 0;
-  color: #6a6a72;
+  margin: 4px 0 0;
+  color: var(--lc-text-muted);
   font-size: 1rem;
 }
 
-.consultas-page--with-pdf {
-  max-width: 1760px;
+/* Ya no hace falta un tope de ancho especial acá — la base
+   (.consultas-page) ya no tiene max-width, así que este modificador
+   quedaría de más (o peor, constreñiría el ancho justo cuando hay más
+   contenido al costado). Se deja la clase declarada (el template sigue
+   agregándola) sin reglas, por si vuelve a necesitarse. */
+
+.consultas-layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
 }
 
 .consultas-layout--split {
-  display: flex;
   gap: 20px;
-  align-items: flex-start;
 }
 
 .consultas-layout--split .chat-wrapper {
-  flex: 1;
   min-width: 360px;
 }
 
+/* Sin card: sin fondo propio, borde ni sombra — el chat vive directo
+   sobre el fondo de la página (misma paleta), en vez de sentirse
+   "encerrado" dentro de un recuadro aparte. Un padding lateral generoso
+   (en vez del borde de una tarjeta) es lo que le da aire. */
 .chat-wrapper {
+  flex: 1;
   display: flex;
   flex-direction: column;
   position: relative;
-  height: 78vh;
-  min-height: 560px;
+  height: 100%;
+  min-height: 0;
+  padding: 8px 4vw 0;
 }
 
 /* Overlay al arrastrar un archivo sobre el chat */
@@ -1186,8 +1348,8 @@ watch(mensajes, async () => {
   position: absolute;
   inset: 0;
   z-index: 5;
-  background: rgba(250, 250, 247, 0.94);
-  border: 2px dashed var(--accent);
+  background: rgba(16, 21, 31, 0.92);
+  border: 2px dashed var(--lc-accent);
   border-radius: var(--border-radius);
   display: flex;
   align-items: center;
@@ -1197,7 +1359,7 @@ watch(mensajes, async () => {
 
 .drop-overlay-content {
   text-align: center;
-  color: var(--accent);
+  color: var(--lc-accent);
   font-family: 'Figtree', sans-serif;
   font-weight: 600;
 }
@@ -1216,7 +1378,7 @@ watch(mensajes, async () => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: 78vh;
+  height: 100%;
 }
 
 .documento-panel-header {
@@ -1470,23 +1632,23 @@ watch(mensajes, async () => {
 .sugerencias-rail {
   width: 300px;
   flex-shrink: 0;
-  background: #fff;
-  border: 1px solid rgba(27, 27, 30, 0.08);
+  background: var(--lc-surface);
+  border: 1px solid var(--lc-border);
   border-radius: var(--border-radius);
-  box-shadow: var(--shadow-light);
+  box-shadow: 0 8px 26px -12px rgba(0, 0, 0, 0.5);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: 78vh;
+  height: 100%;
 }
 
 .sugerencias-rail-header {
   padding: 14px 16px;
-  border-bottom: 1px solid rgba(27, 27, 30, 0.08);
+  border-bottom: 1px solid var(--lc-border);
   font-family: 'Figtree', sans-serif;
   font-weight: 600;
   font-size: 0.86rem;
-  color: var(--ink);
+  color: var(--lc-text);
   flex-shrink: 0;
 }
 
@@ -1495,8 +1657,152 @@ watch(mensajes, async () => {
   min-height: 0;
   overflow-y: auto;
   padding: 16px;
-  background: var(--surface-alt);
+  background: var(--lc-surface-alt);
 }
+
+/* CTA "Descargar y abrir en Word" — único camino para editar, por eso va
+   primero y con más peso visual que cualquier otra cosa del panel. */
+.sugerencias-cta {
+  flex-shrink: 0;
+  padding: 16px;
+  border-bottom: 1px solid var(--lc-border);
+  background: var(--lc-surface-sunken);
+}
+
+.sugerencias-cta-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--lc-accent);
+  color: #0d1220;
+  border: none;
+  border-radius: var(--border-radius-small);
+  padding: 11px 14px;
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.18s;
+}
+
+.sugerencias-cta-btn:hover:not(:disabled) { background: var(--lc-accent-hover); color: #fff; }
+.sugerencias-cta-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.sugerencias-cta-hint {
+  margin: 8px 0 0;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: var(--lc-text-faint);
+}
+
+/* Franja de métricas */
+.sugerencias-metricas {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.metrica-bloque {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 4px;
+  background: var(--lc-surface);
+  border: 1px solid var(--lc-border);
+  border-radius: var(--border-radius-small);
+}
+
+.metrica-numero {
+  font-family: 'EB Garamond', serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--lc-text);
+}
+
+.metrica-label {
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--lc-text-muted);
+}
+
+.metrica-bloque--alto .metrica-numero { color: #e2685a; }
+.metrica-bloque--medio .metrica-numero { color: #dba24d; }
+.metrica-bloque--bajo .metrica-numero { color: #5fb98a; }
+
+.sugerencias-cargando {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 36px 16px;
+}
+
+.sugerencias-cargando-titulo {
+  font-family: 'EB Garamond', serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--lc-text);
+  margin: 10px 0 0;
+}
+
+.sugerencias-cargando-sub {
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.82rem;
+  color: var(--lc-text-muted);
+  margin: 0;
+  max-width: 220px;
+}
+
+.sugerencias-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 32px 16px;
+  color: #e2685a;
+}
+
+.sugerencias-error-titulo {
+  font-family: 'EB Garamond', serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--lc-text);
+  margin: 8px 0 0;
+}
+
+.sugerencias-error-sub {
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.82rem;
+  color: var(--lc-text-muted);
+  margin: 0;
+  max-width: 220px;
+}
+
+.sugerencias-reintentar-btn {
+  margin-top: 10px;
+  background: var(--lc-accent);
+  color: #0d1220;
+  border: none;
+  border-radius: var(--border-radius-small);
+  padding: 8px 16px;
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.18s;
+}
+
+.sugerencias-reintentar-btn:hover { background: var(--lc-accent-hover); color: #fff; }
 
 .pdf-panel-status {
   text-align: center;
@@ -1508,8 +1814,24 @@ watch(mensajes, async () => {
 .pdf-panel-error { color: #C23B2E; }
 
 @media (max-width: 1240px) {
+  /* Con el documento y las sugerencias apilados debajo del chat (en vez de
+     al costado), tres paneles a pantalla completa no caben en un solo
+     viewport — se vuelve al scroll normal de la página en vez de forzar
+     todo dentro de una altura fija. */
+  .consultas-page {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
   .consultas-layout--split {
     flex-direction: column;
+  }
+
+  .chat-wrapper {
+    flex: none;
+    height: 78vh;
+    min-height: 560px;
   }
 
   .documento-panel {
@@ -1531,16 +1853,21 @@ watch(mensajes, async () => {
 .messages-area {
   flex: 1;
   overflow-y: auto;
-  padding: 8px 4px 22px;
+  padding: 4px 4px 16px;
   display: flex;
   flex-direction: column;
   gap: 22px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(27,27,30,0.14) transparent;
+  scrollbar-color: var(--lc-border-strong) transparent;
 }
 
+/* Sin tarjeta blanca — solo una franja de acento a la izquierda, texto
+   flotando directo sobre el fondo de la página. Bloque de texto simple,
+   como dice el comentario del template, ahora sí sin caja alrededor. */
 .msg-block--ai {
   max-width: 100%;
+  border-left: 3px solid var(--lc-accent);
+  padding: 4px 0 4px 18px;
 }
 
 .msg-block--user {
@@ -1550,32 +1877,38 @@ watch(mensajes, async () => {
 
 .msg-bubble-user {
   max-width: 74%;
-  background: var(--surface-alt);
-  color: var(--ink);
+  background: var(--lc-accent);
+  color: #0d1220;
   padding: 12px 16px;
   border-radius: 16px 16px 4px 16px;
   font-size: 0.95rem;
+  font-weight: 500;
   line-height: 1.55;
   white-space: pre-wrap;
 }
 
 .msg-meta {
-  font-size: 0.72rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Fraunces', 'EB Garamond', serif;
+  font-size: 0.74rem;
   font-weight: 600;
-  margin-bottom: 5px;
+  letter-spacing: 0.02em;
+  margin-bottom: 9px;
 }
 
-.msg-meta--ai { color: #9a9aa2; }
+.msg-meta--ai { color: var(--lc-accent); }
 
 .msg-content {
   font-size: 1rem;
   line-height: 1.7;
-  color: #2b2b30;
+  color: var(--lc-text);
 }
 
 .msg-refs {
   font-size: 0.8rem;
-  color: #9a9aa2;
+  color: var(--lc-text-faint);
   margin-top: 8px;
 }
 
@@ -1585,10 +1918,10 @@ watch(mensajes, async () => {
   font-family: 'EB Garamond', serif;
   font-weight: 600;
   margin: 8px 0 4px;
-  color: #16161a;
+  color: var(--lc-text);
 }
 
-.formatted-message :deep(strong) { font-weight: 600; }
+.formatted-message :deep(strong) { font-weight: 600; color: var(--lc-text); }
 .formatted-message :deep(em)     { font-style: italic; }
 
 .msg-actions {
@@ -1603,7 +1936,7 @@ watch(mensajes, async () => {
   border-radius: var(--border-radius-small);
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: var(--lc-text-faint);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1612,8 +1945,8 @@ watch(mensajes, async () => {
 }
 
 .msg-action-btn:hover {
-  background: var(--surface-alt);
-  color: var(--ink);
+  background: var(--lc-surface);
+  color: var(--lc-text);
 }
 
 .typing-dots {
@@ -1625,7 +1958,7 @@ watch(mensajes, async () => {
 .typing-dots span {
   width: 8px;
   height: 8px;
-  background: var(--ink-soft);
+  background: var(--lc-accent);
   border-radius: 50%;
   display: inline-block;
   opacity: 0.6;
@@ -1639,7 +1972,7 @@ watch(mensajes, async () => {
 .fuentes-block {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px dashed rgba(27, 27, 30, 0.12);
+  border-top: 1px dashed var(--lc-border-strong);
 }
 
 .fuentes-label {
@@ -1648,9 +1981,9 @@ watch(mensajes, async () => {
   gap: 7px;
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--accent);
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-soft-strong);
+  color: var(--lc-accent);
+  background: var(--lc-accent-soft);
+  border: 1px solid var(--lc-accent-soft-strong);
   padding: 6px 11px;
   border-radius: var(--border-radius-small);
   font-family: 'Figtree', sans-serif;
@@ -1664,9 +1997,9 @@ watch(mensajes, async () => {
 }
 
 .fuente-card {
-  background: #fff;
-  border: 1px solid rgba(27, 27, 30, 0.08);
-  border-left: 3px solid var(--accent);
+  background: var(--lc-surface);
+  border: 1px solid var(--lc-border);
+  border-left: 3px solid var(--lc-accent);
   border-radius: 8px;
   padding: 10px 12px;
 }
@@ -1675,7 +2008,7 @@ watch(mensajes, async () => {
   display: block;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #16161a;
+  color: var(--lc-text);
   text-transform: uppercase;
   letter-spacing: 0.02em;
   margin-bottom: 5px;
@@ -1684,13 +2017,13 @@ watch(mensajes, async () => {
 .fuente-texto {
   font-size: 0.86rem;
   line-height: 1.55;
-  color: #55555c;
+  color: var(--lc-text-muted);
   font-style: italic;
   margin: 0;
 }
 
 .input-area {
-  padding: 10px 4px 4px;
+  padding: 8px 2px 0;
   flex-shrink: 0;
 }
 
@@ -1708,7 +2041,7 @@ watch(mensajes, async () => {
   gap: 5px;
   background: none;
   border: none;
-  color: var(--accent);
+  color: var(--lc-accent);
   font-family: 'Figtree', sans-serif;
   font-size: 0.82rem;
   font-weight: 600;
@@ -1724,8 +2057,8 @@ watch(mensajes, async () => {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--lc-accent-soft);
+  color: var(--lc-accent);
   border-radius: var(--border-radius-small);
   padding: 6px 8px 6px 10px;
   font-family: 'Figtree', sans-serif;
@@ -1750,7 +2083,7 @@ watch(mensajes, async () => {
 
 .adjunto-extrayendo {
   font-size: 0.85rem;
-  color: var(--text-secondary);
+  color: var(--lc-text-muted);
   margin: 0 0 8px;
 }
 
@@ -1764,19 +2097,25 @@ watch(mensajes, async () => {
   display: flex;
   align-items: flex-end;
   gap: 6px;
-  background: #fff;
-  border: 1px solid rgba(27, 27, 30, 0.15);
+  background: var(--lc-surface);
+  border: 1px solid var(--lc-border-strong);
   border-radius: 26px;
   padding: 7px 7px 7px 8px;
-  box-shadow: var(--shadow-light);
+  box-shadow: 0 4px 18px -6px rgba(0, 0, 0, 0.45);
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+.composer-pill:focus-within {
+  border-color: var(--lc-accent);
+  box-shadow: 0 0 0 3px var(--lc-accent-soft);
 }
 
 .plus-btn {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--surface-alt);
-  color: var(--ink);
+  background: var(--lc-surface-alt);
+  color: var(--lc-text);
   border: none;
   cursor: pointer;
   display: flex;
@@ -1786,7 +2125,7 @@ watch(mensajes, async () => {
   transition: background-color 0.18s;
 }
 
-.plus-btn:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent); }
+.plus-btn:hover:not(:disabled) { background: var(--lc-accent-soft); color: var(--lc-accent); }
 .plus-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .composer-textarea-pill { flex: 1; }
@@ -1798,12 +2137,17 @@ watch(mensajes, async () => {
 }
 
 :deep(.composer-textarea-pill .q-field__native) {
-  color: #1b1b1e !important;
+  color: var(--lc-text) !important;
   font-family: 'Figtree', sans-serif !important;
   font-size: 1rem !important;
   padding: 7px 0 !important;
   line-height: 1.45 !important;
   resize: none !important;
+}
+
+:deep(.composer-textarea-pill .q-field__native::placeholder) {
+  color: var(--lc-text-faint) !important;
+  opacity: 1 !important;
 }
 
 :deep(.composer-textarea-pill .q-field__bottom) { display: none !important; }
@@ -1812,8 +2156,8 @@ watch(mensajes, async () => {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--ink);
-  color: #fff;
+  background: var(--lc-accent);
+  color: #0d1220;
   border: none;
   cursor: pointer;
   display: flex;
@@ -1823,7 +2167,7 @@ watch(mensajes, async () => {
   transition: background-color 0.18s, transform 0.18s;
 }
 
-.ask-btn-round:hover:not(:disabled) { background: var(--ink-soft); transform: scale(1.05); }
+.ask-btn-round:hover:not(:disabled) { background: var(--lc-accent-hover); color: #fff; transform: scale(1.05); }
 .ask-btn-round:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .toolbar-btn {
@@ -1831,7 +2175,7 @@ watch(mensajes, async () => {
   align-items: center;
   gap: 6px;
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--lc-text-muted);
   border: none;
   border-radius: var(--border-radius-small);
   padding: 6px 9px;
@@ -1877,8 +2221,8 @@ watch(mensajes, async () => {
 }
 
 .sugerencia-card {
-  background: #fff;
-  border: 1px solid rgba(27, 27, 30, 0.08);
+  background: var(--lc-surface);
+  border: 1px solid var(--lc-border);
   border-radius: var(--border-radius-small);
   padding: 12px 14px;
 }
@@ -1888,39 +2232,68 @@ watch(mensajes, async () => {
   border-color: var(--accent-soft-strong);
 }
 
+.sugerencia-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
 .sugerencia-clausula {
   font-family: 'Figtree', sans-serif;
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: var(--text-muted);
-  margin-bottom: 6px;
+  color: var(--lc-text-muted);
 }
 
-.sugerencia-original {
+.riesgo-badge {
+  flex-shrink: 0;
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.riesgo-badge--alto { background: rgba(226, 104, 90, 0.18); color: #f3a99e; }
+.riesgo-badge--medio { background: rgba(219, 162, 77, 0.18); color: #e8c48c; }
+.riesgo-badge--bajo { background: rgba(95, 185, 138, 0.18); color: #9adcb9; }
+.riesgo-badge--cambio { background: var(--lc-accent-soft); color: var(--lc-accent); }
+
+.sugerencia-explicacion {
   font-size: 0.85rem;
   line-height: 1.5;
-  color: #C23B2E;
-  text-decoration: line-through;
-  margin: 0 0 6px;
+  color: var(--lc-text);
+  margin: 0 0 10px;
+}
+
+.sugerencia-explicacion strong {
+  font-weight: 700;
 }
 
 .sugerencia-nuevo {
   font-size: 0.85rem;
   line-height: 1.5;
-  color: var(--ink);
-  background: var(--accent-soft);
+  color: var(--lc-text);
+  background: var(--lc-accent-soft);
+  border-left: 3px solid var(--lc-accent);
   border-radius: 4px;
-  padding: 2px 4px;
-  margin: 0 0 8px;
-  display: inline;
+  padding: 8px 10px;
+  margin: 0 0 10px;
 }
 
-.sugerencia-explicacion {
-  font-size: 0.82rem;
-  color: var(--text-secondary);
-  margin: 0 0 10px;
+.sugerencia-original {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  font-style: italic;
+  color: var(--lc-text-muted);
+  margin: 0;
 }
 
 .sugerencia-error {

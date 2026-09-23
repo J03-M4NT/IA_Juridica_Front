@@ -10,10 +10,13 @@
     <header class="landing-header">
       <div class="header-inner">
         <div class="header-logo">
-          <img src="../assets/logo.svg" alt="LEXIT AI" class="header-logo-img" />
-          <span class="header-logo-text">LEXIT AI</span>
+          <span class="header-logo-text">LEXIT</span>
         </div>
-        <auth-buttons />
+        <nav class="header-nav">
+          <a href="#producto" class="header-nav-link" @click.prevent="scrollToSection('producto')">Producto</a>
+          <a href="#como-funciona" class="header-nav-link" @click.prevent="scrollToSection('como-funciona')">Cómo funciona</a>
+        </nav>
+        <auth-buttons ref="authButtonsRef" />
       </div>
     </header>
 
@@ -21,21 +24,64 @@
     <main class="main-content">
 
       <!-- Hero -->
-      <section class="hero-section">
-        <img src="../assets/logo.svg" alt="LEXIT AI" class="hero-logo" />
-        <h1 class="hero-title">LEXIT AI</h1>
-        <p class="hero-subtitle">Inteligencia Artificial para el Análisis Jurídico</p>
-        <h2 class="hero-heading">Revoluciona tu práctica legal</h2>
-        <p class="hero-description">
-          Analiza contratos, realiza consultas legales y gestiona documentos con la ayuda de
-          nuestra inteligencia artificial especializada en derecho.
-        </p>
+      <section class="hero-section" id="inicio">
+        <div class="hero-atmosphere" aria-hidden="true">
+          <span class="hero-glow hero-glow--1"></span>
+          <span class="hero-glow hero-glow--2"></span>
+          <span class="hero-glow hero-glow--3"></span>
+          <span class="hero-grid"></span>
+        </div>
+
+        <div class="hero-inner">
+          <span class="hero-badge">IA jurídica especializada en derecho peruano</span>
+
+          <h1 class="hero-title">
+            Todo tu trabajo legal.<br />
+            <em>Una sola plataforma.</em>
+          </h1>
+
+          <p class="hero-description">
+            Resuelve consultas legales y analiza el riesgo de tus contratos por chat, completa
+            plantillas de contratos conversando con la IA, y mantente al día con las normas de
+            El Peruano — de principio a fin, sin salir de LEXIT AI.
+          </p>
+
+          <p class="hero-caption">Hecho para abogados y estudios jurídicos en Perú</p>
+
+          <!-- Vista previa ilustrativa del producto — al hacer clic invita a
+               iniciar sesión/registrarse, no ejecuta ninguna consulta real. -->
+          <button type="button" class="hero-mock" @click="abrirAuth">
+            <div class="mock-window">
+              <div class="mock-window-bar">
+                <span class="mock-dot"></span>
+                <span class="mock-dot"></span>
+                <span class="mock-dot"></span>
+                <span class="mock-window-title">Consultas — LEXIT AI</span>
+              </div>
+              <div class="mock-chat">
+                <div class="mock-bubble mock-bubble--user">
+                  ¿Esta cláusula de resolución cumple el Código Civil?
+                </div>
+                <div class="mock-bubble mock-bubble--ai">
+                  <span class="mock-bubble-tag">Artículo 1430°</span>
+                  Sí, siempre que la condición resolutoria se pacte expresamente. Te muestro
+                  la cita textual y cómo aplica a tu cláusula…
+                </div>
+              </div>
+              <div class="mock-cta">Inicia sesión para probarlo →</div>
+            </div>
+          </button>
+        </div>
       </section>
 
       <!-- Feature cards -->
-      <section class="features-section">
-        <div class="features-grid">
+      <section class="features-section" id="producto">
+        <div class="section-header reveal">
+          <span class="section-label">Producto</span>
+          <h2 class="section-title">Una plataforma, tres pilares</h2>
+        </div>
 
+<<<<<<< ours
           <article class="feature-card">
             <div class="feature-icon-wrap icon-teal">
               <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#1fa8bb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -52,18 +98,31 @@
           <article class="feature-card">
             <div class="feature-icon-wrap icon-pink">
               <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#e0508f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+=======
+        <div class="features-grid">
+
+          <article class="feature-card reveal">
+            <div class="feature-icon-wrap">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+>>>>>>> theirs
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 <path d="M8 9h8"/>
                 <path d="M8 13h5"/>
               </svg>
             </div>
             <h3 class="feature-title">Consultas Legales</h3>
-            <p class="feature-description">Obtén respuestas precisas a tus preguntas jurídicas con IA especializada.</p>
+            <p class="feature-description">Chatea con una IA especializada en derecho peruano — o adjunta un contrato (PDF o Word) para un análisis de riesgos cláusula por cláusula, con base legal citada.</p>
           </article>
 
+<<<<<<< ours
           <article class="feature-card">
             <div class="feature-icon-wrap icon-purple">
               <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#7c47e0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+=======
+          <article class="feature-card reveal">
+            <div class="feature-icon-wrap">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+>>>>>>> theirs
                 <path d="M3 7h18"/>
                 <path d="M3 7l2-3h14l2 3"/>
                 <path d="M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/>
@@ -71,36 +130,48 @@
               </svg>
             </div>
             <h3 class="feature-title">Gestión de Contratos</h3>
-            <p class="feature-description">Organiza, analiza y administra todos tus contratos de manera eficiente.</p>
+            <p class="feature-description">Elige una plantilla y complétala conversando con la IA, o edítala tú mismo. Descárgala lista, con marca de agua, o sigue editándola en Word con el complemento de LEXIT.</p>
+          </article>
+
+          <article class="feature-card reveal">
+            <div class="feature-icon-wrap">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+              </svg>
+            </div>
+            <h3 class="feature-title">Normas del Día</h3>
+            <p class="feature-description">Las normas publicadas en El Peruano, organizadas por sector, con un resumen diario generado por IA y lo más relevante para tu práctica.</p>
           </article>
 
         </div>
       </section>
 
       <!-- How it works -->
-      <section class="steps-section">
-        <div class="steps-header">
-          <span class="steps-label">Cómo funciona</span>
-          <h2 class="steps-title">Empieza en tres pasos</h2>
+      <section class="steps-section" id="como-funciona">
+        <div class="section-header reveal">
+          <span class="section-label">Cómo funciona</span>
+          <h2 class="section-title">Empieza en tres pasos</h2>
         </div>
+
         <div class="steps-grid">
 
-          <div class="step-card">
-            <div class="step-number step-1">1</div>
+          <div class="step-card reveal">
+            <div class="step-number">01</div>
             <h3 class="step-title">Crea tu cuenta</h3>
             <p class="step-description">Regístrate gratis en segundos y accede a todas las herramientas.</p>
           </div>
 
-          <div class="step-card">
-            <div class="step-number step-2">2</div>
-            <h3 class="step-title">Sube o consulta</h3>
-            <p class="step-description">Carga un contrato en PDF o haz tu pregunta legal directamente a la IA.</p>
+          <div class="step-card reveal">
+            <div class="step-number">02</div>
+            <h3 class="step-title">Elige tu herramienta</h3>
+            <p class="step-description">Haz una consulta, adjunta un contrato para analizarlo, o completa una plantilla con ayuda de la IA.</p>
           </div>
 
-          <div class="step-card">
-            <div class="step-number step-3">3</div>
+          <div class="step-card reveal">
+            <div class="step-number">03</div>
             <h3 class="step-title">Obtén resultados</h3>
-            <p class="step-description">Recibe análisis, resúmenes, riesgos y respuestas claras al instante.</p>
+            <p class="step-description">Recibe respuestas, análisis de riesgos y contratos listos para descargar o editar en Word.</p>
           </div>
 
         </div>
@@ -110,11 +181,12 @@
 
     <!-- Footer -->
     <footer class="landing-footer">
-      <div class="footer-brand">
-        <img src="../assets/logo.svg" alt="" class="footer-logo-img" />
-        <span class="footer-logo-text">LEXIT AI</span>
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <span class="footer-logo-text">LEXIT</span>
+        </div>
+        <p class="footer-copy">© 2026 LEXIT AI. Todos los derechos reservados.</p>
       </div>
-      <p class="footer-copy">© 2026 LEXIT AI. Todos los derechos reservados.</p>
     </footer>
 
   </div>
@@ -123,7 +195,11 @@
 <!-- --------------------------------------------------- -->
 
 <script setup lang="ts">
+<<<<<<< ours
 import { onMounted, onUnmounted, ref } from 'vue'
+=======
+import { ref, onMounted, onUnmounted } from 'vue'
+>>>>>>> theirs
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '../stores/auth'
@@ -137,6 +213,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const { isAuthenticated } = storeToRefs(authStore)
 
+<<<<<<< ours
 const pageRoot = ref<HTMLElement | null>(null)
 
 const prefersReducedMotion = () =>
@@ -144,11 +221,30 @@ const prefersReducedMotion = () =>
 
 let handleMouseMove: ((e: MouseEvent) => void) | null = null
 const scrollTriggers: ScrollTrigger[] = []
+=======
+const authButtonsRef = ref<InstanceType<typeof AuthButtons> | null>(null)
+
+function abrirAuth() {
+  authButtonsRef.value?.abrirLogin()
+}
+
+// El router usa modo hash (#/ruta) — un <a href="#producto"> normal lo
+// interpreta como navegación a una ruta inexistente y cae en el 404, así
+// que el scroll a las secciones se hace a mano en vez de dejarlo al navegador.
+function scrollToSection(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+// Revela las cards y encabezados de sección con una animación a medida que
+// entran en pantalla al hacer scroll, en vez de mostrarse todos de golpe.
+let observer: IntersectionObserver | null = null
+>>>>>>> theirs
 
 onMounted(() => {
   if (isAuthenticated.value) {
     void router.replace('/app/consultas')
     return
+<<<<<<< ours
   }
 
   const root = pageRoot.value
@@ -271,6 +367,29 @@ onMounted(() => {
 onUnmounted(() => {
   if (handleMouseMove) window.removeEventListener('mousemove', handleMouseMove)
   scrollTriggers.forEach((st) => st.kill())
+=======
+  }
+
+  observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue
+        entry.target.classList.add('is-visible')
+        observer?.unobserve(entry.target)
+      }
+    },
+    // rootMargin negativo en la base: el elemento revela recién cuando ya
+    // entró bien a la vista (no apenas roza el borde inferior), para que
+    // el efecto se note mientras se sigue bajando, no antes de llegar.
+    { threshold: 0.1, rootMargin: '0px 0px -10% 0px' }
+  )
+
+  document.querySelectorAll('.reveal').forEach((el) => observer?.observe(el))
+})
+
+onUnmounted(() => {
+  observer?.disconnect()
+>>>>>>> theirs
 })
 </script>
 
@@ -340,6 +459,42 @@ onUnmounted(() => {
   .blob-3 { animation: blob 16s ease-in-out infinite; }
 }
 
+@keyframes driftGlow {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(2%, -3%, 0) scale(1.06); }
+}
+
+/* ==============================
+   Revelado al hacer scroll (ver IntersectionObserver en el script)
+   ============================== */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1), transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.features-grid .feature-card.reveal { transition-delay: 0.08s; }
+.features-grid .feature-card.reveal:nth-child(2) { transition-delay: 0.2s; }
+.features-grid .feature-card.reveal:nth-child(3) { transition-delay: 0.32s; }
+
+.steps-grid .step-card.reveal { transition-delay: 0.08s; }
+.steps-grid .step-card.reveal:nth-child(2) { transition-delay: 0.2s; }
+.steps-grid .step-card.reveal:nth-child(3) { transition-delay: 0.32s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
 /* ==============================
    Header
    ============================== */
@@ -358,7 +513,6 @@ onUnmounted(() => {
   padding: 14px 28px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
 }
 
@@ -366,19 +520,36 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 11px;
-}
-
-.header-logo-img {
-  height: 34px;
-  width: 34px;
+  flex-shrink: 0;
 }
 
 .header-logo-text {
-  font-family: 'EB Garamond', serif;
-  font-size: 1.5rem;
+  font-family: 'Fraunces', 'EB Garamond', serif;
+  font-optical-sizing: auto;
+  font-size: 1.7rem;
   font-weight: 600;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.01em;
   color: #1b1b1e;
+}
+
+.header-nav {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+}
+
+.header-nav-link {
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: #55555c;
+  text-decoration: none;
+  transition: color 0.18s;
+}
+
+.header-nav-link:hover {
+  color: var(--accent);
 }
 
 /* ==============================
@@ -391,58 +562,259 @@ onUnmounted(() => {
 }
 
 /* ==============================
-   Hero
+   Hero — sección oscura y atmosférica
    ============================== */
 .hero-section {
-  max-width: 820px;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(165deg, #14151c 0%, #1c2130 38%, #262a22 72%, #332a1c 100%);
+  padding: 96px 28px 110px;
+  animation: floatUp 0.7s ease-out both;
+}
+
+.hero-atmosphere {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hero-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.55;
+  animation: driftGlow 14s ease-in-out infinite;
+}
+
+.hero-glow--1 {
+  width: 520px;
+  height: 520px;
+  top: -180px;
+  left: -120px;
+  background: radial-gradient(circle, rgba(181, 80, 46, 0.55), transparent 70%);
+}
+
+.hero-glow--2 {
+  width: 460px;
+  height: 460px;
+  bottom: -220px;
+  right: -100px;
+  background: radial-gradient(circle, rgba(223, 168, 97, 0.35), transparent 70%);
+  animation-delay: -6s;
+}
+
+.hero-glow--3 {
+  width: 380px;
+  height: 380px;
+  top: 30%;
+  left: 55%;
+  background: radial-gradient(circle, rgba(90, 110, 140, 0.35), transparent 70%);
+  animation-delay: -3s;
+}
+
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(250, 250, 247, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(250, 250, 247, 0.05) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 40%, transparent 100%);
+}
+
+.hero-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 90px 28px 20px;
   text-align: center;
 }
 
+<<<<<<< ours
 .hero-logo {
   height: 78px;
   width: 78px;
   display: block;
   margin: 0 auto 22px;
   filter: drop-shadow(0 8px 22px rgba(139, 92, 246, 0.22));
+=======
+.hero-badge {
+  display: inline-block;
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(250, 250, 247, 0.18);
+  background: rgba(250, 250, 247, 0.06);
+  backdrop-filter: blur(6px);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: rgba(250, 250, 247, 0.85);
+  margin-bottom: 26px;
+>>>>>>> theirs
 }
 
 .hero-title {
   font-family: 'EB Garamond', serif;
-  font-size: 4rem;
-  line-height: 1.02;
+  font-size: 3.6rem;
+  line-height: 1.08;
   font-weight: 600;
-  margin: 0 0 14px;
+  margin: 0 0 22px;
   letter-spacing: -0.01em;
+<<<<<<< ours
   background: linear-gradient(135deg, #16161a 0%, #3a3a44 100%);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+=======
+  color: #FAFAF7;
+>>>>>>> theirs
 }
 
-.hero-subtitle {
-  font-family: 'EB Garamond', serif;
+.hero-title em {
   font-style: italic;
-  font-size: 1.35rem;
-  color: #6a6a72;
-  margin: 0 0 40px;
-}
-
-.hero-heading {
-  font-family: 'EB Garamond', serif;
-  font-size: 2.3rem;
-  font-weight: 600;
-  margin: 0 0 16px;
-  color: #16161a;
+  color: #e8b381;
 }
 
 .hero-description {
-  font-size: 1.12rem;
+  font-size: 1.14rem;
   line-height: 1.65;
-  color: #55555c;
-  max-width: 600px;
+  color: rgba(250, 250, 247, 0.72);
+  max-width: 580px;
+  margin: 0 auto 14px;
+}
+
+.hero-caption {
+  font-size: 0.85rem;
+  color: rgba(250, 250, 247, 0.45);
+  margin: 0 0 48px;
+}
+
+/* Vista previa ilustrativa — es un <button>: al hacer clic abre el login */
+.hero-mock {
+  display: block;
+  width: 100%;
+  max-width: 480px;
   margin: 0 auto;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+  filter: drop-shadow(0 30px 60px rgba(0, 0, 0, 0.45));
+  transition: transform 0.25s ease, filter 0.25s ease;
+}
+
+.hero-mock:hover,
+.hero-mock:focus-visible {
+  transform: translateY(-3px);
+  filter: drop-shadow(0 36px 70px rgba(0, 0, 0, 0.5));
+}
+
+.hero-mock:active {
+  transform: translateY(-1px) scale(0.99);
+}
+
+.mock-window {
+  background: #FAFAF7;
+  border-radius: 14px;
+  overflow: hidden;
+  text-align: left;
+}
+
+.mock-cta {
+  padding: 12px 16px;
+  background: var(--ink);
+  color: #FAFAF7;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.mock-window-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  background: #efefe9;
+  border-bottom: 1px solid rgba(27, 27, 30, 0.07);
+}
+
+.mock-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(27, 27, 30, 0.18);
+}
+
+.mock-window-title {
+  margin-left: 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #8a8a90;
+}
+
+.mock-chat {
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mock-bubble {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.mock-bubble--user {
+  align-self: flex-end;
+  background: var(--ink);
+  color: #FAFAF7;
+  border-bottom-right-radius: 4px;
+  max-width: 80%;
+}
+
+.mock-bubble--ai {
+  align-self: flex-start;
+  background: #fff;
+  border: 1px solid rgba(27, 27, 30, 0.08);
+  color: #3a3a40;
+  border-bottom-left-radius: 4px;
+  max-width: 90%;
+}
+
+.mock-bubble-tag {
+  display: block;
+  font-family: 'EB Garamond', serif;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+/* ==============================
+   Section headers (compartido)
+   ============================== */
+.section-header {
+  text-align: center;
+  margin-bottom: 46px;
+}
+
+.section-label {
+  display: inline-block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+
+.section-title {
+  font-family: 'EB Garamond', serif;
+  font-size: 2.3rem;
+  font-weight: 600;
+  margin: 0;
+  color: #16161a;
 }
 
 /* ==============================
@@ -451,7 +823,7 @@ onUnmounted(() => {
 .features-section {
   max-width: 1080px;
   margin: 0 auto;
-  padding: 54px 28px 20px;
+  padding: 90px 28px 30px;
 }
 
 .features-grid {
@@ -461,6 +833,7 @@ onUnmounted(() => {
 }
 
 .feature-card {
+<<<<<<< ours
   background: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -490,19 +863,54 @@ onUnmounted(() => {
   width: 56px;
   height: 56px;
   border-radius: 16px;
+=======
+  background: #fff;
+  border: 1px solid rgba(27, 27, 30, 0.09);
+  border-radius: 16px;
+  padding: 32px 28px;
+  cursor: default;
+  transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+}
+
+.feature-card:hover {
+  transform: translateY(-6px);
+  border-color: var(--accent);
+  box-shadow: 0 20px 42px rgba(27, 27, 30, 0.1);
+}
+
+.feature-card:active {
+  transform: translateY(-2px) scale(0.99);
+}
+
+.feature-icon-wrap {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+>>>>>>> theirs
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  transition: background 0.25s, color 0.25s, transform 0.25s;
 }
 
+<<<<<<< ours
 .icon-teal   { background: rgba(57, 199, 216, 0.14); }
 .icon-pink   { background: rgba(255, 100, 176, 0.13); }
 .icon-purple { background: rgba(139, 92, 246, 0.13); }
+=======
+.feature-card:hover .feature-icon-wrap {
+  background: var(--accent);
+  color: #fff;
+  transform: scale(1.06);
+}
+>>>>>>> theirs
 
 .feature-title {
   font-family: 'EB Garamond', serif;
-  font-size: 1.5rem;
+  font-size: 1.45rem;
   font-weight: 600;
   margin: 0 0 9px;
   color: #16161a;
@@ -521,6 +929,7 @@ onUnmounted(() => {
 .steps-section {
   max-width: 1080px;
   margin: 0 auto;
+<<<<<<< ours
   padding: 70px 28px 40px;
 }
 
@@ -545,6 +954,9 @@ onUnmounted(() => {
   font-weight: 600;
   margin: 0;
   color: #16161a;
+=======
+  padding: 60px 28px 60px;
+>>>>>>> theirs
 }
 
 .steps-grid {
@@ -554,6 +966,7 @@ onUnmounted(() => {
 }
 
 .step-card {
+<<<<<<< ours
   background: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -571,15 +984,64 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'EB Garamond', serif;
-  font-size: 1.35rem;
-  font-weight: 600;
-  margin-bottom: 18px;
+=======
+  position: relative;
+  background: #fff;
+  border: 1px solid rgba(27, 27, 30, 0.09);
+  border-radius: 16px;
+  padding: 32px 28px;
+  overflow: hidden;
+  cursor: default;
+  transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
 }
 
+.step-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.step-card:hover {
+  transform: translateY(-6px);
+  border-color: var(--accent);
+  box-shadow: 0 20px 42px rgba(27, 27, 30, 0.1);
+}
+
+.step-card:hover::before {
+  transform: scaleX(1);
+}
+
+.step-card:active {
+  transform: translateY(-2px) scale(0.99);
+}
+
+.step-number {
+>>>>>>> theirs
+  font-family: 'EB Garamond', serif;
+  font-size: 2.6rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--accent-soft-strong);
+  margin-bottom: 14px;
+  transition: color 0.25s;
+}
+
+<<<<<<< ours
 .step-1 { background: linear-gradient(135deg, #39c7d8 0%, #29a0af 100%); box-shadow: 0 4px 12px rgba(57, 199, 216, 0.3); }
 .step-2 { background: linear-gradient(135deg, #ff64b0 0%, #e04a92 100%); box-shadow: 0 4px 12px rgba(255, 100, 176, 0.3); }
 .step-3 { background: linear-gradient(135deg, #8b5cf6 0%, #6d42d3 100%); box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3); }
+=======
+.step-card:hover .step-number {
+  color: var(--accent);
+}
+>>>>>>> theirs
 
 .step-title {
   font-family: 'EB Garamond', serif;
@@ -601,29 +1063,33 @@ onUnmounted(() => {
    ============================== */
 .landing-footer {
   border-top: 1px solid rgba(27, 27, 30, 0.07);
-  padding: 26px 28px;
-  text-align: center;
+  padding: 30px 28px;
   position: relative;
   z-index: 1;
+}
+
+.footer-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .footer-brand {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 9px;
-  margin-bottom: 8px;
-}
-
-.footer-logo-img {
-  height: 22px;
-  width: 22px;
 }
 
 .footer-logo-text {
-  font-family: 'EB Garamond', serif;
-  font-size: 1.05rem;
+  font-family: 'Fraunces', 'EB Garamond', serif;
+  font-optical-sizing: auto;
+  font-size: 1.2rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
   color: #3a3a40;
 }
 
@@ -645,42 +1111,44 @@ onUnmounted(() => {
     font-size: 1.2rem;
   }
 
+  .header-nav {
+    display: none;
+  }
+
   .hero-section {
-    padding: 70px 20px 20px;
+    padding: 64px 20px 70px;
   }
 
   .hero-title {
-    font-size: 3rem;
+    font-size: 2.6rem;
   }
 
-  .hero-heading {
-    font-size: 1.75rem;
+  .features-section {
+    padding: 60px 16px 20px;
   }
 
-  .features-section,
   .steps-section {
-    padding-left: 16px;
-    padding-right: 16px;
+    padding: 40px 16px 40px;
   }
 
   .features-grid,
   .steps-grid {
     grid-template-columns: 1fr;
   }
+
+  .footer-inner {
+    flex-direction: column;
+    text-align: center;
+  }
 }
 
 @media (max-width: 480px) {
   .hero-title {
-    font-size: 2.5rem;
+    font-size: 2.15rem;
   }
 
-  .hero-logo {
-    height: 60px;
-    width: 60px;
-  }
-
-  .hero-subtitle {
-    font-size: 1.1rem;
+  .hero-description {
+    font-size: 1.02rem;
   }
 }
 </style>

@@ -21,7 +21,7 @@
     <!-- Si está autenticado, mostrar perfil -->
     <template v-else>
       <div class="row items-center">
-        <q-btn-dropdown flat no-caps color="primary" class="user-profile-btn">
+        <q-btn-dropdown flat no-caps dark color="primary" content-class="user-profile-menu" class="user-profile-btn">
           <template v-slot:label>
             <div class="row items-center no-wrap">
               <!-- Avatar con foto real del usuario -->
@@ -35,14 +35,14 @@
                 <q-icon v-else name="person" />
               </q-avatar>
               <!-- Nombre real del usuario -->
-              <div class="q-ml-sm text-primary">{{ profileStore.displayName }}</div>
+              <div class="q-ml-sm text-profile-name">{{ profileStore.displayName }}</div>
             </div>
           </template>
 
           <q-list>
             <q-item clickable v-close-popup @click="showProfileDialog = true">
               <q-item-section avatar>
-                <q-icon name="account_circle" color="primary" />
+                <q-icon name="account_circle" color="accent" />
               </q-item-section>
               <q-item-section>
                 <q-item-label>Mi Perfil</q-item-label>
@@ -69,14 +69,24 @@
     <q-dialog v-model="showLoginDialog">
       <div class="new-dialog-card">
         <div class="dialog-header">
-          <div class="dialog-header-left">
-            <img src="../../assets/logo.svg" alt="" class="dialog-logo" />
-            <span class="dialog-title">Iniciar Sesión</span>
-          </div>
           <button class="dialog-close" type="button" @click="showLoginDialog = false">✕</button>
+          <span class="dialog-wordmark">LEXIT</span>
+          <h3 class="dialog-title">Iniciar Sesión</h3>
         </div>
 
         <div class="dialog-body">
+          <button type="button" class="google-btn" :disabled="cargandoGoogle" @click="handleGoogleSignIn">
+            <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+              <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+              <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+              <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+              <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+            </svg>
+            {{ cargandoGoogle ? 'Conectando…' : 'Continuar con Google' }}
+          </button>
+
+          <div class="dialog-divider"><span>o continúa con tu email</span></div>
+
           <form @submit.prevent="handleLogin">
             <label class="input-label">Email</label>
             <input
@@ -121,14 +131,24 @@
     <q-dialog v-model="showRegisterDialog">
       <div class="new-dialog-card">
         <div class="dialog-header">
-          <div class="dialog-header-left">
-            <img src="../../assets/logo.svg" alt="" class="dialog-logo" />
-            <span class="dialog-title">Registrarse</span>
-          </div>
           <button class="dialog-close" type="button" @click="showRegisterDialog = false">✕</button>
+          <span class="dialog-wordmark">LEXIT</span>
+          <h3 class="dialog-title">Registrarse</h3>
         </div>
 
         <div class="dialog-body">
+          <button type="button" class="google-btn" :disabled="cargandoGoogle" @click="handleGoogleSignIn">
+            <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+              <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+              <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+              <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+              <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+            </svg>
+            {{ cargandoGoogle ? 'Conectando…' : 'Continuar con Google' }}
+          </button>
+
+          <div class="dialog-divider"><span>o regístrate con tu email</span></div>
+
           <form @submit.prevent="handleRegister">
             <label class="input-label">Email</label>
             <input
@@ -182,6 +202,8 @@ import { useRouter } from 'vue-router';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
   signOut
 } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
@@ -213,6 +235,14 @@ const registerForm = ref({
 });
 
 const showProfileDialog = ref(false);
+const cargandoGoogle = ref(false);
+
+// Permite que un componente padre (ej. un CTA en LandingPage.vue) abra estos
+// diálogos sin duplicar el estado de login/registro fuera de este componente.
+defineExpose({
+  abrirLogin: () => { showLoginDialog.value = true },
+  abrirRegistro: () => { showRegisterDialog.value = true }
+});
 
 // Manejadores de autenticación
 const handleLogin = async () => {
@@ -254,6 +284,44 @@ const handleLogin = async () => {
       position: 'top',
       color: 'negative'
     });
+  }
+};
+
+// Sirve tanto para "Iniciar Sesión" como para "Registrarse" — Firebase crea
+// la cuenta automáticamente si el email de Google no existía aún, así que
+// es el mismo flujo (popup nativo de Google → elegir cuenta → entra).
+const handleGoogleSignIn = async () => {
+  cargandoGoogle.value = true;
+  try {
+    await signInWithPopup(auth, new GoogleAuthProvider());
+    showLoginDialog.value = false;
+    showRegisterDialog.value = false;
+    $q.notify({
+      type: 'positive',
+      message: '¡Sesión iniciada con Google!',
+      position: 'top',
+      color: 'positive'
+    });
+    await router.replace('/app/consultas');
+  } catch (error) {
+    // El usuario cerró la ventana de Google antes de elegir cuenta — no es
+    // un error real, no hace falta mostrar nada.
+    if (error instanceof FirebaseError && error.code === 'auth/popup-closed-by-user') {
+      return;
+    }
+
+    const errorMessage = error instanceof FirebaseError
+      ? `Error: ${error.message}`
+      : 'No se pudo iniciar sesión con Google';
+
+    $q.notify({
+      type: 'negative',
+      message: errorMessage,
+      position: 'top',
+      color: 'negative'
+    });
+  } finally {
+    cargandoGoogle.value = false;
   }
 };
 
@@ -371,6 +439,40 @@ const handleLogout = async () => {
   font-weight: 500;
 }
 
+/* Menú "Mi Perfil / Cerrar Sesión" — antes sin estilo propio (usaba el
+   look por defecto de Quasar, claro, que no combinaba con el panel
+   lateral oscuro). El prop dark en q-btn-dropdown ya resuelve los colores
+   base; esto solo afina bordes/espaciado/sombra para que se vea como el
+   resto de la marca. content-class="user-profile-menu" en el template es
+   lo que deja engancharlo acá con :deep(), aunque el menú se renderiza
+   fuera del árbol de este componente (portal de Quasar). */
+:deep(.user-profile-menu) {
+  background: var(--ink) !important;
+  border: 1px solid rgba(250, 250, 247, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.55);
+  min-width: 190px;
+  overflow: hidden;
+}
+
+:deep(.user-profile-menu .q-list) {
+  padding: 6px;
+}
+
+:deep(.user-profile-menu .q-item) {
+  border-radius: 8px;
+  min-height: 42px;
+}
+
+:deep(.user-profile-menu .q-separator) {
+  background: rgba(250, 250, 247, 0.1);
+  margin: 4px 2px;
+}
+
+.text-profile-name {
+  color: rgba(250, 250, 247, 0.92);
+}
+
 /* Backdrop del dialogo */
 :deep(.q-dialog__backdrop) {
   background: rgba(22, 22, 26, 0.45);
@@ -387,39 +489,42 @@ const handleLogout = async () => {
   width: 420px;
   max-width: 95vw;
   background: #fff;
-  border-radius: var(--border-radius);
-  box-shadow: var(--shadow-heavy);
+  border-radius: 20px;
+  box-shadow: 0 30px 70px rgba(22, 22, 26, 0.28);
   overflow: hidden;
   animation: floatUp 0.25s ease-out both;
   font-family: 'Figtree', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .dialog-header {
-  padding: 28px 30px 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  position: relative;
+  padding: 34px 30px 18px;
+  text-align: center;
 }
 
-.dialog-header-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.dialog-logo {
-  height: 30px;
-  width: 30px;
+.dialog-wordmark {
+  display: block;
+  font-family: 'Fraunces', 'EB Garamond', serif;
+  font-optical-sizing: auto;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-bottom: 10px;
 }
 
 .dialog-title {
   font-family: 'EB Garamond', serif;
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   font-weight: 600;
   color: #16161a;
+  margin: 0;
 }
 
 .dialog-close {
+  position: absolute;
+  top: 18px;
+  right: 20px;
   width: 34px;
   height: 34px;
   border-radius: var(--border-radius-small);
@@ -440,6 +545,51 @@ const handleLogout = async () => {
 
 .dialog-body {
   padding: 22px 30px 30px;
+}
+
+.google-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px;
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1b1b1e;
+  background: #fff;
+  border: 1px solid rgba(27, 27, 30, 0.16);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: background 0.18s, box-shadow 0.18s;
+}
+
+.google-btn:hover:not(:disabled) {
+  background: #f7f7f5;
+  box-shadow: var(--shadow-light);
+}
+
+.google-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dialog-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+  font-size: 0.8rem;
+  color: #9a9aa2;
+}
+
+.dialog-divider::before,
+.dialog-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(27, 27, 30, 0.1);
 }
 
 .input-label {
@@ -547,9 +697,5 @@ const handleLogout = async () => {
 
 :deep(.q-avatar) {
   background: var(--q-primary);
-}
-
-.text-primary {
-  color: var(--q-primary) !important;
 }
 </style>

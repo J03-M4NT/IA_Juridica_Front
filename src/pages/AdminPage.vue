@@ -263,11 +263,11 @@
           />
           <q-file
             v-model="newTemplate.file"
-            label="Archivo PDF *"
+            label="Archivo Word *"
             outlined dense
             label-color="grey-8" color="accent" input-class="text-grey-9"
-            accept=".pdf"
-            :rules="[v => !!v || 'Selecciona un archivo PDF']"
+            accept=".docx"
+            :rules="[v => !!v || 'Selecciona un archivo Word (.docx)']"
             class="lx-input"
           >
             <template #prepend>
