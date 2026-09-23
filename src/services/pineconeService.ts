@@ -309,3 +309,34 @@ export async function verificarConexionPinecone(): Promise<EstadoPinecone> {
     return { conectado: false, totalVectores: 0 }
   }
 }
+
+// =========================
+// LISTAR / ELIMINAR DOCUMENTOS (panel Admin)
+// La lista se arma en el servidor desde el propio índice de Pinecone, así
+// que todos los admins ven todos los documentos, desde cualquier PC.
+// =========================
+export interface DocumentoIndexado {
+  id: string
+  nombre: string
+  tipo: string
+  chunks: number
+}
+
+export async function listarDocumentosPinecone(): Promise<DocumentoIndexado[]> {
+  const response = await postFuncion('listarDocumentosPinecone', {})
+  const data = await response.json() as { documentos?: DocumentoIndexado[]; error?: string }
+  if (!response.ok || !data.documentos) {
+    throw new Error(data.error ?? 'No se pudo obtener la lista de documentos')
+  }
+  return data.documentos
+}
+
+// Borra de Pinecone TODOS los fragmentos del documento (irreversible).
+export async function eliminarDocumentoPinecone(documentoId: string): Promise<number> {
+  const response = await postFuncion('eliminarDocumentoDePinecone', { documentoId })
+  const data = await response.json() as { success?: boolean; eliminados?: number; error?: string }
+  if (!response.ok || !data.success) {
+    throw new Error(data.error ?? 'No se pudo eliminar el documento')
+  }
+  return data.eliminados ?? 0
+}
