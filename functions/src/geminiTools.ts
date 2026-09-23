@@ -1,6 +1,17 @@
 import { onRequest } from 'firebase-functions/v2/https'
 import * as logger from 'firebase-functions/logger'
+import { createHash } from 'node:crypto'
+import { getFirestore } from 'firebase-admin/firestore'
 import { GEMINI_API_KEY, obtenerModeloGemini } from './geminiClient'
+import {
+  ORIGENES_PERMITIDOS,
+  MAX_CARACTERES_DOCUMENTO,
+  MAX_CARACTERES_MENSAJE,
+  MAX_MENSAJES_HISTORIAL,
+  autorizar,
+  consumirCuotaIA,
+  excede
+} from './seguridad'
 
 // ================================
 // SUGERENCIAS DE CAMBIOS (redline) PARA UN CONTRATO
@@ -16,12 +27,15 @@ interface SugerenciaCambio {
 }
 
 export const generarSugerenciasContrato = onRequest(
-  { cors: true, secrets: [GEMINI_API_KEY], timeoutSeconds: 120 },
+  { cors: ORIGENES_PERMITIDOS, secrets: [GEMINI_API_KEY], timeoutSeconds: 120 },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
       return
     }
+
+    const uid = await autorizar(req, res)
+    if (!uid) return
 
     try {
       const { textoContrato } = req.body as { textoContrato?: string }
@@ -29,6 +43,11 @@ export const generarSugerenciasContrato = onRequest(
         res.status(400).json({ error: 'Falta textoContrato' })
         return
       }
+      if (excede(textoContrato, MAX_CARACTERES_DOCUMENTO)) {
+        res.status(413).json({ error: 'El contrato es demasiado largo para analizarlo' })
+        return
+      }
+      if (!(await consumirCuotaIA(uid, res))) return
 
       const prompt = `
     Eres un abogado experto en derecho peruano. Revisa este contrato y devuelve
@@ -81,12 +100,15 @@ export const generarSugerenciasContrato = onRequest(
 // MODIFICAR PLANTILLA CON IA
 // ================================
 export const modificarPlantillaIA = onRequest(
-  { cors: true, secrets: [GEMINI_API_KEY], timeoutSeconds: 120 },
+  { cors: ORIGENES_PERMITIDOS, secrets: [GEMINI_API_KEY], timeoutSeconds: 120 },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
       return
     }
+
+    const uid = await autorizar(req, res)
+    if (!uid) return
 
     try {
       const { textoPlantilla, instruccion } = req.body as { textoPlantilla?: string; instruccion?: string }
@@ -94,6 +116,11 @@ export const modificarPlantillaIA = onRequest(
         res.status(400).json({ error: 'Falta textoPlantilla o instruccion' })
         return
       }
+      if (excede(textoPlantilla, MAX_CARACTERES_DOCUMENTO) || excede(instruccion, MAX_CARACTERES_MENSAJE)) {
+        res.status(413).json({ error: 'La plantilla o la instrucción son demasiado largas' })
+        return
+      }
+      if (!(await consumirCuotaIA(uid, res))) return
 
       const prompt = `
     Eres un abogado experto en derecho peruano.
@@ -136,15 +163,18 @@ interface RespuestaChatEdicion {
 }
 
 export const chatEdicionContratoIA = onRequest(
-  { cors: true, secrets: [GEMINI_API_KEY], timeoutSeconds: 120 },
+  { cors: ORIGENES_PERMITIDOS, secrets: [GEMINI_API_KEY], timeoutSeconds: 120 },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
       return
     }
 
+    const uid = await autorizar(req, res)
+    if (!uid) return
+
     try {
-      const { textoContrato, historialChat = [], respuestaUsuario } = req.body as {
+      const { textoContrato, historialChat: historialRecibido = [], respuestaUsuario } = req.body as {
         textoContrato?: string
         historialChat?: MensajeChatEdicion[]
         respuestaUsuario?: string
@@ -153,6 +183,19 @@ export const chatEdicionContratoIA = onRequest(
         res.status(400).json({ error: 'Falta textoContrato' })
         return
       }
+      if (!Array.isArray(historialRecibido)) {
+        res.status(400).json({ error: 'historialChat debe ser un array' })
+        return
+      }
+      if (excede(textoContrato, MAX_CARACTERES_DOCUMENTO) || excede(respuestaUsuario, MAX_CARACTERES_MENSAJE)) {
+        res.status(413).json({ error: 'El contrato o el mensaje son demasiado largos' })
+        return
+      }
+      if (!(await consumirCuotaIA(uid, res))) return
+
+      // Solo los últimos mensajes: la conversación completa puede crecer
+      // sin límite y cada turno se reenvía entero a Gemini.
+      const historialChat = historialRecibido.slice(-MAX_MENSAJES_HISTORIAL)
 
       const systemInstruction = `
 Eres un asistente legal que ayuda a un usuario a completar o modificar un contrato, conversando paso a paso.
@@ -217,23 +260,44 @@ Responde SIEMPRE y ÚNICAMENTE en JSON, con esta estructura exacta, sin texto fu
 // RESUMEN DE NORMAS DEL DÍA
 // ================================
 export const resumirNormasDelDiaIA = onRequest(
-  { cors: true, secrets: [GEMINI_API_KEY], timeoutSeconds: 60 },
+  { cors: ORIGENES_PERMITIDOS, secrets: [GEMINI_API_KEY], timeoutSeconds: 60 },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
       return
     }
 
+    const uid = await autorizar(req, res)
+    if (!uid) return
+
     try {
       const { normas } = req.body as { normas?: { titulo: string; sumilla: string }[] }
-      if (!normas || normas.length === 0) {
+      if (!Array.isArray(normas) || normas.length === 0) {
         res.status(400).json({ error: 'Falta normas' })
+        return
+      }
+      if (normas.length > 300 || excede(JSON.stringify(normas), MAX_CARACTERES_DOCUMENTO)) {
+        res.status(413).json({ error: 'Demasiadas normas para resumir' })
         return
       }
 
       const listado = normas
         .map((n, i) => `${i + 1}. ${n.titulo}${n.sumilla ? ` — ${n.sumilla}` : ''}`)
         .join('\n')
+
+      // Todos los usuarios ven las mismas normas del día, así que el
+      // resumen se genera una sola vez por listado y se reutiliza — abrir
+      // la Biblioteca Legal no gasta Gemini ni el cupo del usuario.
+      const cacheRef = getFirestore()
+        .collection('resumenes_normas')
+        .doc(createHash('sha256').update(listado).digest('hex'))
+      const cache = await cacheRef.get()
+      if (cache.exists) {
+        res.json(cache.get('resultado'))
+        return
+      }
+
+      if (!(await consumirCuotaIA(uid, res))) return
 
       const prompt = `
     Eres un abogado experto en derecho peruano.
@@ -255,8 +319,10 @@ export const resumirNormasDelDiaIA = onRequest(
       const result = await model.generateContent(prompt)
       const text = result.response.text()
       const clean = text.replace(/```json|```/g, '').trim()
+      const resultado = JSON.parse(clean) as unknown
 
-      res.json(JSON.parse(clean))
+      await cacheRef.set({ resultado, creadoEn: new Date().toISOString() })
+      res.json(resultado)
     } catch (err) {
       const error = err as Error
       logger.error('❌ Error en resumirNormasDelDiaIA:', error.message)

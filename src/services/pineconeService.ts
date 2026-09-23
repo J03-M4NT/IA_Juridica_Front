@@ -1,16 +1,7 @@
-import { Pinecone } from '@pinecone-database/pinecone'
-
-// =========================
-// URLS DE FIREBASE FUNCTIONS
-// =========================
-const FUNCTIONS_URL = 'https://us-central1-lexit-ai.cloudfunctions.net'
-
-// =========================
-// PINECONE SOLO PARA VERIFICAR STATS
-// =========================
-const pinecone = new Pinecone({
-  apiKey: import.meta.env.VITE_PINECONE_API_KEY as string
-})
+// Todo acceso a Pinecone pasa por Cloud Functions (ver functions/src/
+// index.ts): la API key vive SOLO como secreto de Firebase y nunca llega
+// al navegador. No volver a importar @pinecone-database/pinecone aquí.
+import { postFuncion } from './functionsClient'
 
 // =========================
 // TIPOS DE DOCUMENTO QUE SON "FUENTE PRIMARIA"
@@ -165,11 +156,7 @@ interface RecordPinecone {
 }
 
 async function subirLoteConReintentos(records: RecordPinecone[], intento = 1): Promise<void> {
-  const response = await fetch(`${FUNCTIONS_URL}/upsertToPinecone`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ records })
-  })
+  const response = await postFuncion('upsertToPinecone', { records })
 
   const result = await response.json() as { success?: boolean; error?: string }
   if (result.success) return
@@ -260,11 +247,7 @@ export async function buscarEnPinecone(
 ): Promise<FragmentoResultado[]> {
 
   const buscar = async (soloFuentePrimaria: boolean): Promise<FragmentoResultado[]> => {
-    const response = await fetch(`${FUNCTIONS_URL}/searchInPinecone`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: consulta, topK, tipoDocumento, soloFuentePrimaria })
-    })
+    const response = await postFuncion('searchInPinecone', { query: consulta, topK, tipoDocumento, soloFuentePrimaria })
 
     const data = await response.json() as { hits?: PineconeHit[] }
     const hits = data.hits ?? []
@@ -312,12 +295,12 @@ export interface EstadoPinecone {
 
 export async function verificarConexionPinecone(): Promise<EstadoPinecone> {
   try {
-    const idx = pinecone.index(
-      import.meta.env.VITE_PINECONE_INDEX as string,
-      import.meta.env.VITE_PINECONE_HOST as string
-    )
-    const stats = await idx.describeIndexStats()
-    const totalVectores = stats.totalRecordCount ?? 0
+    const response = await postFuncion('estadisticasPinecone', {})
+    const data = await response.json() as Partial<EstadoPinecone> & { error?: string }
+    if (!response.ok) {
+      throw new Error(data.error ?? 'No se pudo consultar Pinecone')
+    }
+    const totalVectores = data.totalVectores ?? 0
     console.log('✅ Pinecone conectado. Vectores totales:', totalVectores)
     return { conectado: true, totalVectores }
   } catch (err) {

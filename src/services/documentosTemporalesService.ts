@@ -1,7 +1,6 @@
 import { ref, uploadBytes } from 'firebase/storage'
-import { auth, storage } from '../firebase/firebaseConfig'
-
-const FUNCTIONS_URL = 'https://us-central1-lexit-ai.cloudfunctions.net'
+import { storage } from '../firebase/firebaseConfig'
+import { postFuncion } from './functionsClient'
 
 // Sube el .docx original adjuntado en Consultas a una carpeta privada del
 // usuario, para poder abrirlo luego en Word de escritorio (botón "Abrir en
@@ -25,19 +24,7 @@ export async function subirDocumentoTemporal(uid: string, archivo: File): Promis
 // URL pública permanente. La Cloud Function verifica el ID token y que el
 // storagePath pedido sea del usuario que llama.
 export async function obtenerUrlFirmadaDocumento(storagePath: string): Promise<string> {
-  const idToken = await auth.currentUser?.getIdToken()
-  if (!idToken) {
-    throw new Error('No hay una sesión activa')
-  }
-
-  const response = await fetch(`${FUNCTIONS_URL}/obtenerUrlFirmadaDocumento`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${idToken}`
-    },
-    body: JSON.stringify({ storagePath })
-  })
+  const response = await postFuncion('obtenerUrlFirmadaDocumento', { storagePath })
 
   const data = await response.json() as { url?: string; error?: string }
   if (!response.ok || !data.url) {

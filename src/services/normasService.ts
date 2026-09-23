@@ -1,7 +1,6 @@
 import { db } from '../firebase/firebaseConfig'
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
-
-const FUNCTIONS_URL = 'https://us-central1-lexit-ai.cloudfunctions.net'
+import { postFuncion } from './functionsClient'
 
 /**
  * Norma legal publicada en el Diario Oficial El Peruano, obtenida por el
@@ -44,11 +43,7 @@ export async function obtenerUltimasNormas(): Promise<NormasDelDiaResult | null>
  * para el día. Lanza si el scraping falla.
  */
 export async function actualizarNormasDelDia(): Promise<number> {
-  const response = await fetch(`${FUNCTIONS_URL}/scrapearNormasDiariasManual`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({})
-  })
+  const response = await postFuncion('scrapearNormasDiariasManual', {})
 
   const data = await response.json() as { success?: boolean; total?: number; error?: string }
   if (!data.success) throw new Error(data.error ?? 'No se pudo actualizar las normas')
@@ -63,11 +58,7 @@ export async function actualizarNormasDelDia(): Promise<number> {
  * mostrarlo en un iframe dentro de la plataforma sin redirigir a su sitio.
  */
 export async function resolverUrlPdf(urlWrapper: string): Promise<string> {
-  const response = await fetch(`${FUNCTIONS_URL}/resolverUrlPdfNorma`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ urlWrapper })
-  })
+  const response = await postFuncion('resolverUrlPdfNorma', { urlWrapper })
 
   const data = await response.json() as { urlPdf?: string; error?: string }
   if (!data.urlPdf) throw new Error(data.error ?? 'No se pudo obtener el PDF de esta norma')

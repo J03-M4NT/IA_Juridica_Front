@@ -29,11 +29,17 @@ yarn-error.log*
 *.njsproj
 *.sln
 
-# local .env files
-.env.local*
+# local .env files (NUNCA commitear claves: .env, .env.local, .env.production...)
 .env
+.env.*
+!.env.example
+# secretos locales del emulador de Functions
+.secret.local
+functions/.secret.local
 
 # firebase cache
+firebase-debug.log
+firebase-debug.*.log
 .firebase/
 .firebaserc
 

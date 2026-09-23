@@ -2,6 +2,7 @@ import { onRequest } from 'firebase-functions/v2/https'
 import * as logger from 'firebase-functions/logger'
 import { getAuth } from 'firebase-admin/auth'
 import { getStorage } from 'firebase-admin/storage'
+import { ORIGENES_PERMITIDOS } from './seguridad'
 
 const SEIS_HORAS_MS = 6 * 60 * 60 * 1000
 
@@ -11,7 +12,7 @@ const SEIS_HORAS_MS = 6 * 60 * 60 * 1000
 // que mande el cliente: se verifica el ID token de Firebase y se exige que
 // el storagePath pedido esté dentro de la carpeta de ESE usuario.
 export const obtenerUrlFirmadaDocumento = onRequest(
-  { cors: true, timeoutSeconds: 30 },
+  { cors: ORIGENES_PERMITIDOS, timeoutSeconds: 30 },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
