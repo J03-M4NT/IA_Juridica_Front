@@ -21,7 +21,7 @@
     <!-- Si está autenticado, mostrar perfil -->
     <template v-else>
       <div class="row items-center">
-        <q-btn-dropdown flat no-caps color="primary" class="user-profile-btn">
+        <q-btn-dropdown flat no-caps dark color="primary" content-class="user-profile-menu" class="user-profile-btn">
           <template v-slot:label>
             <div class="row items-center no-wrap">
               <!-- Avatar con foto real del usuario -->
@@ -35,14 +35,14 @@
                 <q-icon v-else name="person" />
               </q-avatar>
               <!-- Nombre real del usuario -->
-              <div class="q-ml-sm text-primary">{{ profileStore.displayName }}</div>
+              <div class="q-ml-sm text-profile-name">{{ profileStore.displayName }}</div>
             </div>
           </template>
 
           <q-list>
             <q-item clickable v-close-popup @click="showProfileDialog = true">
               <q-item-section avatar>
-                <q-icon name="account_circle" color="primary" />
+                <q-icon name="account_circle" color="accent" />
               </q-item-section>
               <q-item-section>
                 <q-item-label>Mi Perfil</q-item-label>
@@ -439,6 +439,40 @@ const handleLogout = async () => {
   font-weight: 500;
 }
 
+/* Menú "Mi Perfil / Cerrar Sesión" — antes sin estilo propio (usaba el
+   look por defecto de Quasar, claro, que no combinaba con el panel
+   lateral oscuro). El prop dark en q-btn-dropdown ya resuelve los colores
+   base; esto solo afina bordes/espaciado/sombra para que se vea como el
+   resto de la marca. content-class="user-profile-menu" en el template es
+   lo que deja engancharlo acá con :deep(), aunque el menú se renderiza
+   fuera del árbol de este componente (portal de Quasar). */
+:deep(.user-profile-menu) {
+  background: var(--ink) !important;
+  border: 1px solid rgba(250, 250, 247, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.55);
+  min-width: 190px;
+  overflow: hidden;
+}
+
+:deep(.user-profile-menu .q-list) {
+  padding: 6px;
+}
+
+:deep(.user-profile-menu .q-item) {
+  border-radius: 8px;
+  min-height: 42px;
+}
+
+:deep(.user-profile-menu .q-separator) {
+  background: rgba(250, 250, 247, 0.1);
+  margin: 4px 2px;
+}
+
+.text-profile-name {
+  color: rgba(250, 250, 247, 0.92);
+}
+
 /* Backdrop del dialogo */
 :deep(.q-dialog__backdrop) {
   background: rgba(22, 22, 26, 0.45);
@@ -663,9 +697,5 @@ const handleLogout = async () => {
 
 :deep(.q-avatar) {
   background: var(--q-primary);
-}
-
-.text-primary {
-  color: var(--q-primary) !important;
 }
 </style>

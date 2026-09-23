@@ -1,4 +1,4 @@
-import { Document, Packer, Paragraph, TextRun, Tab, Table, TableRow, TableCell, WidthType, convertInchesToTwip, AlignmentType, LevelFormat } from 'docx';
+import { Document, Packer, Paragraph, TextRun, Tab, Table, TableRow, TableCell, WidthType, convertInchesToTwip, AlignmentType, LevelFormat, Header, Footer } from 'docx';
 import html2pdf from 'html2pdf.js';
 
 // Referencias de numeración registradas una sola vez en el Document (ver
@@ -65,15 +65,12 @@ interface RunFragmento {
 
 
 
-// fuentePorDefecto: la fuente real detectada del tema del .docx original
-// (ver mammothExtractor.ts, detectarFuenteDelTema) — si no se detectó
-// (ej. viene de un PDF, o el documento no tiene tema legible), se usa
-// FUENTE_DOCUMENTO_LEGAL como respaldo.
-export const exportToWord = async (content: string, documentName: string, fuentePorDefecto?: string): Promise<Blob> => {
-  try {
-    /* eslint-disable @typescript-eslint/no-explicit-any */
-
-  const fuente = fuentePorDefecto || FUENTE_DOCUMENTO_LEGAL;
+// Construye la lista de párrafos/tablas de docx a partir del HTML del
+// editor — compartida entre exportToWord (documento limpio) y
+// exportToWordConMarcaDeAgua (mismo cuerpo, con header/footer extra), así
+// las dos exportaciones producen exactamente el mismo contenido de body.
+const construirChildrenDesdeHtml = (content: string, fuente: string): (Paragraph | Table)[] => {
+  /* eslint-disable @typescript-eslint/no-explicit-any */
 
   // Crear un elemento temporal para procesar el HTML
   const tempDiv = document.createElement('div');
@@ -279,14 +276,49 @@ export const exportToWord = async (content: string, documentName: string, fuente
     // Procesar todo el contenido
     processNode(tempDiv);
 
+    return children;
+};
+
+// Definiciones de numeración compartidas (ver NUMERACION_ORDENADA/
+// NUMERACION_VINETAS) — registradas igual en ambos documentos generados.
+const numberingConfig = {
+  config: [
+    {
+      reference: NUMERACION_ORDENADA,
+      levels: [{ level: 0, format: LevelFormat.DECIMAL, text: '%1.', alignment: AlignmentType.START }]
+    },
+    {
+      reference: NUMERACION_VINETAS,
+      levels: [{ level: 0, format: LevelFormat.BULLET, text: '•', alignment: AlignmentType.START }]
+    }
+  ]
+};
+
+const margenesPagina = {
+  top: convertInchesToTwip(1),
+  right: convertInchesToTwip(1),
+  bottom: convertInchesToTwip(1),
+  left: convertInchesToTwip(1),
+};
+
+// fuentePorDefecto: la fuente real detectada del tema del .docx original
+// (ver mammothExtractor.ts, detectarFuenteDelTema) — si no se detectó
+// (ej. viene de un PDF, o el documento no tiene tema legible), se usa
+// FUENTE_DOCUMENTO_LEGAL como respaldo.
+export const exportToWord = async (content: string, documentName: string, fuentePorDefecto?: string): Promise<Blob> => {
+  try {
+    const fuente = fuentePorDefecto || FUENTE_DOCUMENTO_LEGAL;
+    const children = construirChildrenDesdeHtml(content, fuente);
+
     // Crear el documento con los estilos definidos
     const doc = new Document({
       title: documentName,
       // Fuente por defecto a nivel de documento, además de fijarla en
-      // cada TextRun (ver crearParrafo) — un segundo nivel de garantía
-      // para que ningún texto (ej. el de una celda de tabla vacía, o
-      // cualquier caso borde no cubierto explícitamente) termine con la
-      // fuente por defecto de la librería en vez de la detectada/de respaldo.
+      // cada TextRun (ver crearParrafo, dentro de construirChildrenDesdeHtml)
+      // — un segundo nivel de garantía para que ningún texto (ej. el de una
+      // celda de tabla vacía, o cualquier caso borde no cubierto
+      // explícitamente) termine con la fuente por defecto de la librería en
+      // vez de la detectada/de respaldo.
       styles: {
         default: {
           document: {
@@ -294,32 +326,9 @@ export const exportToWord = async (content: string, documentName: string, fuente
           }
         }
       },
-      // Definiciones de numeración referenciadas por crearParrafo (ver
-      // NUMERACION_ORDENADA/NUMERACION_VINETAS) — se registran acá una
-      // sola vez, sin importar cuántas listas termine usando el documento.
-      numbering: {
-        config: [
-          {
-            reference: NUMERACION_ORDENADA,
-            levels: [{ level: 0, format: LevelFormat.DECIMAL, text: '%1.', alignment: AlignmentType.START }]
-          },
-          {
-            reference: NUMERACION_VINETAS,
-            levels: [{ level: 0, format: LevelFormat.BULLET, text: '•', alignment: AlignmentType.START }]
-          }
-        ]
-      },
+      numbering: numberingConfig,
       sections: [{
-        properties: {
-          page: {
-            margin: {
-              top: convertInchesToTwip(1),
-              right: convertInchesToTwip(1),
-              bottom: convertInchesToTwip(1),
-              left: convertInchesToTwip(1),
-            },
-          },
-        },
+        properties: { page: { margin: margenesPagina } },
         children,
       }],
     });
@@ -328,6 +337,72 @@ export const exportToWord = async (content: string, documentName: string, fuente
     return blob;
   } catch (error) {
     console.error('Error en exportToWord:', error);
+    throw error;
+  }
+};
+
+const TEXTO_MARCA_AGUA = 'LEXIT';
+const TEXTO_PIE_PAGINA = 'Generado por LexIT';
+
+// Membrete de marca en la esquina superior derecha (ver diseño de
+// referencia del usuario: wordmark tipo "LA FIDUCIARIA | 25", chico y
+// elegante, no la marca de agua diagonal de fondo clásica de Word que se
+// había hecho primero) — una fuente serif con tracking amplio, en vez de
+// la fuente del cuerpo del documento, para que se lea como logo/membrete
+// y no como texto del contrato.
+const FUENTE_MARCA = 'Georgia';
+
+// Igual que exportToWord, pero agrega el membrete "LEXIT" en la esquina
+// superior derecha de cada página y el texto "Generado por LexIT" en el
+// pie de página real de Word (se repite en cada página, a diferencia del
+// pie de página de Consultas que es solo un párrafo final visible una vez).
+export const exportToWordConMarcaDeAgua = async (content: string, documentName: string, fuentePorDefecto?: string): Promise<Blob> => {
+  try {
+    const fuente = fuentePorDefecto || FUENTE_DOCUMENTO_LEGAL;
+    const children = construirChildrenDesdeHtml(content, fuente);
+
+    const doc = new Document({
+      title: documentName,
+      styles: {
+        default: {
+          document: {
+            run: { font: fuente }
+          }
+        }
+      },
+      numbering: numberingConfig,
+      sections: [{
+        properties: { page: { margin: margenesPagina } },
+        headers: {
+          default: new Header({
+            children: [new Paragraph({
+              alignment: AlignmentType.RIGHT,
+              children: [new TextRun({
+                text: TEXTO_MARCA_AGUA,
+                font: FUENTE_MARCA,
+                bold: true,
+                size: 22,
+                characterSpacing: 40,
+                color: '2B2B2B',
+              })],
+            })],
+          }),
+        },
+        footers: {
+          default: new Footer({
+            children: [new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [new TextRun({ text: TEXTO_PIE_PAGINA, size: 18, color: '999999' })],
+            })],
+          }),
+        },
+        children,
+      }],
+    });
+
+    return await Packer.toBlob(doc);
+  } catch (error) {
+    console.error('Error en exportToWordConMarcaDeAgua:', error);
     throw error;
   }
 };

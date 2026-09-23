@@ -50,6 +50,46 @@ export async function resumirNormasDelDia(
 }
 
 // ================================
+// 5c. CHAT CONVERSACIONAL PARA COMPLETAR/EDITAR UN CONTRATO
+// (delegado a la Cloud Function chatEdicionContratoIA — la IA analiza el
+// contrato, pregunta un dato a la vez, y al final devuelve el contrato
+// completo actualizado)
+// ================================
+export interface MensajeChatEdicion {
+  esIA: boolean
+  contenido: string
+}
+
+export interface ResultadoChatEdicion {
+  tipo: 'pregunta' | 'documento_final'
+  mensaje: string
+  textoModificado?: string
+}
+
+export async function chatEditarContratoIA(
+  textoContrato: string,
+  historialChat: MensajeChatEdicion[],
+  respuestaUsuario?: string
+): Promise<ResultadoChatEdicion> {
+  const response = await fetch(`${FUNCTIONS_URL}/chatEdicionContratoIA`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ textoContrato, historialChat, respuestaUsuario })
+  })
+
+  const data = await response.json() as Partial<ResultadoChatEdicion> & { error?: string }
+  if (!response.ok || !data.tipo || !data.mensaje) {
+    throw new Error(data.error ?? 'No se pudo continuar la conversación con la IA')
+  }
+
+  return {
+    tipo: data.tipo,
+    mensaje: data.mensaje,
+    ...(data.textoModificado !== undefined ? { textoModificado: data.textoModificado } : {})
+  }
+}
+
+// ================================
 // 6. SUGERENCIAS DE CAMBIOS (redline) PARA UN CONTRATO
 // (delegado a la Cloud Function generarSugerenciasContrato — mismo motivo)
 // ================================

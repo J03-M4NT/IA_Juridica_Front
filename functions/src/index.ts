@@ -16,7 +16,7 @@ export { editarParrafoDocxPoc } from './editarDocxPoc'
 // navegador con la API key expuesta en el bundle — ver consultarLexit.ts
 // y geminiTools.ts.
 export { consultarLexit } from './consultarLexit'
-export { generarSugerenciasContrato, modificarPlantillaIA, resumirNormasDelDiaIA } from './geminiTools'
+export { generarSugerenciasContrato, modificarPlantillaIA, resumirNormasDelDiaIA, chatEdicionContratoIA } from './geminiTools'
 export { obtenerUrlFirmadaDocumento } from './documentosTemporales'
 
 if (getApps().length === 0) {

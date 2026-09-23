@@ -6,13 +6,13 @@
          todo (ver onMessagesScroll). -->
     <div class="page-header" :class="{ 'page-header--compact': chatDesplazado }">
       <div class="section-icon-wrap icon-blue">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#B5502E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7EA2F2" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
       </div>
       <div>
         <h1 class="page-title">Consultas Jurídicas</h1>
-        <p class="page-subtitle">Haz preguntas sobre leyes y contratos</p>
+        <p class="page-subtitle">Haz preguntas sobre leyes, o adjunta un contrato para analizarlo</p>
       </div>
     </div>
 
@@ -1182,12 +1182,36 @@ watch(mensajes, async () => {
 </script>
 
 <style scoped>
+/* ==============================
+   Paleta oscura azul de esta página — variables propias, con prefijo lc-,
+   definidas solo dentro de .consultas-page. No se tocan las variables
+   globales (--surface, --bg, etc. en src/css/app.scss), así que el resto
+   de la app sigue con el tema claro de siempre. Distinta de la paleta
+   cálida/terracota de Contratos a propósito — un azul noche elegante,
+   con la terracota de marca como acento cálido puntual (ver
+   --lc-accent-warm, usado en detalles chicos, no como color base).
+   ============================== */
 .consultas-page {
-  /* Antes 1100px — se sentía encerrado en una caja angosta. Ahora usa
-     todo el ancho que MainLayout.vue le da a .q-page (su propio tope es
-     1400px), así el chat se siente amplio en vez de una tarjeta chica. */
-  max-width: 1400px;
-  margin: 0 auto;
+  --lc-bg: #10151f;
+  --lc-surface: #182234;
+  --lc-surface-alt: #131b29;
+  --lc-surface-sunken: #0c111a;
+  --lc-border: rgba(255, 255, 255, 0.08);
+  --lc-border-strong: rgba(255, 255, 255, 0.16);
+  --lc-text: #eef1f7;
+  --lc-text-muted: #a9b4c7;
+  --lc-text-faint: #78839c;
+  --lc-accent: #5B8DEF;
+  --lc-accent-hover: #4874D1;
+  --lc-accent-soft: rgba(91, 141, 239, 0.14);
+  --lc-accent-soft-strong: rgba(91, 141, 239, 0.26);
+  --lc-accent-warm: #D97A4D;
+  --lc-accent-warm-soft: rgba(217, 122, 77, 0.16);
+
+  /* El max-width:none real vive en ".q-page.consultas-page" más abajo —
+     acá no alcanza, empata en especificidad con la regla global ".q-page"
+     de MainLayout.vue (max-width:1400px) y puede perder según el orden de
+     carga de cada archivo. */
   animation: floatUp 0.5s ease-out both;
   display: flex;
   flex-direction: column;
@@ -1199,6 +1223,17 @@ watch(mensajes, async () => {
   height: calc(100vh - 94px);
   min-height: 560px;
   overflow: hidden;
+}
+
+/* .q-page trae max-width:1400px + margin:0 auto de MainLayout.vue (regla
+   compartida por toda la app) — sin anularla acá, en pantallas anchas se
+   ve el fondo claro de .page-container detrás del área oscura (mismo bug
+   ya resuelto en ContratosPage.vue). Mayor especificidad que ".q-page"
+   (dos clases contra una) para que gane sin tocar esa regla compartida. */
+.q-page.consultas-page {
+  background: var(--lc-bg);
+  max-width: none;
+  margin: 0;
 }
 
 @keyframes floatUp {
@@ -1221,7 +1256,7 @@ watch(mensajes, async () => {
   gap: 12px;
   margin-bottom: 16px;
   padding-bottom: 14px;
-  border-bottom: 1px solid rgba(27, 27, 30, 0.08);
+  border-bottom: 1px solid var(--lc-border);
   text-align: center;
   transition: opacity 0.25s ease, transform 0.25s ease, margin-bottom 0.25s ease, padding-bottom 0.25s ease;
 }
@@ -1247,7 +1282,7 @@ watch(mensajes, async () => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: inset 0 0 0 1px var(--accent-soft-strong);
+  box-shadow: inset 0 0 0 1px var(--lc-accent-soft-strong);
   transition: width 0.25s ease, height 0.25s ease;
 }
 
@@ -1256,7 +1291,7 @@ watch(mensajes, async () => {
   height: 22px;
 }
 
-.icon-blue { background: var(--accent-soft); }
+.icon-blue { background: var(--lc-accent-soft); }
 
 .page-title {
   font-family: 'Fraunces', 'EB Garamond', serif;
@@ -1265,18 +1300,20 @@ watch(mensajes, async () => {
   font-weight: 600;
   letter-spacing: -0.01em;
   margin: 0;
-  color: #16161a;
+  color: var(--lc-text);
 }
 
 .page-subtitle {
   margin: 4px 0 0;
-  color: #6a6a72;
+  color: var(--lc-text-muted);
   font-size: 1rem;
 }
 
-.consultas-page--with-pdf {
-  max-width: 1760px;
-}
+/* Ya no hace falta un tope de ancho especial acá — la base
+   (.consultas-page) ya no tiene max-width, así que este modificador
+   quedaría de más (o peor, constreñiría el ancho justo cuando hay más
+   contenido al costado). Se deja la clase declarada (el template sigue
+   agregándola) sin reglas, por si vuelve a necesitarse. */
 
 .consultas-layout {
   flex: 1;
@@ -1292,6 +1329,10 @@ watch(mensajes, async () => {
   min-width: 360px;
 }
 
+/* Sin card: sin fondo propio, borde ni sombra — el chat vive directo
+   sobre el fondo de la página (misma paleta), en vez de sentirse
+   "encerrado" dentro de un recuadro aparte. Un padding lateral generoso
+   (en vez del borde de una tarjeta) es lo que le da aire. */
 .chat-wrapper {
   flex: 1;
   display: flex;
@@ -1299,11 +1340,7 @@ watch(mensajes, async () => {
   position: relative;
   height: 100%;
   min-height: 0;
-  background: var(--surface-alt);
-  border: 1px solid rgba(27, 27, 30, 0.08);
-  border-radius: var(--border-radius);
-  box-shadow: var(--shadow-light);
-  padding: 16px 20px;
+  padding: 8px 4vw 0;
 }
 
 /* Overlay al arrastrar un archivo sobre el chat */
@@ -1311,8 +1348,8 @@ watch(mensajes, async () => {
   position: absolute;
   inset: 0;
   z-index: 5;
-  background: rgba(250, 250, 247, 0.94);
-  border: 2px dashed var(--accent);
+  background: rgba(16, 21, 31, 0.92);
+  border: 2px dashed var(--lc-accent);
   border-radius: var(--border-radius);
   display: flex;
   align-items: center;
@@ -1322,7 +1359,7 @@ watch(mensajes, async () => {
 
 .drop-overlay-content {
   text-align: center;
-  color: var(--accent);
+  color: var(--lc-accent);
   font-family: 'Figtree', sans-serif;
   font-weight: 600;
 }
@@ -1595,10 +1632,10 @@ watch(mensajes, async () => {
 .sugerencias-rail {
   width: 300px;
   flex-shrink: 0;
-  background: #fff;
-  border: 1px solid rgba(27, 27, 30, 0.08);
+  background: var(--lc-surface);
+  border: 1px solid var(--lc-border);
   border-radius: var(--border-radius);
-  box-shadow: var(--shadow-light);
+  box-shadow: 0 8px 26px -12px rgba(0, 0, 0, 0.5);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -1607,11 +1644,11 @@ watch(mensajes, async () => {
 
 .sugerencias-rail-header {
   padding: 14px 16px;
-  border-bottom: 1px solid rgba(27, 27, 30, 0.08);
+  border-bottom: 1px solid var(--lc-border);
   font-family: 'Figtree', sans-serif;
   font-weight: 600;
   font-size: 0.86rem;
-  color: var(--ink);
+  color: var(--lc-text);
   flex-shrink: 0;
 }
 
@@ -1620,7 +1657,7 @@ watch(mensajes, async () => {
   min-height: 0;
   overflow-y: auto;
   padding: 16px;
-  background: var(--surface-alt);
+  background: var(--lc-surface-alt);
 }
 
 /* CTA "Descargar y abrir en Word" — único camino para editar, por eso va
@@ -1628,8 +1665,8 @@ watch(mensajes, async () => {
 .sugerencias-cta {
   flex-shrink: 0;
   padding: 16px;
-  border-bottom: 1px solid rgba(27, 27, 30, 0.08);
-  background: var(--ink);
+  border-bottom: 1px solid var(--lc-border);
+  background: var(--lc-surface-sunken);
 }
 
 .sugerencias-cta-btn {
@@ -1638,8 +1675,8 @@ watch(mensajes, async () => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: var(--accent);
-  color: #fff;
+  background: var(--lc-accent);
+  color: #0d1220;
   border: none;
   border-radius: var(--border-radius-small);
   padding: 11px 14px;
@@ -1650,14 +1687,14 @@ watch(mensajes, async () => {
   transition: background-color 0.18s;
 }
 
-.sugerencias-cta-btn:hover:not(:disabled) { background: var(--accent-hover); }
+.sugerencias-cta-btn:hover:not(:disabled) { background: var(--lc-accent-hover); color: #fff; }
 .sugerencias-cta-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .sugerencias-cta-hint {
   margin: 8px 0 0;
   font-size: 0.74rem;
   line-height: 1.4;
-  color: rgba(250, 250, 247, 0.65);
+  color: var(--lc-text-faint);
 }
 
 /* Franja de métricas */
@@ -1674,8 +1711,8 @@ watch(mensajes, async () => {
   align-items: center;
   gap: 2px;
   padding: 10px 4px;
-  background: #fff;
-  border: 1px solid rgba(27, 27, 30, 0.08);
+  background: var(--lc-surface);
+  border: 1px solid var(--lc-border);
   border-radius: var(--border-radius-small);
 }
 
@@ -1684,7 +1721,7 @@ watch(mensajes, async () => {
   font-size: 1.5rem;
   font-weight: 600;
   line-height: 1;
-  color: var(--ink);
+  color: var(--lc-text);
 }
 
 .metrica-label {
@@ -1693,12 +1730,12 @@ watch(mensajes, async () => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: var(--text-secondary);
+  color: var(--lc-text-muted);
 }
 
-.metrica-bloque--alto .metrica-numero { color: #a12f26; }
-.metrica-bloque--medio .metrica-numero { color: #a56a10; }
-.metrica-bloque--bajo .metrica-numero { color: #2f7b4f; }
+.metrica-bloque--alto .metrica-numero { color: #e2685a; }
+.metrica-bloque--medio .metrica-numero { color: #dba24d; }
+.metrica-bloque--bajo .metrica-numero { color: #5fb98a; }
 
 .sugerencias-cargando {
   display: flex;
@@ -1713,14 +1750,14 @@ watch(mensajes, async () => {
   font-family: 'EB Garamond', serif;
   font-size: 1.15rem;
   font-weight: 600;
-  color: var(--ink);
+  color: var(--lc-text);
   margin: 10px 0 0;
 }
 
 .sugerencias-cargando-sub {
   font-family: 'Figtree', sans-serif;
   font-size: 0.82rem;
-  color: var(--text-secondary);
+  color: var(--lc-text-muted);
   margin: 0;
   max-width: 220px;
 }
@@ -1732,29 +1769,29 @@ watch(mensajes, async () => {
   text-align: center;
   gap: 6px;
   padding: 32px 16px;
-  color: #a12f26;
+  color: #e2685a;
 }
 
 .sugerencias-error-titulo {
   font-family: 'EB Garamond', serif;
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--ink);
+  color: var(--lc-text);
   margin: 8px 0 0;
 }
 
 .sugerencias-error-sub {
   font-family: 'Figtree', sans-serif;
   font-size: 0.82rem;
-  color: var(--text-secondary);
+  color: var(--lc-text-muted);
   margin: 0;
   max-width: 220px;
 }
 
 .sugerencias-reintentar-btn {
   margin-top: 10px;
-  background: var(--ink);
-  color: #fff;
+  background: var(--lc-accent);
+  color: #0d1220;
   border: none;
   border-radius: var(--border-radius-small);
   padding: 8px 16px;
@@ -1765,7 +1802,7 @@ watch(mensajes, async () => {
   transition: background-color 0.18s;
 }
 
-.sugerencias-reintentar-btn:hover { background: var(--ink-soft); }
+.sugerencias-reintentar-btn:hover { background: var(--lc-accent-hover); color: #fff; }
 
 .pdf-panel-status {
   text-align: center;
@@ -1819,19 +1856,18 @@ watch(mensajes, async () => {
   padding: 4px 4px 16px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 22px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(27,27,30,0.14) transparent;
+  scrollbar-color: var(--lc-border-strong) transparent;
 }
 
+/* Sin tarjeta blanca — solo una franja de acento a la izquierda, texto
+   flotando directo sobre el fondo de la página. Bloque de texto simple,
+   como dice el comentario del template, ahora sí sin caja alrededor. */
 .msg-block--ai {
   max-width: 100%;
-  background: #fff;
-  border: 1px solid rgba(27, 27, 30, 0.08);
-  border-left: 3px solid var(--accent);
-  border-radius: 4px var(--border-radius) var(--border-radius) 4px;
-  padding: 18px 22px;
-  box-shadow: var(--shadow-light);
+  border-left: 3px solid var(--lc-accent);
+  padding: 4px 0 4px 18px;
 }
 
 .msg-block--user {
@@ -1841,11 +1877,12 @@ watch(mensajes, async () => {
 
 .msg-bubble-user {
   max-width: 74%;
-  background: var(--ink);
-  color: #FAFAF7;
+  background: var(--lc-accent);
+  color: #0d1220;
   padding: 12px 16px;
   border-radius: 16px 16px 4px 16px;
   font-size: 0.95rem;
+  font-weight: 500;
   line-height: 1.55;
   white-space: pre-wrap;
 }
@@ -1861,17 +1898,17 @@ watch(mensajes, async () => {
   margin-bottom: 9px;
 }
 
-.msg-meta--ai { color: var(--accent); }
+.msg-meta--ai { color: var(--lc-accent); }
 
 .msg-content {
   font-size: 1rem;
   line-height: 1.7;
-  color: #2b2b30;
+  color: var(--lc-text);
 }
 
 .msg-refs {
   font-size: 0.8rem;
-  color: #9a9aa2;
+  color: var(--lc-text-faint);
   margin-top: 8px;
 }
 
@@ -1881,10 +1918,10 @@ watch(mensajes, async () => {
   font-family: 'EB Garamond', serif;
   font-weight: 600;
   margin: 8px 0 4px;
-  color: #16161a;
+  color: var(--lc-text);
 }
 
-.formatted-message :deep(strong) { font-weight: 600; }
+.formatted-message :deep(strong) { font-weight: 600; color: var(--lc-text); }
 .formatted-message :deep(em)     { font-style: italic; }
 
 .msg-actions {
@@ -1899,7 +1936,7 @@ watch(mensajes, async () => {
   border-radius: var(--border-radius-small);
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: var(--lc-text-faint);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1908,8 +1945,8 @@ watch(mensajes, async () => {
 }
 
 .msg-action-btn:hover {
-  background: var(--surface-alt);
-  color: var(--ink);
+  background: var(--lc-surface);
+  color: var(--lc-text);
 }
 
 .typing-dots {
@@ -1921,7 +1958,7 @@ watch(mensajes, async () => {
 .typing-dots span {
   width: 8px;
   height: 8px;
-  background: var(--ink-soft);
+  background: var(--lc-accent);
   border-radius: 50%;
   display: inline-block;
   opacity: 0.6;
@@ -1935,7 +1972,7 @@ watch(mensajes, async () => {
 .fuentes-block {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px dashed rgba(27, 27, 30, 0.12);
+  border-top: 1px dashed var(--lc-border-strong);
 }
 
 .fuentes-label {
@@ -1944,9 +1981,9 @@ watch(mensajes, async () => {
   gap: 7px;
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--accent);
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-soft-strong);
+  color: var(--lc-accent);
+  background: var(--lc-accent-soft);
+  border: 1px solid var(--lc-accent-soft-strong);
   padding: 6px 11px;
   border-radius: var(--border-radius-small);
   font-family: 'Figtree', sans-serif;
@@ -1960,9 +1997,9 @@ watch(mensajes, async () => {
 }
 
 .fuente-card {
-  background: #fff;
-  border: 1px solid rgba(27, 27, 30, 0.08);
-  border-left: 3px solid var(--accent);
+  background: var(--lc-surface);
+  border: 1px solid var(--lc-border);
+  border-left: 3px solid var(--lc-accent);
   border-radius: 8px;
   padding: 10px 12px;
 }
@@ -1971,7 +2008,7 @@ watch(mensajes, async () => {
   display: block;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #16161a;
+  color: var(--lc-text);
   text-transform: uppercase;
   letter-spacing: 0.02em;
   margin-bottom: 5px;
@@ -1980,7 +2017,7 @@ watch(mensajes, async () => {
 .fuente-texto {
   font-size: 0.86rem;
   line-height: 1.55;
-  color: #55555c;
+  color: var(--lc-text-muted);
   font-style: italic;
   margin: 0;
 }
@@ -2004,7 +2041,7 @@ watch(mensajes, async () => {
   gap: 5px;
   background: none;
   border: none;
-  color: var(--accent);
+  color: var(--lc-accent);
   font-family: 'Figtree', sans-serif;
   font-size: 0.82rem;
   font-weight: 600;
@@ -2020,8 +2057,8 @@ watch(mensajes, async () => {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--lc-accent-soft);
+  color: var(--lc-accent);
   border-radius: var(--border-radius-small);
   padding: 6px 8px 6px 10px;
   font-family: 'Figtree', sans-serif;
@@ -2046,7 +2083,7 @@ watch(mensajes, async () => {
 
 .adjunto-extrayendo {
   font-size: 0.85rem;
-  color: var(--text-secondary);
+  color: var(--lc-text-muted);
   margin: 0 0 8px;
 }
 
@@ -2060,25 +2097,25 @@ watch(mensajes, async () => {
   display: flex;
   align-items: flex-end;
   gap: 6px;
-  background: #fff;
-  border: 1px solid rgba(27, 27, 30, 0.15);
+  background: var(--lc-surface);
+  border: 1px solid var(--lc-border-strong);
   border-radius: 26px;
   padding: 7px 7px 7px 8px;
-  box-shadow: var(--shadow-light);
+  box-shadow: 0 4px 18px -6px rgba(0, 0, 0, 0.45);
   transition: border-color 0.18s, box-shadow 0.18s;
 }
 
 .composer-pill:focus-within {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
+  border-color: var(--lc-accent);
+  box-shadow: 0 0 0 3px var(--lc-accent-soft);
 }
 
 .plus-btn {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--surface-alt);
-  color: var(--ink);
+  background: var(--lc-surface-alt);
+  color: var(--lc-text);
   border: none;
   cursor: pointer;
   display: flex;
@@ -2088,7 +2125,7 @@ watch(mensajes, async () => {
   transition: background-color 0.18s;
 }
 
-.plus-btn:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent); }
+.plus-btn:hover:not(:disabled) { background: var(--lc-accent-soft); color: var(--lc-accent); }
 .plus-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .composer-textarea-pill { flex: 1; }
@@ -2100,12 +2137,17 @@ watch(mensajes, async () => {
 }
 
 :deep(.composer-textarea-pill .q-field__native) {
-  color: #1b1b1e !important;
+  color: var(--lc-text) !important;
   font-family: 'Figtree', sans-serif !important;
   font-size: 1rem !important;
   padding: 7px 0 !important;
   line-height: 1.45 !important;
   resize: none !important;
+}
+
+:deep(.composer-textarea-pill .q-field__native::placeholder) {
+  color: var(--lc-text-faint) !important;
+  opacity: 1 !important;
 }
 
 :deep(.composer-textarea-pill .q-field__bottom) { display: none !important; }
@@ -2114,8 +2156,8 @@ watch(mensajes, async () => {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--ink);
-  color: #fff;
+  background: var(--lc-accent);
+  color: #0d1220;
   border: none;
   cursor: pointer;
   display: flex;
@@ -2125,7 +2167,7 @@ watch(mensajes, async () => {
   transition: background-color 0.18s, transform 0.18s;
 }
 
-.ask-btn-round:hover:not(:disabled) { background: var(--ink-soft); transform: scale(1.05); }
+.ask-btn-round:hover:not(:disabled) { background: var(--lc-accent-hover); color: #fff; transform: scale(1.05); }
 .ask-btn-round:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .toolbar-btn {
@@ -2133,7 +2175,7 @@ watch(mensajes, async () => {
   align-items: center;
   gap: 6px;
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--lc-text-muted);
   border: none;
   border-radius: var(--border-radius-small);
   padding: 6px 9px;
@@ -2179,8 +2221,8 @@ watch(mensajes, async () => {
 }
 
 .sugerencia-card {
-  background: #fff;
-  border: 1px solid rgba(27, 27, 30, 0.08);
+  background: var(--lc-surface);
+  border: 1px solid var(--lc-border);
   border-radius: var(--border-radius-small);
   padding: 12px 14px;
 }
@@ -2204,7 +2246,7 @@ watch(mensajes, async () => {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: var(--text-muted);
+  color: var(--lc-text-muted);
 }
 
 .riesgo-badge {
@@ -2219,15 +2261,15 @@ watch(mensajes, async () => {
   white-space: nowrap;
 }
 
-.riesgo-badge--alto { background: #FBD5D0; color: #a12f26; }
-.riesgo-badge--medio { background: #FCE3D6; color: #a56a10; }
-.riesgo-badge--bajo { background: #DCEFE2; color: #2f7b4f; }
-.riesgo-badge--cambio { background: var(--surface-alt); color: var(--text-secondary); }
+.riesgo-badge--alto { background: rgba(226, 104, 90, 0.18); color: #f3a99e; }
+.riesgo-badge--medio { background: rgba(219, 162, 77, 0.18); color: #e8c48c; }
+.riesgo-badge--bajo { background: rgba(95, 185, 138, 0.18); color: #9adcb9; }
+.riesgo-badge--cambio { background: var(--lc-accent-soft); color: var(--lc-accent); }
 
 .sugerencia-explicacion {
   font-size: 0.85rem;
   line-height: 1.5;
-  color: var(--ink);
+  color: var(--lc-text);
   margin: 0 0 10px;
 }
 
@@ -2238,9 +2280,9 @@ watch(mensajes, async () => {
 .sugerencia-nuevo {
   font-size: 0.85rem;
   line-height: 1.5;
-  color: var(--ink);
-  background: var(--accent-soft);
-  border-left: 3px solid var(--accent);
+  color: var(--lc-text);
+  background: var(--lc-accent-soft);
+  border-left: 3px solid var(--lc-accent);
   border-radius: 4px;
   padding: 8px 10px;
   margin: 0 0 10px;
@@ -2250,7 +2292,7 @@ watch(mensajes, async () => {
   font-size: 0.8rem;
   line-height: 1.5;
   font-style: italic;
-  color: var(--text-secondary);
+  color: var(--lc-text-muted);
   margin: 0;
 }
 

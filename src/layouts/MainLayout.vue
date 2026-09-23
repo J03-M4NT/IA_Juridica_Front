@@ -15,10 +15,13 @@
       </q-toolbar>
     </q-header>
 
-    <!-- Panel lateral — permanente en desktop, drawer superpuesto en mobile -->
+    <!-- Panel lateral — abierto por defecto en desktop, drawer superpuesto
+         en mobile. Sin show-if-above: así drawerOpen controla la
+         visibilidad en TODOS los tamaños, y se puede plegar/desplegar
+         también en desktop (antes show-if-above lo forzaba siempre
+         visible ahí, ignorando el botón). -->
     <q-drawer
       v-model="drawerOpen"
-      show-if-above
       :breakpoint="1023"
       :width="252"
       bordered
@@ -80,10 +83,23 @@
       </div>
     </q-drawer>
 
+    <!-- Toggle del panel lateral en desktop (>= lg) — en pantallas más
+         chicas ya existe el botón hamburguesa del topbar de arriba
+         (.mobile-topbar, visible con lt-lg), así que este solo hace
+         falta donde ese topbar está oculto. -->
+    <q-btn
+      round flat dense
+      :icon="drawerOpen ? 'chevron_left' : 'chevron_right'"
+      class="sidebar-toggle-btn gt-md"
+      :style="{ left: drawerOpen ? '224px' : '10px' }"
+      @click="drawerOpen = !drawerOpen"
+      aria-label="Mostrar u ocultar el panel lateral"
+    />
+
     <!-- Page content -->
     <q-page-container class="page-container">
       <router-view v-slot="{ Component }">
-        <transition name="fade" mode="out-in" @before-leave="beforeLeave" @enter="enter" @after-enter="afterEnter">
+        <transition name="fade" mode="out-in">
           <component :is="Component" class="q-page" />
         </transition>
       </router-view>
@@ -100,19 +116,17 @@ import { useUserProfileStore } from '../stores/userProfile'
 
 const $q = useQuasar()
 const profileStore = useUserProfileStore()
-const drawerOpen = ref(false)
+// Abierto por defecto en desktop (mismo umbral que :breakpoint="1023" del
+// q-drawer), cerrado por defecto en mobile — el valor solo se usa como
+// estado inicial, después el botón hamburguesa/toggle lo controla.
+const drawerOpen = ref($q.screen.width > 1023)
 
-// El panel lateral es permanente en desktop (show-if-above lo mantiene
-// visible ahí sin importar drawerOpen) y un overlay en mobile — cerrarlo
-// incondicionalmente al navegar lo hacía desaparecer también en desktop,
-// porque show-if-above solo lo vuelve a abrir solo, no en cada clic.
+// El panel lateral es un overlay en mobile — cerrarlo incondicionalmente
+// al navegar evita que quede tapando la pantalla después de elegir una
+// opción del menú.
 function cerrarDrawerEnMobile() {
   if ($q.screen.lt.lg) drawerOpen.value = false
 }
-
-const beforeLeave = (el: Element) => { el.classList.add('transitioning') }
-const enter = (el: Element) => { el.classList.remove('transitioning') }
-const afterEnter = (el: Element) => { el.classList.remove('transitioning') }
 
 const handleScroll = () => { /* reserved for future scroll effects */ }
 onMounted(() => window.addEventListener('scroll', handleScroll))
@@ -149,6 +163,24 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 
 .hamburger-btn {
   color: rgba(250, 250, 247, 0.85) !important;
+}
+
+/* ==============================
+   Toggle del panel lateral (desktop, >= lg)
+   ============================== */
+.sidebar-toggle-btn {
+  position: fixed;
+  top: 18px;
+  z-index: 4000;
+  background: var(--ink);
+  color: rgba(250, 250, 247, 0.85) !important;
+  border: 1px solid rgba(250, 250, 247, 0.12);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  transition: left 0.2s ease;
+}
+
+.sidebar-toggle-btn:hover {
+  background: #262019;
 }
 
 /* ==============================
@@ -306,23 +338,26 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 /* ==============================
    Page transitions
    ============================== */
+/* Antes, durante el "leave" (out-in), un handler en JS forzaba
+   background:transparent en la página saliente — eso dejaba ver de golpe
+   el fondo claro de .page-container por debajo (Consultas/Contratos/
+   Normas ahora tienen fondo oscuro propio), un "flash" blanco notorio
+   antes de que entrara la página siguiente. Con un fade simple de
+   opacidad, cada página se desvanece sobre SU PROPIO fondo en vez de
+   volverse transparente de golpe — sin ese salto de color. */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 .fade-enter-from {
   opacity: 0;
-  transform: translateY(14px);
+  transform: translateY(8px);
 }
 
 .fade-leave-to {
   opacity: 0;
-  transform: translateY(-8px);
-}
-
-.transitioning {
-  background: transparent !important;
+  transform: translateY(-4px);
 }
 
 /* ==============================

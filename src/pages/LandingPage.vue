@@ -36,9 +36,9 @@
           </h1>
 
           <p class="hero-description">
-            Analiza contratos, resuelve consultas legales y gestiona documentos con una
-            inteligencia artificial entrenada en derecho peruano — de principio a fin, sin
-            salir de LEXIT AI.
+            Resuelve consultas legales y analiza el riesgo de tus contratos por chat, completa
+            plantillas de contratos conversando con la IA, y mantente al día con las normas de
+            El Peruano — de principio a fin, sin salir de LEXIT AI.
           </p>
 
           <p class="hero-caption">Hecho para abogados y estudios jurídicos en Perú</p>
@@ -81,26 +81,13 @@
           <article class="feature-card reveal">
             <div class="feature-icon-wrap">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <path d="M14 2v6h6"/>
-                <path d="M8 13h8"/>
-                <path d="M8 17h5"/>
-              </svg>
-            </div>
-            <h3 class="feature-title">Análisis de PDF</h3>
-            <p class="feature-description">Extrae información clave de contratos y documentos legales automáticamente.</p>
-          </article>
-
-          <article class="feature-card reveal">
-            <div class="feature-icon-wrap">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 <path d="M8 9h8"/>
                 <path d="M8 13h5"/>
               </svg>
             </div>
             <h3 class="feature-title">Consultas Legales</h3>
-            <p class="feature-description">Obtén respuestas precisas a tus preguntas jurídicas con IA especializada.</p>
+            <p class="feature-description">Chatea con una IA especializada en derecho peruano — o adjunta un contrato (PDF o Word) para un análisis de riesgos cláusula por cláusula, con base legal citada.</p>
           </article>
 
           <article class="feature-card reveal">
@@ -113,7 +100,18 @@
               </svg>
             </div>
             <h3 class="feature-title">Gestión de Contratos</h3>
-            <p class="feature-description">Organiza, analiza y administra todos tus contratos de manera eficiente.</p>
+            <p class="feature-description">Elige una plantilla y complétala conversando con la IA, o edítala tú mismo. Descárgala lista, con marca de agua, o sigue editándola en Word con el complemento de LEXIT.</p>
+          </article>
+
+          <article class="feature-card reveal">
+            <div class="feature-icon-wrap">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+              </svg>
+            </div>
+            <h3 class="feature-title">Normas del Día</h3>
+            <p class="feature-description">Las normas publicadas en El Peruano, organizadas por sector, con un resumen diario generado por IA y lo más relevante para tu práctica.</p>
           </article>
 
         </div>
@@ -136,14 +134,14 @@
 
           <div class="step-card reveal">
             <div class="step-number">02</div>
-            <h3 class="step-title">Sube o consulta</h3>
-            <p class="step-description">Carga un contrato en PDF o haz tu pregunta legal directamente a la IA.</p>
+            <h3 class="step-title">Elige tu herramienta</h3>
+            <p class="step-description">Haz una consulta, adjunta un contrato para analizarlo, o completa una plantilla con ayuda de la IA.</p>
           </div>
 
           <div class="step-card reveal">
             <div class="step-number">03</div>
             <h3 class="step-title">Obtén resultados</h3>
-            <p class="step-description">Recibe análisis, resúmenes, riesgos y respuestas claras al instante.</p>
+            <p class="step-description">Recibe respuestas, análisis de riesgos y contratos listos para descargar o editar en Word.</p>
           </div>
 
         </div>
@@ -208,7 +206,10 @@ onMounted(() => {
         observer?.unobserve(entry.target)
       }
     },
-    { threshold: 0.15 }
+    // rootMargin negativo en la base: el elemento revela recién cuando ya
+    // entró bien a la vista (no apenas roza el borde inferior), para que
+    // el efecto se note mientras se sigue bajando, no antes de llegar.
+    { threshold: 0.1, rootMargin: '0px 0px -10% 0px' }
   )
 
   document.querySelectorAll('.reveal').forEach((el) => observer?.observe(el))
@@ -254,8 +255,9 @@ onUnmounted(() => {
    ============================== */
 .reveal {
   opacity: 0;
-  transform: translateY(28px);
-  transition: opacity 0.7s ease, transform 0.7s ease;
+  transform: translateY(40px);
+  transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1), transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
 }
 
 .reveal.is-visible {
@@ -263,13 +265,13 @@ onUnmounted(() => {
   transform: translateY(0);
 }
 
-.features-grid .feature-card.reveal { transition-delay: 0.05s; }
-.features-grid .feature-card.reveal:nth-child(2) { transition-delay: 0.15s; }
-.features-grid .feature-card.reveal:nth-child(3) { transition-delay: 0.25s; }
+.features-grid .feature-card.reveal { transition-delay: 0.08s; }
+.features-grid .feature-card.reveal:nth-child(2) { transition-delay: 0.2s; }
+.features-grid .feature-card.reveal:nth-child(3) { transition-delay: 0.32s; }
 
-.steps-grid .step-card.reveal { transition-delay: 0.05s; }
-.steps-grid .step-card.reveal:nth-child(2) { transition-delay: 0.15s; }
-.steps-grid .step-card.reveal:nth-child(3) { transition-delay: 0.25s; }
+.steps-grid .step-card.reveal { transition-delay: 0.08s; }
+.steps-grid .step-card.reveal:nth-child(2) { transition-delay: 0.2s; }
+.steps-grid .step-card.reveal:nth-child(3) { transition-delay: 0.32s; }
 
 @media (prefers-reduced-motion: reduce) {
   .reveal {
