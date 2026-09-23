@@ -265,7 +265,7 @@
                 outline
                 color="grey-4"
                 icon="edit_document"
-                label="Abrir en Word"
+                label="Descargar y abrir en Word"
                 @click="abrirEnWord"
                 :loading="abriendoEnWord"
                 no-caps

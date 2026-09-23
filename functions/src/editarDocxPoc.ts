@@ -2,6 +2,7 @@ import { onRequest } from 'firebase-functions/v2/https'
 import * as logger from 'firebase-functions/logger'
 import JSZip from 'jszip'
 import { DOMParser, XMLSerializer, type Element as XmlElement } from '@xmldom/xmldom'
+import { ORIGENES_PERMITIDOS, autorizar } from './seguridad'
 
 // =========================
 // PRUEBA DE CONCEPTO: edición quirúrgica de un .docx existente.
@@ -163,12 +164,16 @@ async function aplicarCambiosQuirurgicos(bufferOriginal: Buffer, cambios: Cambio
 }
 
 export const editarParrafoDocxPoc = onRequest(
-  { cors: true, timeoutSeconds: 60 },
+  { cors: ORIGENES_PERMITIDOS, timeoutSeconds: 60 },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
       return
     }
+
+    // Prueba de concepto sin uso en la página todavía — solo admins.
+    const uid = await autorizar(req, res, { soloAdmin: true })
+    if (!uid) return
 
     const { docxBase64, cambios } = req.body as EditarDocxPocRequest
     if (!docxBase64 || typeof docxBase64 !== 'string') {

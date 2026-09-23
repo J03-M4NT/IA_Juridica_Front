@@ -2,7 +2,16 @@ import { onRequest } from 'firebase-functions/v2/https'
 import { defineSecret } from 'firebase-functions/params'
 import { Pinecone } from '@pinecone-database/pinecone'
 import * as logger from 'firebase-functions/logger'
-import { GEMINI_API_KEY, obtenerModeloGemini } from './geminiClient'
+import { GEMINI_API_KEY, TIMEOUT_FUNCIONES_IA_SEGUNDOS, conModeloDeRespaldo } from './geminiClient'
+import {
+  ORIGENES_PERMITIDOS,
+  MAX_CARACTERES_DOCUMENTO,
+  MAX_CARACTERES_MENSAJE,
+  MAX_MENSAJES_HISTORIAL,
+  autorizar,
+  consumirCuotaIA,
+  excede
+} from './seguridad'
 
 const PINECONE_INDEX = 'lexit'
 const PINECONE_HOST = 'https://lexit-rv6se0q.svc.aped-4627-b74a.pinecone.io'
@@ -126,17 +135,20 @@ function sinIndicador(contenido: string): string {
 // CLOUD FUNCTION
 // =========================
 export const consultarLexit = onRequest(
-  { cors: true, secrets: [PINECONE_API_KEY, GEMINI_API_KEY], timeoutSeconds: 120 },
+  { cors: ORIGENES_PERMITIDOS, secrets: [PINECONE_API_KEY, GEMINI_API_KEY], timeoutSeconds: TIMEOUT_FUNCIONES_IA_SEGUNDOS },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
       return
     }
 
+    const uid = await autorizar(req, res)
+    if (!uid) return
+
     try {
       const {
         pregunta,
-        historialMensajes = [],
+        historialMensajes: historialRecibido = [],
         textoDocumentoAdjunto,
         nombreDocumentoAdjunto,
         esSolicitudAnalisis = false
@@ -146,6 +158,24 @@ export const consultarLexit = onRequest(
         res.status(400).json({ error: 'Falta la pregunta' })
         return
       }
+      if (!Array.isArray(historialRecibido)) {
+        res.status(400).json({ error: 'historialMensajes debe ser un array' })
+        return
+      }
+      if (excede(pregunta, MAX_CARACTERES_MENSAJE) || excede(textoDocumentoAdjunto, MAX_CARACTERES_DOCUMENTO)) {
+        res.status(413).json({ error: 'La pregunta o el documento adjunto son demasiado largos' })
+        return
+      }
+      if (!(await consumirCuotaIA(uid, res))) return
+
+      // Solo los últimos mensajes: cada turno reenvía el historial entero
+      // a Gemini, y sin tope una conversación larga dispara el costo.
+      const historialMensajes = historialRecibido.slice(-MAX_MENSAJES_HISTORIAL)
+
+      logger.info(`📨 Consulta: ${pregunta.length} car., historial ${historialMensajes.length} msj., ` +
+        (textoDocumentoAdjunto
+          ? `documento adjunto "${nombreDocumentoAdjunto ?? '?'}" (${textoDocumentoAdjunto.length} car.), análisis=${String(esSolicitudAnalisis)}`
+          : 'sin documento adjunto'))
 
       const esTrivial = esSaludoOTrivial(pregunta)
       const tratarComoTrivial = esTrivial && !esSolicitudAnalisis && !textoDocumentoAdjunto
@@ -227,9 +257,9 @@ export const consultarLexit = onRequest(
         mensajeFinal = `${bloqueFormato}\n${bloqueAdjunto}\n${mensajeFinal}\n\n(Recuerda: responde con la lista de cláusulas en el formato de arriba — riesgo alto/medio/bajo sin porcentajes, razón, base legal y sugerencia.)`
       }
 
-      const model = obtenerModeloGemini()
-
-      const chat = model.startChat({
+      // El chat se arma dentro del callback: si el modelo principal está
+      // saturado, se vuelve a armar con el modelo de respaldo.
+      const result = await conModeloDeRespaldo(model => model.startChat({
         history: historialMensajes.map(m => ({
           role: m.esIA ? 'model' : 'user',
           parts: [{ text: m.esIA ? sinIndicador(m.contenido) : m.contenido }]
@@ -249,9 +279,7 @@ export const consultarLexit = onRequest(
             ].join('\n')
           }]
         }
-      })
-
-      const result = await chat.sendMessage(mensajeFinal)
+      }).sendMessage(mensajeFinal))
       const respuestaCompleta = result.response.text()
 
       if (!respuestaCompleta) {

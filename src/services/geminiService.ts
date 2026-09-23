@@ -1,4 +1,4 @@
-const FUNCTIONS_URL = 'https://us-central1-lexit-ai.cloudfunctions.net'
+import { postFuncion } from './functionsClient'
 
 // ================================
 // 4. MODIFICAR PLANTILLA
@@ -9,11 +9,7 @@ export async function modificarPlantilla(
   textoPlantilla: string,
   instruccion: string
 ): Promise<string> {
-  const response = await fetch(`${FUNCTIONS_URL}/modificarPlantillaIA`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ textoPlantilla, instruccion })
-  })
+  const response = await postFuncion('modificarPlantillaIA', { textoPlantilla, instruccion })
 
   const data = await response.json() as { textoModificado?: string; error?: string }
   if (!response.ok || data.textoModificado === undefined) {
@@ -35,11 +31,7 @@ export interface ResumenNormasDelDia {
 export async function resumirNormasDelDia(
   normas: { titulo: string; sumilla: string }[]
 ): Promise<ResumenNormasDelDia> {
-  const response = await fetch(`${FUNCTIONS_URL}/resumirNormasDelDiaIA`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ normas })
-  })
+  const response = await postFuncion('resumirNormasDelDiaIA', { normas })
 
   const data = await response.json() as Partial<ResumenNormasDelDia> & { error?: string }
   if (!response.ok || !data.resumen) {
@@ -71,11 +63,7 @@ export async function chatEditarContratoIA(
   historialChat: MensajeChatEdicion[],
   respuestaUsuario?: string
 ): Promise<ResultadoChatEdicion> {
-  const response = await fetch(`${FUNCTIONS_URL}/chatEdicionContratoIA`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ textoContrato, historialChat, respuestaUsuario })
-  })
+  const response = await postFuncion('chatEdicionContratoIA', { textoContrato, historialChat, respuestaUsuario })
 
   const data = await response.json() as Partial<ResultadoChatEdicion> & { error?: string }
   if (!response.ok || !data.tipo || !data.mensaje) {
@@ -104,11 +92,7 @@ export interface SugerenciaCambio {
 }
 
 export async function sugerirCambiosContrato(textoContrato: string): Promise<SugerenciaCambio[]> {
-  const response = await fetch(`${FUNCTIONS_URL}/generarSugerenciasContrato`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ textoContrato })
-  })
+  const response = await postFuncion('generarSugerenciasContrato', { textoContrato })
 
   const data = await response.json() as { sugerencias?: SugerenciaCambio[]; error?: string }
   if (!response.ok || !data.sugerencias) {

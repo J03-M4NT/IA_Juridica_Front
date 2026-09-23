@@ -6,6 +6,7 @@ import * as logger from 'firebase-functions/logger'
 import * as cheerio from 'cheerio'
 import { initializeApp, getApps } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
+import { ORIGENES_PERMITIDOS, MAX_CARACTERES_MENSAJE, autorizar, consumirCuotaIA, excede } from './seguridad'
 
 // Prueba de concepto aislada (edición quirúrgica de .docx) — ver
 // editarDocxPoc.ts para el porqué de que viva en su propio archivo.
@@ -87,6 +88,15 @@ async function obtenerYGuardarNormasDelDia(): Promise<{ fechaId: string; total: 
 
   const fechaId = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
 
+  // De madrugada El Peruano todavía no publicó la edición del día y
+  // devuelve la lista vacía. Si se guardara, ese documento vacío pasaría
+  // a ser "el más reciente" y la Biblioteca Legal se vería sin normas
+  // hasta la mañana — mejor no tocar nada y seguir mostrando la anterior.
+  if (normas.length === 0) {
+    logger.info(`ℹ️ El Peruano aún no publica normas para ${fechaId}, se conserva la última edición`)
+    return { fechaId, total: 0 }
+  }
+
   const db = getFirestore()
   await db.collection('normas_diarias').doc(fechaId).set({
     fecha: fechaId,
@@ -113,11 +123,29 @@ export const scrapearNormasDiarias = onSchedule(
   }
 )
 
-// Versión manual (HTTP) para probar ahora mismo, sin esperar a las 7am.
+// Si la última actualización fue hace menos que esto, el botón
+// "Actualizar" devuelve lo guardado en vez de volver a scrapear — así
+// nadie puede usar la función para bombardear El Peruano ni Firestore.
+const ESPERA_MINIMA_SCRAPING_MS = 10 * 60 * 1000
+
+// Versión manual (HTTP) — la usa el botón "Actualizar" de la Biblioteca
+// Legal, disponible para cualquier usuario con sesión.
 export const scrapearNormasDiariasManual = onRequest(
-  { cors: true },
+  { cors: ORIGENES_PERMITIDOS },
   async (req, res) => {
+    const uid = await autorizar(req, res)
+    if (!uid) return
+
     try {
+      const fechaId = new Date().toISOString().slice(0, 10)
+      const guardado = await getFirestore().collection('normas_diarias').doc(fechaId).get()
+      const actualizadoEn = guardado.get('actualizadoEn') as string | undefined
+      if (actualizadoEn && Date.now() - new Date(actualizadoEn).getTime() < ESPERA_MINIMA_SCRAPING_MS) {
+        const normas = (guardado.get('normas') as unknown[] | undefined) ?? []
+        res.json({ success: true, fechaId, total: normas.length, reciente: true })
+        return
+      }
+
       const resultado = await obtenerYGuardarNormasDelDia()
       res.json({ success: true, ...resultado })
     } catch (err) {
@@ -144,12 +172,15 @@ export const scrapearNormasDiariasManual = onRequest(
 // porque eso lo rige X-Frame-Options, no CORS).
 // ================================
 export const resolverUrlPdfNorma = onRequest(
-  { cors: true, timeoutSeconds: 30 },
+  { cors: ORIGENES_PERMITIDOS, timeoutSeconds: 30 },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
       return
     }
+
+    const uid = await autorizar(req, res)
+    if (!uid) return
 
     const { urlWrapper } = req.body as { urlWrapper?: string }
     if (!urlWrapper || !urlWrapper.startsWith('https://busquedas.elperuano.pe/')) {
@@ -207,12 +238,16 @@ interface SearchRequest {
 // UPSERT RECORDS (integrated embedding)
 // ================================
 export const upsertToPinecone = onRequest(
-  { cors: true, secrets: [PINECONE_API_KEY] },
+  { cors: ORIGENES_PERMITIDOS, secrets: [PINECONE_API_KEY] },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
       return
     }
+
+    // Escribe en la base jurídica que la IA cita como ley — solo admins.
+    const uid = await autorizar(req, res, { soloAdmin: true })
+    if (!uid) return
 
     try {
       const pinecone = new Pinecone({
@@ -227,6 +262,12 @@ export const upsertToPinecone = onRequest(
         res.status(400).json({ error: 'records debe ser un array no vacío' })
         return
       }
+      if (records.length > 100) {
+        res.status(413).json({ error: 'Máximo 100 records por lote' })
+        return
+      }
+
+      logger.info(`👤 Upsert solicitado por admin ${uid}`)
 
       logger.info(`Procesando ${records.length} records`)
 
@@ -271,15 +312,19 @@ export const upsertToPinecone = onRequest(
 // el patrón `${documentoId}_chunk_N`) y los borramos en lote.
 // ================================
 export const eliminarDocumentoDePinecone = onRequest(
-  { cors: true, secrets: [PINECONE_API_KEY] },
+  { cors: ORIGENES_PERMITIDOS, secrets: [PINECONE_API_KEY] },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
       return
     }
 
+    const uid = await autorizar(req, res, { soloAdmin: true })
+    if (!uid) return
+
     try {
       const { documentoId } = req.body as { documentoId: string }
+      logger.info(`👤 Eliminación de "${documentoId}" solicitada por admin ${uid}`)
 
       if (!documentoId) {
         res.status(400).json({ error: 'documentoId es requerido' })
@@ -345,15 +390,19 @@ export const eliminarDocumentoDePinecone = onRequest(
 // grupo. Usa dryRun:true para solo contar, sin borrar nada todavía.
 // ================================
 export const eliminarDuplicadosDePinecone = onRequest(
-  { cors: true, secrets: [PINECONE_API_KEY], timeoutSeconds: 300 },
+  { cors: ORIGENES_PERMITIDOS, secrets: [PINECONE_API_KEY], timeoutSeconds: 300 },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
       return
     }
 
+    const uid = await autorizar(req, res, { soloAdmin: true })
+    if (!uid) return
+
     try {
       const { dryRun } = req.body as { dryRun?: boolean }
+      logger.info(`👤 Limpieza de duplicados (dryRun=${String(dryRun)}) solicitada por admin ${uid}`)
 
       const pinecone = new Pinecone({
         apiKey: PINECONE_API_KEY.value()
@@ -488,20 +537,35 @@ export const eliminarDuplicadosDePinecone = onRequest(
 // SEARCH RECORDS (integrated embedding)
 // ================================
 export const searchInPinecone = onRequest(
-  { cors: true, secrets: [PINECONE_API_KEY] },
+  { cors: ORIGENES_PERMITIDOS, secrets: [PINECONE_API_KEY] },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
       return
     }
 
+    const uid = await autorizar(req, res)
+    if (!uid) return
+
     try {
+      const { query, topK: topKPedido = 5, tipoDocumento, soloFuentePrimaria } = req.body as SearchRequest
+      if (typeof query !== 'string' || !query.trim()) {
+        res.status(400).json({ error: 'Falta query' })
+        return
+      }
+      if (excede(query, MAX_CARACTERES_MENSAJE)) {
+        res.status(413).json({ error: 'La búsqueda es demasiado larga' })
+        return
+      }
+      if (!(await consumirCuotaIA(uid, res))) return
+
+      const topK = Math.min(Math.max(Number(topKPedido) || 5, 1), 20)
+
       const pinecone = new Pinecone({
         apiKey: PINECONE_API_KEY.value()
       })
 
       const idx = pinecone.index(PINECONE_INDEX, PINECONE_HOST)
-      const { query, topK = 5, tipoDocumento, soloFuentePrimaria } = req.body as SearchRequest
 
       const filtros: Record<string, unknown> = {}
       if (tipoDocumento) filtros.tipoDocumento = { $eq: tipoDocumento }
@@ -539,6 +603,37 @@ export const searchInPinecone = onRequest(
     } catch (err) {
       const error = err as Error
       logger.error('❌ Error en search:', error.message)
+      res.status(500).json({ error: error.message })
+    }
+  }
+)
+
+// ================================
+// ESTADÍSTICAS DEL ÍNDICE (panel Admin)
+// Antes se consultaba desde el navegador con el SDK de Pinecone, lo que
+// obligaba a meter la API key en el bundle público. Ahora la key solo
+// vive aquí, como secreto de Firebase.
+// ================================
+export const estadisticasPinecone = onRequest(
+  { cors: ORIGENES_PERMITIDOS, secrets: [PINECONE_API_KEY] },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).send('Method not allowed')
+      return
+    }
+
+    const uid = await autorizar(req, res, { soloAdmin: true })
+    if (!uid) return
+
+    try {
+      const pinecone = new Pinecone({ apiKey: PINECONE_API_KEY.value() })
+      const idx = pinecone.index(PINECONE_INDEX, PINECONE_HOST)
+      const stats = await idx.describeIndexStats()
+
+      res.json({ conectado: true, totalVectores: stats.totalRecordCount ?? 0 })
+    } catch (err) {
+      const error = err as Error
+      logger.error('❌ Error en estadisticasPinecone:', error.message)
       res.status(500).json({ error: error.message })
     }
   }
