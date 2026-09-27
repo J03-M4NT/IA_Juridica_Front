@@ -85,9 +85,13 @@ function numeroArticuloDe(fragmento: FragmentoResultado): number | null {
 function dedupeFragmentos(fragmentos: FragmentoResultado[]): FragmentoResultado[] {
   const vistos = new Set<string>()
   return fragmentos.filter(f => {
+    // Un artículo largo se sube en varios trozos con el mismo número
+    // ("Artículo 2 (continuación).- ..."): solo se descarta el trozo
+    // repetido (mismo documento y mismo texto), no los demás trozos del
+    // mismo artículo.
     const numeroArticulo = numeroArticuloDe(f)
     const clave = numeroArticulo !== null
-      ? `${f.nombreDocumento}::articulo-${numeroArticulo}`
+      ? `${f.nombreDocumento}::articulo-${numeroArticulo}::${f.texto.trim().slice(0, 200)}`
       : f.texto.trim()
     if (vistos.has(clave)) return false
     vistos.add(clave)
@@ -102,16 +106,18 @@ async function buscarEnPineconeInterno(
   idx: ReturnType<Pinecone['index']>,
   consulta: string,
   topK = 5,
-  numeroArticulo?: number
+  numeroArticulo?: number,
+  tipoDocumento?: string
 ): Promise<FragmentoResultado[]> {
-  const buscar = async (soloFuentePrimaria: boolean, articulo?: number): Promise<FragmentoResultado[]> => {
+  const buscar = async (soloFuentePrimaria: boolean, articulo?: number, tipo?: string, k = topK): Promise<FragmentoResultado[]> => {
     const filtros: Record<string, unknown> = {}
     if (soloFuentePrimaria) filtros.esFuentePrimaria = { $eq: true }
     if (articulo !== undefined) filtros.numeroArticulo = { $eq: articulo }
+    if (tipo !== undefined) filtros.tipoDocumento = { $eq: tipo }
 
     const resultados = await idx.searchRecords({
       query: {
-        topK,
+        topK: k,
         inputs: { text: consulta },
         ...(Object.keys(filtros).length > 0 ? { filter: filtros } : {})
       }
@@ -129,7 +135,9 @@ async function buscarEnPineconeInterno(
         indiceChunk: (h.fields?.indiceChunk as number) ?? 0,
         score: h._score ?? 0,
         ...(h.fields?.numeroArticulo !== undefined ? { numeroArticulo: h.fields.numeroArticulo as number } : {}),
-        ...(h.fields?.esFuentePrimaria !== undefined ? { esFuentePrimaria: h.fields.esFuentePrimaria as boolean } : {})
+        ...(h.fields?.esFuentePrimaria !== undefined ? { esFuentePrimaria: h.fields.esFuentePrimaria as boolean } : {}),
+        // Documentos subidos con el corte nuevo marcan los ensayos de doctrina
+        ...(h.fields?.esComentario === true ? { esComentario: true } : {})
       }))
       .filter(f => f.texto.length > 0)
   }
@@ -138,11 +146,19 @@ async function buscarEnPineconeInterno(
   // fragmentos etiquetados con ese número (la búsqueda semántica sola suele
   // traer artículos vecinos o del índice). Sin resultados, sigue la
   // búsqueda normal.
+  // Si además nombra el código ("de la Constitución"), se busca solo en
+  // ese, porque cada código tiene su propio "artículo 2". Se piden más
+  // trozos (un artículo largo viene en varios) y se devuelven en el orden
+  // del documento, para que el artículo se lea de principio a fin.
   if (numeroArticulo !== undefined) {
-    const porArticuloPrimario = await buscar(true, numeroArticulo)
-    if (porArticuloPrimario.length > 0) return porArticuloPrimario
-    const porArticulo = await buscar(false, numeroArticulo)
-    if (porArticulo.length > 0) return porArticulo
+    const TOPK_ARTICULO = 8
+    const intentos: Array<[boolean, string | undefined]> = tipoDocumento
+      ? [[true, tipoDocumento], [false, tipoDocumento], [true, undefined], [false, undefined]]
+      : [[true, undefined], [false, undefined]]
+    for (const [soloPrimaria, tipo] of intentos) {
+      const porArticulo = await buscar(soloPrimaria, numeroArticulo, tipo, TOPK_ARTICULO)
+      if (porArticulo.length > 0) return ordenarComoEnElDocumento(porArticulo)
+    }
   }
 
   const fragmentosPrimarios = await buscar(true)
@@ -150,14 +166,42 @@ async function buscarEnPineconeInterno(
   return buscar(false)
 }
 
+// Agrupa por documento (el más relevante primero) y, dentro de cada uno,
+// ordena por posición en el documento (indiceChunk).
+function ordenarComoEnElDocumento(fragmentos: FragmentoResultado[]): FragmentoResultado[] {
+  const ordenDocumento = new Map<string, number>()
+  fragmentos.forEach(f => { if (!ordenDocumento.has(f.documentoId)) ordenDocumento.set(f.documentoId, ordenDocumento.size) })
+  return [...fragmentos].sort((a, b) =>
+    (ordenDocumento.get(a.documentoId)! - ordenDocumento.get(b.documentoId)!) || (a.indiceChunk - b.indiceChunk))
+}
+
+// Código nombrado en la pregunta, con los mismos valores de tipoDocumento
+// que usa el panel Admin al subir (ver TIPOS_FUENTE_PRIMARIA en
+// pineconeService.ts).
+function tipoDocumentoEnPregunta(pregunta: string): string | undefined {
+  if (/constituci[óo]n/i.test(pregunta)) return 'constitucion'
+  if (/c[óo]digo\s+civil/i.test(pregunta)) return 'codigo-civil'
+  if (/c[óo]digo\s+penal/i.test(pregunta)) return 'codigo-penal'
+  if (/c[óo]digo\s+(?:laboral|de\s+trabajo)/i.test(pregunta)) return 'codigo-laboral'
+  if (/c[óo]digo\s+tributario/i.test(pregunta)) return 'codigo-tributario'
+  return undefined
+}
+
 // Un artículo real empieza con su encabezado ("Artículo 140 º .-",
 // "Artículo 3.-"). Los trozos etiquetados con un número pero sin ese
 // encabezado vienen de índices, notas de modificación ("Artículo 2 de la
 // Ley Nº...") o comentarios de doctrina que trae el PDF del código.
+// Los trozos siguientes de un artículo largo se suben como
+// "Artículo 2 (continuación).- ..." (ver dividirEnArticulos en
+// pineconeService.ts) y también cuentan como texto del artículo.
 function tieneEncabezadoDeArticulo(fragmento: FragmentoResultado): boolean {
+  if (fragmento.esComentario) return false
   if (fragmento.numeroArticulo === undefined) return true
-  return new RegExp(`Art[íi]culo\\s+${fragmento.numeroArticulo}\\s*[°º]?\\s*\\.\\s*-`, 'i').test(fragmento.texto)
+  return new RegExp(`Art[íi]culo\\s+${fragmento.numeroArticulo}\\s*[°º]?\\s*(?:-\\s*[A-Z]\\s*)?(?:\\(continuaci[óo]n\\)\\s*)?\\.\\s*-`, 'i').test(fragmento.texto)
 }
+
+// Señales de que la pregunta continúa la anterior en vez de ser nueva.
+const SEGUIMIENTO_REGEX = /^[¿¡]?\s*(?:y|e|pero|entonces|o sea|adem[aá]s|tambi[eé]n)\b|\b(?:eso|esto|ese|esa|este|esta|esos|esas|aquel|aquello|dicho|dicha|anterior|mismo|misma|lo que dijiste|el inciso|ese art[ií]culo)\b|\bm[aá]s\s+(?:detalle|informaci[oó]n|ejemplos?|sobre)\b|\b(?:expl[ií]ca(?:me)?|ampl[ií]a|profundiza|desarrolla)\b/i
 
 // Número de artículo nombrado en la pregunta ("artículo 2", "art. 1681°").
 function numeroArticuloEnPregunta(pregunta: string): number | undefined {
@@ -269,7 +313,15 @@ export const consultarLexit = onRequest(
 
           const mensajesUsuario = historialMensajes.filter(m => !m.esIA)
           const preguntaAnterior = mensajesUsuario[mensajesUsuario.length - 1]?.contenido ?? ''
-          const esPosibleSeguimiento = !esSolicitudAnalisis && pregunta.trim().split(/\s+/).length <= 8
+          // Solo se une a la pregunta anterior si ES un seguimiento ("¿y el
+          // inciso 5?", "explícame más", "¿eso aplica a...?"). Antes bastaba
+          // con ser corta, y una pregunta nueva como "¿qué hace un abogado?"
+          // se buscaba junto con la anterior ("artículo 2 de la Constitución")
+          // y traía artículos que no venían al caso. En Análisis (con
+          // documento) se mantiene el criterio anterior.
+          const esPreguntaCorta = pregunta.trim().split(/\s+/).length <= 8
+          const pareceSeguimiento = SEGUIMIENTO_REGEX.test(pregunta.trim())
+          const esPosibleSeguimiento = !esSolicitudAnalisis && esPreguntaCorta && (!modoConsulta || pareceSeguimiento)
 
           const queryBusqueda = esSolicitudAnalisis && textoDocumentoAdjunto
             ? textoDocumentoAdjunto.slice(0, 600)
@@ -279,7 +331,9 @@ export const consultarLexit = onRequest(
 
           const articuloPedido = modoConsulta ? numeroArticuloEnPregunta(pregunta) : undefined
 
-          fragmentosEncontrados = dedupeFragmentos(await buscarEnPineconeInterno(idx, queryBusqueda, 5, articuloPedido))
+          const tipoPedido = articuloPedido !== undefined ? tipoDocumentoEnPregunta(pregunta) : undefined
+
+          fragmentosEncontrados = dedupeFragmentos(await buscarEnPineconeInterno(idx, queryBusqueda, 5, articuloPedido, tipoPedido))
 
           // Si vinieron del filtro por número de artículo, son justo lo que
           // se pidió: no se les aplica el umbral de score.
@@ -333,6 +387,8 @@ export const consultarLexit = onRequest(
               '- Complementa con tu conocimiento jurídico general (doctrina, finalidad de la norma, ejemplos, relación con otras figuras o normas) sin número de cita. Los fragmentos sustentan la respuesta, no la limitan.',
               '- Los fragmentos marcados como "comentario o nota" no son texto de ley: puedes usarlos como apoyo doctrinal citándolos, pero nunca presentarlos como el texto de un artículo.',
               '- Si un fragmento no sirve, NO pongas su número [n] en ninguna parte de la respuesta, ni siquiera para decir que no sirve.',
+              '- Un artículo largo puede venir en varios fragmentos consecutivos (los que dicen "Artículo N (continuación).-"): son partes del mismo artículo, en orden. Úsalos juntos y, al transcribir, no copies la marca "Artículo N (continuación).-".',
+              '- Si transcribes un artículo, titula esa parte "Texto del artículo" (nunca "del fragmento" ni "proporcionado").',
               '- El usuario no ve este contexto: nunca hables de "fragmentos", "contexto", "base de datos proporcionada" ni "información proporcionada". Menciona las normas por su nombre y artículo (ej. "según el artículo 1681° del Código Civil [2]").',
               hayFuentePrimaria
                 ? '- Si el usuario pregunta por un artículo específico, o qué artículo regula un tema, y está en estos fragmentos, incluye: el número de artículo, una explicación desarrollada y la cita textual exacta del artículo (copiada tal cual del fragmento) con su número de cita.'
@@ -425,7 +481,8 @@ export const consultarLexit = onRequest(
               '- Respondes en formato markdown cuando sea útil (listas, negritas).',
               '- No te presentes ni saludes al inicio de cada respuesta; hazlo solo si el usuario te saluda.',
               ...(modoConsulta
-                ? ['- En preguntas jurídicas, desarrolla la respuesta con profundidad, como lo haría un buen profesor de derecho: concepto, finalidad de la figura, requisitos o elementos, un ejemplo práctico concreto, consecuencias de su incumplimiento y relación con otras figuras o normas cuando corresponda. No te limites a repetir el texto del artículo. En preguntas cotidianas o simples, responde directo sin alargar.']
+                ? ['- En preguntas jurídicas, desarrolla la respuesta con profundidad, como lo haría un buen profesor de derecho: concepto, finalidad de la figura, requisitos o elementos, un ejemplo práctico concreto, consecuencias de su incumplimiento y relación con otras figuras o normas cuando corresponda. No te limites a repetir el texto del artículo. En preguntas cotidianas o simples, responde directo sin alargar.',
+                  '- La profundidad sale de tu conocimiento jurídico, no de citar más normas: cita un artículo solo si responde directamente a lo preguntado. Mencionar de paso una norma que solo comparte una palabra con la pregunta (ej. citar el requisito de "ser abogado" del Defensor del Pueblo cuando preguntan qué hace un abogado) es un error.']
                 : [])
             ].join('\n')
           }]

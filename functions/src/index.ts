@@ -225,6 +225,7 @@ interface PineconeRecord {
   fechaGuardado?: unknown
   numeroArticulo?: unknown
   esFuentePrimaria?: unknown
+  esComentario?: unknown
 }
 
 interface SearchRequest {
@@ -289,7 +290,9 @@ export const upsertToPinecone = onRequest(
         esFuentePrimaria: Boolean(record.esFuentePrimaria ?? false),
         ...(record.numeroArticulo !== undefined
           ? { numeroArticulo: Number(record.numeroArticulo) }
-          : {})
+          : {}),
+        // Ensayo/nota de doctrina que trae el PDF del código (no es ley)
+        ...(record.esComentario === true ? { esComentario: true } : {})
       }))
 
       await idx.upsertRecords({ records: registros })
