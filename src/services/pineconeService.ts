@@ -107,6 +107,13 @@ function partirSinPerderTexto(texto: string, max: number): string[] {
   return trozos
 }
 
+// Índice del PDF ("Nulidad ....... SECCIÓN TERCERA ......."): va después
+// del último artículo y, sin esto, quedaría como su "continuación". Ningún
+// artículo real tiene líneas de puntos de relleno.
+function esIndiceDelDocumento(texto: string): boolean {
+  return (texto.match(/\.{6,}/g) ?? []).length >= 3
+}
+
 // Donde empieza un ensayo/presentación intercalado en el código: la
 // portada de un libro ("Derechos Reales [ LIBRO V ]") o un "Sumario:".
 const INICIO_COMENTARIO_REGEX = /\[\s*LIBRO\s+[IVXL]+\s*\]|\bSumario\s*:/i
@@ -203,7 +210,7 @@ function dividirEnArticulos(textoOriginal: string): UnidadArticulo[] {
     }
   })
 
-  return partes
+  return partes.filter(p => !esIndiceDelDocumento(p.texto))
 }
 
 // =========================

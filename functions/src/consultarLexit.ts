@@ -178,6 +178,13 @@ function sufijoDeArticulo(fragmento: FragmentoResultado): string | undefined {
   return match?.[1]?.toUpperCase()
 }
 
+// Índice del PDF ("Nulidad ....... SECCIÓN TERCERA ......."). Los códigos
+// subidos antes del arreglo en pineconeService.ts lo tienen pegado como
+// "continuación" del último artículo; aquí se descarta al buscar.
+function esIndiceDelDocumento(texto: string): boolean {
+  return (texto.match(/\.{6,}/g) ?? []).length >= 3
+}
+
 // Agrupa por documento (el más relevante primero) y, dentro de cada uno,
 // ordena por posición en el documento (indiceChunk).
 function ordenarComoEnElDocumento(fragmentos: FragmentoResultado[]): FragmentoResultado[] {
@@ -210,6 +217,47 @@ function tieneEncabezadoDeArticulo(fragmento: FragmentoResultado): boolean {
   if (fragmento.esComentario) return false
   if (fragmento.numeroArticulo === undefined) return true
   return new RegExp(`Art[íi]culo\\s+${fragmento.numeroArticulo}\\s*[°º]?\\s*(?:-\\s*[A-Z]\\s*)?(?:\\(continuaci[óo]n\\)\\s*)?\\.\\s*-`, 'i').test(fragmento.texto)
+}
+
+// =========================
+// ¿HACE FALTA BUSCAR EN LA BASE JURÍDICA? (solo Consultas)
+// Pinecone siempre devuelve algo parecido: "¿qué hace un abogado?" trae el
+// delito de patrocinio indebido porque dice "abogado". En vez de adivinar
+// con un umbral de score, una llamada corta a Gemini decide si la pregunta
+// necesita el texto de una norma y, si sí, con qué términos buscar.
+// =========================
+interface DecisionBusqueda {
+  buscar: boolean
+  consulta?: string
+}
+
+async function decidirSiBuscar(pregunta: string, preguntaAnterior: string): Promise<DecisionBusqueda> {
+  const prompt = [
+    'Eres el filtro de búsqueda de un asistente jurídico peruano. Decide si para responder la PREGUNTA hace falta consultar el TEXTO de una norma peruana (Constitución, Código Civil, Código Penal u otro código).',
+    '',
+    'buscar = true SOLO si la pregunta trata sobre lo que regula una norma: requisitos, plazos, penas, derechos, obligaciones, definiciones legales, un delito, un contrato o figura jurídica concreta, o qué dice la ley sobre un tema.',
+    'buscar = false si es una pregunta general, profesional o cotidiana (qué hace un abogado o un notario, qué estudiar, cómo redactar un correo, consejos prácticos, cultura general), un saludo, o una pregunta sobre la propia conversación.',
+    '',
+    'Si buscar = true, "consulta" es una frase corta de búsqueda con los términos jurídicos precisos (ej. "requisitos de validez del acto jurídico", "capacidad de ejercicio de menores de edad"). Si la pregunta continúa la anterior, incluye el tema de la anterior.',
+    '',
+    preguntaAnterior ? `PREGUNTA ANTERIOR DEL USUARIO: ${preguntaAnterior}` : '',
+    `PREGUNTA: ${pregunta}`,
+    '',
+    'Responde solo JSON: {"buscar": true|false, "consulta": "..."}'
+  ].join('\n')
+
+  try {
+    const result = await conModeloDeRespaldo(model => model.generateContent(prompt), { json: true })
+    const decision = JSON.parse(result.response.text()) as Partial<DecisionBusqueda>
+    return {
+      buscar: decision.buscar !== false,
+      ...(typeof decision.consulta === 'string' && decision.consulta.trim() ? { consulta: decision.consulta.trim() } : {})
+    }
+  } catch (err) {
+    // Ante cualquier fallo se busca como antes: nunca deja al chat sin base.
+    logger.warn('⚠️ No se pudo decidir si buscar, se busca igual:', (err as Error).message)
+    return { buscar: true }
+  }
 }
 
 // Señales de que la pregunta continúa la anterior en vez de ser nueva.
@@ -318,13 +366,24 @@ export const consultarLexit = onRequest(
       let contexto = ''
       let fragmentosEncontrados: FragmentoResultado[] = []
 
-      if (!tratarComoTrivial) {
+      const mensajesUsuario = historialMensajes.filter(m => !m.esIA)
+      const preguntaAnterior = mensajesUsuario[mensajesUsuario.length - 1]?.contenido ?? ''
+
+      // En Consultas, salvo que la pregunta nombre un artículo concreto
+      // (eso va directo a la búsqueda por número), Gemini decide primero si
+      // hace falta la base jurídica. Con documento adjunto no cambia nada.
+      const decision = modoConsulta && !tratarComoTrivial && numeroArticuloEnPregunta(pregunta) === undefined
+        ? await decidirSiBuscar(pregunta, preguntaAnterior)
+        : undefined
+      if (decision) {
+        logger.info(`🧭 ¿Buscar en la base?: ${decision.buscar ? `sí → "${decision.consulta ?? pregunta}"` : 'no'}`)
+      }
+
+      if (!tratarComoTrivial && decision?.buscar !== false) {
         try {
           const pinecone = new Pinecone({ apiKey: PINECONE_API_KEY.value() })
           const idx = pinecone.index(PINECONE_INDEX, PINECONE_HOST)
 
-          const mensajesUsuario = historialMensajes.filter(m => !m.esIA)
-          const preguntaAnterior = mensajesUsuario[mensajesUsuario.length - 1]?.contenido ?? ''
           // Solo se une a la pregunta anterior si ES un seguimiento ("¿y el
           // inciso 5?", "explícame más", "¿eso aplica a...?"). Antes bastaba
           // con ser corta, y una pregunta nueva como "¿qué hace un abogado?"
@@ -337,15 +396,33 @@ export const consultarLexit = onRequest(
 
           const queryBusqueda = esSolicitudAnalisis && textoDocumentoAdjunto
             ? textoDocumentoAdjunto.slice(0, 600)
-            : (esPosibleSeguimiento && preguntaAnterior)
-              ? `${preguntaAnterior} ${pregunta}`
-              : pregunta
+            : decision?.consulta
+              // La consulta reformulada por Gemini ya incluye el tema de la
+              // pregunta anterior si era un seguimiento.
+              ? decision.consulta
+              : (esPosibleSeguimiento && preguntaAnterior)
+                ? `${preguntaAnterior} ${pregunta}`
+                : pregunta
 
           const articuloPedido = modoConsulta ? numeroArticuloEnPregunta(pregunta) : undefined
 
           const tipoPedido = articuloPedido !== undefined ? tipoDocumentoEnPregunta(pregunta) : undefined
 
-          fragmentosEncontrados = dedupeFragmentos(await buscarEnPineconeInterno(idx, queryBusqueda, 5, articuloPedido, tipoPedido))
+          // En Consultas se piden más resultados para poder descartar el
+          // índice del PDF y dar prioridad a los artículos sobre los
+          // ensayos de doctrina, que repiten mucho las palabras clave
+          // ("derechos reales", "propiedad") y ganan la búsqueda semántica.
+          const topK = modoConsulta && articuloPedido === undefined ? 10 : 5
+          fragmentosEncontrados = dedupeFragmentos(await buscarEnPineconeInterno(idx, queryBusqueda, topK, articuloPedido, tipoPedido))
+          if (modoConsulta) {
+            fragmentosEncontrados = fragmentosEncontrados.filter(f => !esIndiceDelDocumento(f.texto))
+            if (articuloPedido === undefined) {
+              fragmentosEncontrados = [
+                ...fragmentosEncontrados.filter(f => !f.esComentario && f.numeroArticulo !== undefined),
+                ...fragmentosEncontrados.filter(f => f.esComentario || f.numeroArticulo === undefined)
+              ].slice(0, 5)
+            }
+          }
 
           // Si vinieron del filtro por número de artículo, son justo lo que
           // se pidió: no se les aplica el umbral de score.
