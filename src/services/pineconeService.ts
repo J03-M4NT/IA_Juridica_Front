@@ -233,6 +233,8 @@ export interface FragmentoResultado {
   indiceChunk: number
   score: number
   numeroArticulo?: number
+  // Letra de artículos como "108°-C" (la calcula consultarLexit)
+  sufijoArticulo?: string
   esFuentePrimaria?: boolean
 }
 

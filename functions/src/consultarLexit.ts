@@ -38,6 +38,9 @@ interface FragmentoResultado {
   score: number
   numeroArticulo?: number
   esFuentePrimaria?: boolean
+  // Letra de los artículos como "108°-C" (Código Penal). Pinecone solo
+  // guarda el número; la letra se lee del encabezado del propio texto.
+  sufijoArticulo?: string
   // Solo interno (no se devuelve al front): el trozo estaba etiquetado con
   // un artículo pero no trae su encabezado — es un comentario de doctrina,
   // una nota o un índice del PDF, no texto de ley.
@@ -164,6 +167,15 @@ async function buscarEnPineconeInterno(
   const fragmentosPrimarios = await buscar(true)
   if (fragmentosPrimarios.length > 0) return fragmentosPrimarios
   return buscar(false)
+}
+
+// "Artículo 108 ° -C.- Sicariato" o "Artículo 108-C (continuación).-" → "C".
+function sufijoDeArticulo(fragmento: FragmentoResultado): string | undefined {
+  if (fragmento.numeroArticulo === undefined) return undefined
+  // Primer encabezado del artículo en el trozo (con o sin letra): así una
+  // referencia interna a otro "108-A" no cambia la etiqueta del 108.
+  const match = new RegExp(`Art[íi]culo\\s+${fragmento.numeroArticulo}\\s*[°º]?\\s*(?:-\\s*([A-Z])\\s*)?(?:\\(continuaci[óo]n\\)\\s*)?\\.\\s*-`, 'i').exec(fragmento.texto)
+  return match?.[1]?.toUpperCase()
 }
 
 // Agrupa por documento (el más relevante primero) y, dentro de cada uno,
@@ -360,6 +372,10 @@ export const consultarLexit = onRequest(
                   const { numeroArticulo: _descartado, ...resto } = f
                   return { ...resto, esComentario: true }
                 })
+            fragmentosEncontrados = fragmentosEncontrados.map(f => {
+              const sufijo = sufijoDeArticulo(f)
+              return sufijo ? { ...f, sufijoArticulo: sufijo } : f
+            })
             logger.info(`🧹 Fragmentos útiles: ${fragmentosEncontrados.length} de ${antes}` +
               ` (${fragmentosEncontrados.filter(f => f.esComentario).length} comentario/nota)`)
           }
@@ -369,7 +385,7 @@ export const consultarLexit = onRequest(
               .map((f, i) => f.esComentario
                 ? `[${i + 1}] ${f.nombreDocumento} (comentario o nota incluida en el documento, NO es texto de un artículo): ${f.texto}`
                 : f.numeroArticulo
-                  ? `[${i + 1}] ${f.nombreDocumento} - Artículo ${f.numeroArticulo}°: ${f.texto}`
+                  ? `[${i + 1}] ${f.nombreDocumento} - Artículo ${f.numeroArticulo}°${f.sufijoArticulo ? `-${f.sufijoArticulo}` : ''}: ${f.texto}`
                   : `[${i + 1}] ${f.nombreDocumento}: ${f.texto}`)
               .join('\n\n')
 

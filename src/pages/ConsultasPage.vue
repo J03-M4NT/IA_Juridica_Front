@@ -53,7 +53,7 @@
                 <div class="fuentes-list">
                   <div v-for="(fuente, fi) in mensaje.fuentes" :key="fi" class="fuente-card">
                     <span class="fuente-doc-name">
-                      [{{ fi + 1 }}] {{ fuente.nombreDocumento || 'Documento' }}<template v-if="fuente.numeroArticulo"> · Artículo {{ fuente.numeroArticulo }}°</template>
+                      [{{ fi + 1 }}] {{ fuente.nombreDocumento || 'Documento' }}<template v-if="fuente.numeroArticulo"> · Artículo {{ fuente.numeroArticulo }}°{{ fuente.sufijoArticulo ? `-${fuente.sufijoArticulo}` : '' }}</template>
                     </span>
                     <p class="fuente-texto">&ldquo;{{ fuente.texto }}&rdquo;</p>
                   </div>
