@@ -38,6 +38,10 @@ interface FragmentoResultado {
   score: number
   numeroArticulo?: number
   esFuentePrimaria?: boolean
+  // Solo interno (no se devuelve al front): el trozo estaba etiquetado con
+  // un artículo pero no trae su encabezado — es un comentario de doctrina,
+  // una nota o un índice del PDF, no texto de ley.
+  esComentario?: boolean
 }
 
 interface MensajeHistorial {
@@ -97,11 +101,13 @@ function dedupeFragmentos(fragmentos: FragmentoResultado[]): FragmentoResultado[
 async function buscarEnPineconeInterno(
   idx: ReturnType<Pinecone['index']>,
   consulta: string,
-  topK = 5
+  topK = 5,
+  numeroArticulo?: number
 ): Promise<FragmentoResultado[]> {
-  const buscar = async (soloFuentePrimaria: boolean): Promise<FragmentoResultado[]> => {
+  const buscar = async (soloFuentePrimaria: boolean, articulo?: number): Promise<FragmentoResultado[]> => {
     const filtros: Record<string, unknown> = {}
     if (soloFuentePrimaria) filtros.esFuentePrimaria = { $eq: true }
+    if (articulo !== undefined) filtros.numeroArticulo = { $eq: articulo }
 
     const resultados = await idx.searchRecords({
       query: {
@@ -128,9 +134,35 @@ async function buscarEnPineconeInterno(
       .filter(f => f.texto.length > 0)
   }
 
+  // Si la pregunta nombra un artículo concreto, primero se buscan solo los
+  // fragmentos etiquetados con ese número (la búsqueda semántica sola suele
+  // traer artículos vecinos o del índice). Sin resultados, sigue la
+  // búsqueda normal.
+  if (numeroArticulo !== undefined) {
+    const porArticuloPrimario = await buscar(true, numeroArticulo)
+    if (porArticuloPrimario.length > 0) return porArticuloPrimario
+    const porArticulo = await buscar(false, numeroArticulo)
+    if (porArticulo.length > 0) return porArticulo
+  }
+
   const fragmentosPrimarios = await buscar(true)
   if (fragmentosPrimarios.length > 0) return fragmentosPrimarios
   return buscar(false)
+}
+
+// Un artículo real empieza con su encabezado ("Artículo 140 º .-",
+// "Artículo 3.-"). Los trozos etiquetados con un número pero sin ese
+// encabezado vienen de índices, notas de modificación ("Artículo 2 de la
+// Ley Nº...") o comentarios de doctrina que trae el PDF del código.
+function tieneEncabezadoDeArticulo(fragmento: FragmentoResultado): boolean {
+  if (fragmento.numeroArticulo === undefined) return true
+  return new RegExp(`Art[íi]culo\\s+${fragmento.numeroArticulo}\\s*[°º]?\\s*\\.\\s*-`, 'i').test(fragmento.texto)
+}
+
+// Número de artículo nombrado en la pregunta ("artículo 2", "art. 1681°").
+function numeroArticuloEnPregunta(pregunta: string): number | undefined {
+  const match = /\bart(?:[íi]culo|\.)\s*(\d{1,4})\b/i.exec(pregunta)
+  return match?.[1] ? Number(match[1]) : undefined
 }
 
 // El footer (📚/⚠️) es solo de UI — no se le debe reenviar a Gemini como
@@ -245,20 +277,46 @@ export const consultarLexit = onRequest(
               ? `${preguntaAnterior} ${pregunta}`
               : pregunta
 
-          fragmentosEncontrados = dedupeFragmentos(await buscarEnPineconeInterno(idx, queryBusqueda))
+          const articuloPedido = modoConsulta ? numeroArticuloEnPregunta(pregunta) : undefined
 
-          logger.info(`🔎 Scores Pinecone (${modoConsulta ? 'consulta' : 'documento'}): ` +
+          fragmentosEncontrados = dedupeFragmentos(await buscarEnPineconeInterno(idx, queryBusqueda, 5, articuloPedido))
+
+          // Si vinieron del filtro por número de artículo, son justo lo que
+          // se pidió: no se les aplica el umbral de score.
+          const vienenDelArticuloPedido = articuloPedido !== undefined &&
+            fragmentosEncontrados.length > 0 &&
+            fragmentosEncontrados.every(f => f.numeroArticulo === articuloPedido)
+
+          logger.info(`🔎 Scores Pinecone (${modoConsulta ? 'consulta' : 'documento'}` +
+            (articuloPedido !== undefined ? `, artículo ${articuloPedido}${vienenDelArticuloPedido ? ' encontrado' : ' no encontrado'}` : '') + '): ' +
             (fragmentosEncontrados.map(f => f.score.toFixed(3)).join(', ') || 'sin resultados'))
 
           if (modoConsulta) {
-            fragmentosEncontrados = fragmentosEncontrados.filter(f => f.score >= SCORE_MINIMO_RELEVANCIA)
+            const antes = fragmentosEncontrados.length
+            fragmentosEncontrados = vienenDelArticuloPedido
+              // Del artículo pedido solo sirve su texto real: si ningún
+              // trozo trae el encabezado, no hay texto de ese artículo.
+              ? fragmentosEncontrados.filter(tieneEncabezadoDeArticulo)
+              : fragmentosEncontrados
+                .filter(f => f.score >= SCORE_MINIMO_RELEVANCIA)
+                // Comentarios/notas: se conservan como apoyo, pero sin la
+                // etiqueta de artículo, que sería engañosa.
+                .map(f => {
+                  if (tieneEncabezadoDeArticulo(f)) return f
+                  const { numeroArticulo: _descartado, ...resto } = f
+                  return { ...resto, esComentario: true }
+                })
+            logger.info(`🧹 Fragmentos útiles: ${fragmentosEncontrados.length} de ${antes}` +
+              ` (${fragmentosEncontrados.filter(f => f.esComentario).length} comentario/nota)`)
           }
 
           if (fragmentosEncontrados.length > 0 && modoConsulta) {
             const textoFragmentos = fragmentosEncontrados
-              .map((f, i) => f.numeroArticulo
-                ? `[${i + 1}] ${f.nombreDocumento} - Artículo ${f.numeroArticulo}°: ${f.texto}`
-                : `[${i + 1}] ${f.nombreDocumento}: ${f.texto}`)
+              .map((f, i) => f.esComentario
+                ? `[${i + 1}] ${f.nombreDocumento} (comentario o nota incluida en el documento, NO es texto de un artículo): ${f.texto}`
+                : f.numeroArticulo
+                  ? `[${i + 1}] ${f.nombreDocumento} - Artículo ${f.numeroArticulo}°: ${f.texto}`
+                  : `[${i + 1}] ${f.nombreDocumento}: ${f.texto}`)
               .join('\n\n')
 
             const hayFuentePrimaria = fragmentosEncontrados.some(f => f.esFuentePrimaria)
@@ -271,10 +329,13 @@ export const consultarLexit = onRequest(
               '- Si algún fragmento responde la pregunta, úsalo y cítalo con su número entre corchetes justo después de la idea que sustenta, ej. [1] o [1, 3].',
               '- Cita SOLO los fragmentos que realmente usaste. Si ninguno sirve, ignóralos por completo, no los menciones y responde con tu conocimiento general.',
               '- Úsalos solo si la pregunta trata sobre lo que regula esa norma. No relaciones la pregunta con un artículo solo porque comparten palabras (ej. "pedir una reunión" por correo NO es la convocatoria a asamblea de una asociación). Si la pregunta es práctica o cotidiana (redactar un correo, un trámite general, una duda común), ignora los fragmentos.',
-              '- Para citar artículos o transcribir texto legal usa únicamente estos fragmentos; no completes de memoria.',
-              '- El usuario no ve este contexto: nunca hables de "fragmentos", "contexto" ni "información proporcionada". Menciona las normas por su nombre y artículo (ej. "según el artículo 1681° del Código Civil [2]").',
+              '- Las citas textuales (entre comillas) solo pueden salir de estos fragmentos; no transcribas artículos de memoria.',
+              '- Complementa con tu conocimiento jurídico general (doctrina, finalidad de la norma, ejemplos, relación con otras figuras o normas) sin número de cita. Los fragmentos sustentan la respuesta, no la limitan.',
+              '- Los fragmentos marcados como "comentario o nota" no son texto de ley: puedes usarlos como apoyo doctrinal citándolos, pero nunca presentarlos como el texto de un artículo.',
+              '- Si un fragmento no sirve, NO pongas su número [n] en ninguna parte de la respuesta, ni siquiera para decir que no sirve.',
+              '- El usuario no ve este contexto: nunca hables de "fragmentos", "contexto", "base de datos proporcionada" ni "información proporcionada". Menciona las normas por su nombre y artículo (ej. "según el artículo 1681° del Código Civil [2]").',
               hayFuentePrimaria
-                ? '- Si el usuario pregunta por un artículo específico, o qué artículo regula un tema, y está en estos fragmentos, responde en este formato:\n1. Número de artículo\n2. Interpretación en lenguaje simple\n3. Cita textual exacta del artículo (copiada tal cual del fragmento, sin resumir ni parafrasear esa parte) con su número de cita'
+                ? '- Si el usuario pregunta por un artículo específico, o qué artículo regula un tema, y está en estos fragmentos, incluye: el número de artículo, una explicación desarrollada y la cita textual exacta del artículo (copiada tal cual del fragmento) con su número de cita.'
                 : '',
               '---\n'
             ].join('\n')
@@ -348,7 +409,9 @@ export const consultarLexit = onRequest(
           role: m.esIA ? 'model' : 'user',
           parts: [{ text: m.esIA ? sinIndicador(m.contenido) : m.contenido }]
         })),
-        generationConfig: { maxOutputTokens: 2000 },
+        // Consultas pide respuestas desarrolladas (ver instrucción de
+        // profundidad abajo): más margen para que no se corten.
+        generationConfig: { maxOutputTokens: modoConsulta ? 4096 : 2000 },
         systemInstruction: {
           role: 'user',
           parts: [{
@@ -360,7 +423,10 @@ export const consultarLexit = onRequest(
               '- Usas lenguaje accesible, no solo jerga legal.',
               '- Siempre recomiendas consultar un abogado para casos complejos.',
               '- Respondes en formato markdown cuando sea útil (listas, negritas).',
-              '- No te presentes ni saludes al inicio de cada respuesta; hazlo solo si el usuario te saluda.'
+              '- No te presentes ni saludes al inicio de cada respuesta; hazlo solo si el usuario te saluda.',
+              ...(modoConsulta
+                ? ['- En preguntas jurídicas, desarrolla la respuesta con profundidad, como lo haría un buen profesor de derecho: concepto, finalidad de la figura, requisitos o elementos, un ejemplo práctico concreto, consecuencias de su incumplimiento y relación con otras figuras o normas cuando corresponda. No te limites a repetir el texto del artículo. En preguntas cotidianas o simples, responde directo sin alargar.']
+                : [])
             ].join('\n')
           }]
         }
@@ -397,7 +463,9 @@ export const consultarLexit = onRequest(
         respuesta: textoRespuesta + indicador,
         usandoPinecone,
         fragmentosEncontrados: fragmentosDevueltos.length,
-        fragmentos: fragmentosDevueltos
+        fragmentos: fragmentosDevueltos.map(({ esComentario, ...f }) => esComentario
+          ? { ...f, nombreDocumento: `${f.nombreDocumento} · Comentario o nota` }
+          : f)
       }
 
       res.json(respuesta)
