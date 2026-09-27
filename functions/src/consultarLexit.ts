@@ -164,6 +164,13 @@ async function buscarEnPineconeInterno(
     }
   }
 
+  // Búsqueda normal restringida al código indicado (ej. "derechos reales"
+  // → Código Civil); si no trae nada, se busca en todos.
+  if (numeroArticulo === undefined && tipoDocumento !== undefined) {
+    const enElCodigo = await buscar(true, undefined, tipoDocumento)
+    if (enElCodigo.length > 0) return enElCodigo
+  }
+
   const fragmentosPrimarios = await buscar(true)
   if (fragmentosPrimarios.length > 0) return fragmentosPrimarios
   return buscar(false)
@@ -228,8 +235,16 @@ function tieneEncabezadoDeArticulo(fragmento: FragmentoResultado): boolean {
 // =========================
 interface DecisionBusqueda {
   buscar: boolean
-  consulta?: string
+  // 1 a 4 búsquedas cortas, una por subtema. Una sola frase ("derechos
+  // reales derivados de la propiedad") trae los artículos que REPITEN esas
+  // palabras, no los que regulan cada figura (usufructo, superficie...).
+  consultas?: string[]
+  // Código donde buscar, si la pregunta es claramente de uno solo.
+  codigo?: string
 }
+
+const CODIGOS_VALIDOS = ['constitucion', 'codigo-civil', 'codigo-penal', 'codigo-laboral', 'codigo-tributario']
+const MAX_SUBCONSULTAS = 4
 
 async function decidirSiBuscar(pregunta: string, preguntaAnterior: string): Promise<DecisionBusqueda> {
   const prompt = [
@@ -238,20 +253,30 @@ async function decidirSiBuscar(pregunta: string, preguntaAnterior: string): Prom
     'buscar = true SOLO si la pregunta trata sobre lo que regula una norma: requisitos, plazos, penas, derechos, obligaciones, definiciones legales, un delito, un contrato o figura jurídica concreta, o qué dice la ley sobre un tema.',
     'buscar = false si es una pregunta general, profesional o cotidiana (qué hace un abogado o un notario, qué estudiar, cómo redactar un correo, consejos prácticos, cultura general), un saludo, o una pregunta sobre la propia conversación.',
     '',
-    'Si buscar = true, "consulta" es una frase corta de búsqueda con los términos jurídicos precisos (ej. "requisitos de validez del acto jurídico", "capacidad de ejercicio de menores de edad"). Si la pregunta continúa la anterior, incluye el tema de la anterior.',
+    `Si buscar = true, "consultas" es una lista de 1 a ${MAX_SUBCONSULTAS} búsquedas cortas, UNA POR CADA FIGURA O SUBTEMA que la respuesta necesita, con los términos con que la norma los regula. Ejemplos:`,
+    '- "¿cuáles son los requisitos de validez del acto jurídico?" → ["requisitos de validez del acto jurídico"]',
+    '- "¿cuáles son los derechos reales derivados de la propiedad?" → ["definición del derecho de propiedad", "usufructo usar y disfrutar bien ajeno", "derecho de superficie", "servidumbre predio sirviente"]',
+    '- "¿un menor de 16 años puede firmar un contrato de alquiler?" → ["capacidad de ejercicio de menores de edad", "definición de arrendamiento"]',
+    'Si la pregunta continúa la anterior, incluye el tema de la anterior.',
+    `"codigo" (opcional): si todo lo pedido está en un solo código, uno de: ${CODIGOS_VALIDOS.join(', ')}. Si no estás seguro, omítelo.`,
     '',
     preguntaAnterior ? `PREGUNTA ANTERIOR DEL USUARIO: ${preguntaAnterior}` : '',
     `PREGUNTA: ${pregunta}`,
     '',
-    'Responde solo JSON: {"buscar": true|false, "consulta": "..."}'
+    'Responde solo JSON: {"buscar": true|false, "consultas": ["..."], "codigo": "..."}'
   ].join('\n')
 
   try {
     const result = await conModeloDeRespaldo(model => model.generateContent(prompt), { json: true })
     const decision = JSON.parse(result.response.text()) as Partial<DecisionBusqueda>
+    const consultas = (Array.isArray(decision.consultas) ? decision.consultas : [])
+      .filter((c): c is string => typeof c === 'string' && c.trim().length > 0)
+      .map(c => c.trim())
+      .slice(0, MAX_SUBCONSULTAS)
     return {
       buscar: decision.buscar !== false,
-      ...(typeof decision.consulta === 'string' && decision.consulta.trim() ? { consulta: decision.consulta.trim() } : {})
+      ...(consultas.length ? { consultas } : {}),
+      ...(typeof decision.codigo === 'string' && CODIGOS_VALIDOS.includes(decision.codigo) ? { codigo: decision.codigo } : {})
     }
   } catch (err) {
     // Ante cualquier fallo se busca como antes: nunca deja al chat sin base.
@@ -290,7 +315,7 @@ function filtrarFragmentosCitados(
   const citados: FragmentoResultado[] = []
 
   for (const match of respuesta.matchAll(CITA_REGEX)) {
-    for (const n of match[1]!.split(',').map(s => Number(s.trim()))) {
+    for (const n of (match[1] ?? '').split(',').map(s => Number(s.trim()))) {
       const fragmento = fragmentos[n - 1]
       if (fragmento && !nuevoNumero.has(n)) {
         citados.push(fragmento)
@@ -376,7 +401,9 @@ export const consultarLexit = onRequest(
         ? await decidirSiBuscar(pregunta, preguntaAnterior)
         : undefined
       if (decision) {
-        logger.info(`🧭 ¿Buscar en la base?: ${decision.buscar ? `sí → "${decision.consulta ?? pregunta}"` : 'no'}`)
+        logger.info(`🧭 ¿Buscar en la base?: ${decision.buscar
+          ? `sí → ${JSON.stringify(decision.consultas ?? [pregunta])}${decision.codigo ? ` en ${decision.codigo}` : ''}`
+          : 'no'}`)
       }
 
       if (!tratarComoTrivial && decision?.buscar !== false) {
@@ -396,10 +423,10 @@ export const consultarLexit = onRequest(
 
           const queryBusqueda = esSolicitudAnalisis && textoDocumentoAdjunto
             ? textoDocumentoAdjunto.slice(0, 600)
-            : decision?.consulta
-              // La consulta reformulada por Gemini ya incluye el tema de la
-              // pregunta anterior si era un seguimiento.
-              ? decision.consulta
+            : decision?.consultas?.[0]
+              // Las consultas reformuladas por Gemini ya incluyen el tema de
+              // la pregunta anterior si era un seguimiento.
+              ? decision.consultas[0]
               : (esPosibleSeguimiento && preguntaAnterior)
                 ? `${preguntaAnterior} ${pregunta}`
                 : pregunta
@@ -412,15 +439,35 @@ export const consultarLexit = onRequest(
           // índice del PDF y dar prioridad a los artículos sobre los
           // ensayos de doctrina, que repiten mucho las palabras clave
           // ("derechos reales", "propiedad") y ganan la búsqueda semántica.
-          const topK = modoConsulta && articuloPedido === undefined ? 10 : 5
-          fragmentosEncontrados = dedupeFragmentos(await buscarEnPineconeInterno(idx, queryBusqueda, topK, articuloPedido, tipoPedido))
+          const subconsultas = decision?.consultas ?? []
+          if (subconsultas.length > 1) {
+            // Una búsqueda por subtema, en paralelo; se intercalan los
+            // resultados (1º de cada subtema, luego 2º...) para que ningún
+            // subtema se quede sin representación.
+            const listas = await Promise.all(subconsultas.map(c =>
+              buscarEnPineconeInterno(idx, c, 5, undefined, decision?.codigo)))
+            const intercalados: FragmentoResultado[] = []
+            for (let i = 0; i < Math.max(...listas.map(l => l.length)); i++) {
+              for (const lista of listas) {
+                const fragmento = lista[i]
+                if (fragmento) intercalados.push(fragmento)
+              }
+            }
+            fragmentosEncontrados = dedupeFragmentos(intercalados)
+          } else {
+            const topK = modoConsulta && articuloPedido === undefined ? 10 : 5
+            fragmentosEncontrados = dedupeFragmentos(await buscarEnPineconeInterno(idx, queryBusqueda, topK, articuloPedido, tipoPedido ?? decision?.codigo))
+          }
           if (modoConsulta) {
             fragmentosEncontrados = fragmentosEncontrados.filter(f => !esIndiceDelDocumento(f.texto))
             if (articuloPedido === undefined) {
+              // Artículos antes que comentarios; con varios subtemas se deja
+              // más margen para que cada uno conserve sus artículos.
+              const tope = subconsultas.length > 1 ? 8 : 5
               fragmentosEncontrados = [
                 ...fragmentosEncontrados.filter(f => !f.esComentario && f.numeroArticulo !== undefined),
                 ...fragmentosEncontrados.filter(f => f.esComentario || f.numeroArticulo === undefined)
-              ].slice(0, 5)
+              ].slice(0, tope)
             }
           }
 
@@ -446,8 +493,9 @@ export const consultarLexit = onRequest(
                 // etiqueta de artículo, que sería engañosa.
                 .map(f => {
                   if (tieneEncabezadoDeArticulo(f)) return f
-                  const { numeroArticulo: _descartado, ...resto } = f
-                  return { ...resto, esComentario: true }
+                  const comentario: FragmentoResultado = { ...f, esComentario: true }
+                  delete comentario.numeroArticulo
+                  return comentario
                 })
             fragmentosEncontrados = fragmentosEncontrados.map(f => {
               const sufijo = sufijoDeArticulo(f)
