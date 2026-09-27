@@ -18,6 +18,14 @@ const PINECONE_HOST = 'https://lexit-rv6se0q.svc.aped-4627-b74a.pinecone.io'
 
 const PINECONE_API_KEY = defineSecret('PINECONE_API_KEY')
 
+// Pinecone siempre devuelve los topK fragmentos "más parecidos", aunque no
+// tengan nada que ver con la pregunta. En Consultas (sin documento adjunto)
+// se descartan los que quedan por debajo de este score (llama-text-embed-v2,
+// coseno), para que una pregunta común no termine respondida con artículos
+// de la Constitución que no vienen al caso. Valor inicial conservador:
+// calibrarlo con los scores que se registran en los logs ("🔎 Scores").
+const SCORE_MINIMO_RELEVANCIA = 0.25
+
 // =========================
 // TIPOS
 // =========================
@@ -132,6 +140,40 @@ function sinIndicador(contenido: string): string {
 }
 
 // =========================
+// CITAS: en Consultas, Gemini marca con [n] cada fragmento que usó. Solo
+// esos se devuelven como fuentes, renumerados 1..k en orden de aparición
+// para que el texto y las tarjetas de fuentes del chat coincidan.
+// =========================
+const CITA_REGEX = /\[(\d+(?:\s*,\s*\d+)*)\]/g
+
+function filtrarFragmentosCitados(
+  respuesta: string,
+  fragmentos: FragmentoResultado[]
+): { respuesta: string; citados: FragmentoResultado[] } {
+  const nuevoNumero = new Map<number, number>()
+  const citados: FragmentoResultado[] = []
+
+  for (const match of respuesta.matchAll(CITA_REGEX)) {
+    for (const n of match[1]!.split(',').map(s => Number(s.trim()))) {
+      const fragmento = fragmentos[n - 1]
+      if (fragmento && !nuevoNumero.has(n)) {
+        citados.push(fragmento)
+        nuevoNumero.set(n, citados.length)
+      }
+    }
+  }
+
+  const respuestaRenumerada = respuesta.replace(CITA_REGEX, (_, grupo: string) => {
+    const numeros = grupo.split(',')
+      .map(s => nuevoNumero.get(Number(s.trim())))
+      .filter((n): n is number => n !== undefined)
+    return numeros.length ? `[${numeros.join(', ')}]` : ''
+  })
+
+  return { respuesta: respuestaRenumerada, citados }
+}
+
+// =========================
 // CLOUD FUNCTION
 // =========================
 export const consultarLexit = onRequest(
@@ -180,6 +222,11 @@ export const consultarLexit = onRequest(
       const esTrivial = esSaludoOTrivial(pregunta)
       const tratarComoTrivial = esTrivial && !esSolicitudAnalisis && !textoDocumentoAdjunto
 
+      // Consultas (chat jurídico sin documento): filtra por relevancia y
+      // pide citas [n]. Con documento adjunto (Análisis de Contratos) se
+      // mantiene el comportamiento anterior sin cambios.
+      const modoConsulta = !textoDocumentoAdjunto
+
       let contexto = ''
       let fragmentosEncontrados: FragmentoResultado[] = []
 
@@ -200,7 +247,38 @@ export const consultarLexit = onRequest(
 
           fragmentosEncontrados = dedupeFragmentos(await buscarEnPineconeInterno(idx, queryBusqueda))
 
-          if (fragmentosEncontrados.length > 0) {
+          logger.info(`🔎 Scores Pinecone (${modoConsulta ? 'consulta' : 'documento'}): ` +
+            (fragmentosEncontrados.map(f => f.score.toFixed(3)).join(', ') || 'sin resultados'))
+
+          if (modoConsulta) {
+            fragmentosEncontrados = fragmentosEncontrados.filter(f => f.score >= SCORE_MINIMO_RELEVANCIA)
+          }
+
+          if (fragmentosEncontrados.length > 0 && modoConsulta) {
+            const textoFragmentos = fragmentosEncontrados
+              .map((f, i) => f.numeroArticulo
+                ? `[${i + 1}] ${f.nombreDocumento} - Artículo ${f.numeroArticulo}°: ${f.texto}`
+                : `[${i + 1}] ${f.nombreDocumento}: ${f.texto}`)
+              .join('\n\n')
+
+            const hayFuentePrimaria = fragmentosEncontrados.some(f => f.esFuentePrimaria)
+
+            contexto = [
+              '\n\n---',
+              'CONTEXTO LEGAL DE LA BASE DE DATOS JURÍDICA (fragmentos numerados; pueden o no ser relevantes para la pregunta):',
+              textoFragmentos,
+              '\nInstrucciones sobre este contexto:',
+              '- Si algún fragmento responde la pregunta, úsalo y cítalo con su número entre corchetes justo después de la idea que sustenta, ej. [1] o [1, 3].',
+              '- Cita SOLO los fragmentos que realmente usaste. Si ninguno sirve, ignóralos por completo, no los menciones y responde con tu conocimiento general.',
+              '- Úsalos solo si la pregunta trata sobre lo que regula esa norma. No relaciones la pregunta con un artículo solo porque comparten palabras (ej. "pedir una reunión" por correo NO es la convocatoria a asamblea de una asociación). Si la pregunta es práctica o cotidiana (redactar un correo, un trámite general, una duda común), ignora los fragmentos.',
+              '- Para citar artículos o transcribir texto legal usa únicamente estos fragmentos; no completes de memoria.',
+              '- El usuario no ve este contexto: nunca hables de "fragmentos", "contexto" ni "información proporcionada". Menciona las normas por su nombre y artículo (ej. "según el artículo 1681° del Código Civil [2]").',
+              hayFuentePrimaria
+                ? '- Si el usuario pregunta por un artículo específico, o qué artículo regula un tema, y está en estos fragmentos, responde en este formato:\n1. Número de artículo\n2. Interpretación en lenguaje simple\n3. Cita textual exacta del artículo (copiada tal cual del fragmento, sin resumir ni parafrasear esa parte) con su número de cita'
+                : '',
+              '---\n'
+            ].join('\n')
+          } else if (fragmentosEncontrados.length > 0) {
             const textoFragmentos = fragmentosEncontrados
               .map(f => f.numeroArticulo
                 ? `[${f.nombreDocumento} - Artículo ${f.numeroArticulo}°]: ${f.texto}`
@@ -228,7 +306,13 @@ export const consultarLexit = onRequest(
         ? pregunta
         : contexto
           ? `${contexto}\nPREGUNTA DEL USUARIO: ${pregunta}`
-          : [
+          : modoConsulta
+            ? [
+                'No hay fragmentos de la base de datos jurídica para esta pregunta: respóndela con tu conocimiento general, de forma directa.',
+                'No presentes texto como transcripción literal de una ley. Si mencionas un artículo o norma específica, sugiere brevemente verificarlo en la fuente oficial.',
+                `PREGUNTA DEL USUARIO: ${pregunta}`
+              ].join('\n')
+            : [
               'AVISO: No se encontró ningún fragmento en la base de datos jurídica indexada para esta pregunta.',
               'NO cites artículos específicos, números de ley, ni transcripciones textuales como si vinieran de la base de datos verificada.',
               'Si respondes con tu conocimiento general, dilo explícitamente al usuario (ej. "Esto no está verificado contra la base de datos jurídica indexada, según mi conocimiento general...") y recomiéndale confirmar con la fuente oficial o reformular la pregunta.',
@@ -275,7 +359,8 @@ export const consultarLexit = onRequest(
               '- Si no sabes algo, lo dices honestamente.',
               '- Usas lenguaje accesible, no solo jerga legal.',
               '- Siempre recomiendas consultar un abogado para casos complejos.',
-              '- Respondes en formato markdown cuando sea útil (listas, negritas).'
+              '- Respondes en formato markdown cuando sea útil (listas, negritas).',
+              '- No te presentes ni saludes al inicio de cada respuesta; hazlo solo si el usuario te saluda.'
             ].join('\n')
           }]
         }
@@ -287,18 +372,32 @@ export const consultarLexit = onRequest(
         return
       }
 
-      const usandoPinecone = !tratarComoTrivial && fragmentosEncontrados.length > 0
-      const indicador = tratarComoTrivial
+      // Consultas: solo cuentan como fuentes los fragmentos que Gemini citó
+      // con [n]; una pregunta común queda sin fuentes y sin pie de aviso.
+      // Con documento adjunto se mantiene el comportamiento anterior.
+      let textoRespuesta = respuestaCompleta
+      let fragmentosDevueltos = fragmentosEncontrados
+      if (modoConsulta && !tratarComoTrivial && fragmentosEncontrados.length > 0) {
+        const filtrado = filtrarFragmentosCitados(respuestaCompleta, fragmentosEncontrados)
+        textoRespuesta = filtrado.respuesta
+        fragmentosDevueltos = filtrado.citados
+        logger.info(`📌 Fragmentos citados: ${fragmentosDevueltos.length} de ${fragmentosEncontrados.length}`)
+      }
+
+      const usandoPinecone = !tratarComoTrivial && fragmentosDevueltos.length > 0
+      // En Consultas no se agrega pie: el chat ya muestra el bloque de
+      // fuentes ("Basado en N fuente(s)") debajo de la respuesta.
+      const indicador = tratarComoTrivial || modoConsulta
         ? ''
         : usandoPinecone
-          ? `\n\n---\n*📚 Respuesta basada en ${fragmentosEncontrados.length} documento(s) de la base jurídica*`
+          ? `\n\n---\n*📚 Respuesta basada en ${fragmentosDevueltos.length} documento(s) de la base jurídica*`
           : '\n\n---\n*⚠️ No se encontró información verificada en la base jurídica para esta consulta*'
 
       const respuesta: ConsultarLexitResponse = {
-        respuesta: respuestaCompleta + indicador,
+        respuesta: textoRespuesta + indicador,
         usandoPinecone,
-        fragmentosEncontrados: fragmentosEncontrados.length,
-        fragmentos: fragmentosEncontrados
+        fragmentosEncontrados: fragmentosDevueltos.length,
+        fragmentos: fragmentosDevueltos
       }
 
       res.json(respuesta)
