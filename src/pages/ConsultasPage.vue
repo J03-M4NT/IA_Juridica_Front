@@ -34,7 +34,11 @@
               <span></span><span></span><span></span>
             </div>
             <template v-else>
-              <div class="msg-content formatted-message" v-html="formatMessage(mensaje.contenido)"></div>
+              <div
+                class="msg-content formatted-message"
+                v-html="formatMessage(mensaje.contenido, mensaje.fuentes?.length ?? 0)"
+                @click="onClickEnRespuesta($event, index)"
+              ></div>
               <div v-if="mensaje.referencias?.length" class="msg-refs">
                 <strong>Referencias:</strong>
                 <div v-for="(ref, idx) in mensaje.referencias" :key="idx" class="q-mt-xs">{{ ref }}</div>
@@ -50,14 +54,45 @@
                   <span>Basado en {{ mensaje.fuentes.length }} fuente(s) de la base de datos jurídica</span>
                 </div>
 
-                <div class="fuentes-list">
-                  <div v-for="(fuente, fi) in mensaje.fuentes" :key="fi" class="fuente-card">
-                    <span class="fuente-doc-name">
-                      [{{ fi + 1 }}] {{ fuente.nombreDocumento || 'Documento' }}<template v-if="fuente.numeroArticulo"> · Artículo {{ fuente.numeroArticulo }}°{{ fuente.sufijoArticulo ? `-${fuente.sufijoArticulo}` : '' }}</template>
+                <!-- Cada cita es un cuadro pequeño y cerrado; el texto solo se
+                     muestra al hacer clic (en el cuadro o en su [n] dentro de
+                     la respuesta), una cita abierta a la vez. -->
+                <div class="fuentes-chips">
+                  <button
+                    v-for="(fuente, fi) in mensaje.fuentes"
+                    :key="fi"
+                    type="button"
+                    class="fuente-chip"
+                    :class="{ 'fuente-chip--abierta': citaAbierta[index] === fi }"
+                    :aria-expanded="citaAbierta[index] === fi"
+                    @click="alternarCita(index, fi)"
+                  >
+                    <span class="fuente-chip-num">{{ fi + 1 }}</span>
+                    <span class="fuente-chip-nombre">
+                      {{ fuente.nombreDocumento || 'Documento' }}<template v-if="fuente.numeroArticulo"> · Art. {{ fuente.numeroArticulo }}°{{ fuente.sufijoArticulo ? `-${fuente.sufijoArticulo}` : '' }}</template>
                     </span>
-                    <p class="fuente-texto">&ldquo;{{ fuente.texto }}&rdquo;</p>
-                  </div>
+                  </button>
                 </div>
+
+                <Transition name="cita">
+                  <div
+                    v-if="citaAbierta[index] !== undefined && mensaje.fuentes[citaAbierta[index]!]"
+                    :key="citaAbierta[index]"
+                    class="fuente-detalle"
+                  >
+                    <div class="fuente-detalle-cabecera">
+                      <span class="fuente-doc-name">
+                        [{{ citaAbierta[index]! + 1 }}] {{ mensaje.fuentes[citaAbierta[index]!]!.nombreDocumento || 'Documento' }}<template v-if="mensaje.fuentes[citaAbierta[index]!]!.numeroArticulo"> · Artículo {{ mensaje.fuentes[citaAbierta[index]!]!.numeroArticulo }}°{{ mensaje.fuentes[citaAbierta[index]!]!.sufijoArticulo ? `-${mensaje.fuentes[citaAbierta[index]!]!.sufijoArticulo}` : '' }}</template>
+                      </span>
+                      <button type="button" class="fuente-detalle-cerrar" aria-label="Cerrar cita" @click="cerrarCita(index)">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                      </button>
+                    </div>
+                    <p class="fuente-texto">&ldquo;{{ mensaje.fuentes[citaAbierta[index]!]!.texto }}&rdquo;</p>
+                  </div>
+                </Transition>
               </div>
 
               <div class="msg-actions">
@@ -165,7 +200,37 @@ function formatTimestamp(ts: Date | string): string {
   }
 }
 
-function formatMessage(content: string): string {
+// Cita abierta en cada mensaje (índice del mensaje → índice de la fuente).
+// Las citas empiezan cerradas; se abre una a la vez por mensaje.
+const citaAbierta = ref<Record<number, number>>({})
+
+function alternarCita(indiceMensaje: number, indiceFuente: number) {
+  if (citaAbierta.value[indiceMensaje] === indiceFuente) {
+    cerrarCita(indiceMensaje)
+  } else {
+    citaAbierta.value = { ...citaAbierta.value, [indiceMensaje]: indiceFuente }
+  }
+}
+
+function cerrarCita(indiceMensaje: number) {
+  const copia = { ...citaAbierta.value }
+  delete copia[indiceMensaje]
+  citaAbierta.value = copia
+}
+
+// Clic en un [n] dentro del texto de la respuesta (ver formatMessage).
+function onClickEnRespuesta(event: MouseEvent, indiceMensaje: number) {
+  const boton = (event.target as HTMLElement).closest<HTMLElement>('[data-cita]')
+  if (!boton) return
+  alternarCita(indiceMensaje, Number(boton.dataset.cita) - 1)
+}
+
+// Al cambiar de conversación los índices de mensaje ya no corresponden.
+watch(() => store.sesionActualId, () => { citaAbierta.value = {} })
+
+// totalFuentes: los [n] que apuntan a una fuente existente se vuelven
+// botoncitos que abren esa cita; el resto del texto no cambia.
+function formatMessage(content: string, totalFuentes = 0): string {
   return content
     // Separadores (---, ***) y viñetas "* " de Gemini: se resuelven antes
     // que las negritas/cursivas, si no quedan asteriscos sueltos a la vista.
@@ -176,6 +241,14 @@ function formatMessage(content: string): string {
     .replace(/^# (.*$)/gm, '<h1>$1</h1>')
     .replace(/^## (.*$)/gm, '<h2>$1</h2>')
     .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+    .replace(/^#{4,6} (.*$)/gm, '<h4>$1</h4>')
+    .replace(/\[(\d+(?:\s*,\s*\d+)*)\]/g, (original: string, grupo: string) => {
+      const numeros = grupo.split(',').map(s => Number(s.trim())).filter(n => n >= 1 && n <= totalFuentes)
+      if (numeros.length === 0) return original
+      return numeros
+        .map(n => `<button type="button" class="cita-ref" data-cita="${n}" title="Ver cita ${n}">${n}</button>`)
+        .join('')
+    })
     .replace(/\n/g, '<br>')
 }
 
@@ -422,7 +495,8 @@ watch(mensajes, async () => {
 
 .formatted-message :deep(h1),
 .formatted-message :deep(h2),
-.formatted-message :deep(h3) {
+.formatted-message :deep(h3),
+.formatted-message :deep(h4) {
   font-family: 'EB Garamond', serif;
   font-weight: 600;
   margin: 8px 0 4px;
@@ -498,19 +572,141 @@ watch(mensajes, async () => {
   font-family: 'Figtree', sans-serif;
 }
 
-.fuentes-list {
+/* Citas: cuadros pequeños y cerrados; el texto se abre al hacer clic. */
+.fuentes-chips {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
   margin-top: 10px;
 }
 
-.fuente-card {
+.fuente-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  padding: 5px 10px 5px 5px;
+  background: var(--lc-surface);
+  border: 1px solid var(--lc-border-strong);
+  border-radius: 8px;
+  color: var(--lc-text-muted);
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s, color 0.15s;
+}
+
+.fuente-chip:hover {
+  border-color: var(--lc-accent);
+  color: var(--lc-text);
+}
+
+.fuente-chip--abierta {
+  border-color: var(--lc-accent);
+  background: var(--lc-accent-soft);
+  color: var(--lc-text);
+}
+
+.fuente-chip:focus-visible {
+  outline: 2px solid var(--lc-accent);
+  outline-offset: 2px;
+}
+
+.fuente-chip-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: var(--lc-accent);
+  color: #0d1220;
+  font-size: 0.72rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.fuente-chip-nombre {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fuente-detalle {
+  margin-top: 8px;
   background: var(--lc-surface);
   border: 1px solid var(--lc-border);
   border-left: 3px solid var(--lc-accent);
   border-radius: 8px;
   padding: 10px 12px;
+}
+
+.fuente-detalle-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fuente-detalle-cerrar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--lc-text-faint);
+  cursor: pointer;
+}
+
+.fuente-detalle-cerrar:hover {
+  background: var(--lc-surface-alt);
+  color: var(--lc-text);
+}
+
+/* Aparece suave en vez de "de golpe". */
+.cita-enter-active,
+.cita-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.cita-enter-from,
+.cita-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+/* Los [n] dentro de la respuesta: botoncitos que abren su cita. */
+.formatted-message :deep(.cita-ref) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin: 0 2px;
+  padding: 0 4px;
+  border: 1px solid var(--lc-accent-soft-strong);
+  border-radius: 4px;
+  background: var(--lc-accent-soft);
+  color: var(--lc-accent);
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: 2px;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.formatted-message :deep(.cita-ref:hover) {
+  background: var(--lc-accent);
+  color: #0d1220;
 }
 
 .fuente-doc-name {

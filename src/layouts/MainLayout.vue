@@ -107,6 +107,15 @@
             >
               <q-icon name="chat_bubble_outline" size="xs" class="q-mr-sm" />
               <span class="history-item-text">{{ sesion.titulo }}</span>
+              <button
+                type="button"
+                class="history-item-delete"
+                title="Borrar conversación"
+                aria-label="Borrar conversación"
+                @click.stop="borrarConsulta(sesion.id, sesion.titulo)"
+              >
+                <q-icon name="delete_outline" size="16px" />
+              </button>
             </div>
           </div>
         </div>
@@ -184,6 +193,29 @@ function cargarConsulta(id: string) {
 
 const $q = useQuasar()
 const profileStore = useUserProfileStore()
+
+function borrarConsulta(id: string, titulo: string) {
+  $q.dialog({
+    title: 'Borrar conversación',
+    message: `¿Borrar "${titulo}"? Esta acción no se puede deshacer.`,
+    // La app activa el modo oscuro de Quasar (boot/dark.ts) de forma
+    // global vía la clase body--dark, y app.scss fuerza fondo blanco en
+    // TODAS las .q-card (!important) — el resultado es texto claro (del
+    // modo oscuro ambiental, que dark:false por sí solo no anula del
+    // todo) sobre fondo blanco: invisible. class + :deep() más abajo
+    // fuerza el color de texto explícito para este diálogo puntual.
+    dark: false,
+    class: 'borrar-consulta-dialog',
+    cancel: { label: 'Cancelar', flat: true, noCaps: true, color: 'grey-8' },
+    ok: { label: 'Borrar', color: 'negative', unelevated: true, noCaps: true },
+    persistent: true
+  }).onOk(() => {
+    consultasStore.borrarSesion(id).catch(err => {
+      console.error('No se pudo borrar la conversación:', err)
+      $q.notify({ type: 'negative', message: 'No se pudo borrar la conversación. Intenta de nuevo.' })
+    })
+  })
+}
 // Abierto por defecto en desktop (mismo umbral que :breakpoint="1023" del
 // q-drawer), cerrado por defecto en mobile — el valor solo se usa como
 // estado inicial, después el botón hamburguesa/toggle lo controla.
@@ -437,8 +469,41 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   color: #e8b381;
 }
 .history-item-text {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Botón de borrar: aparece al pasar el mouse sobre la conversación. */
+.history-item-delete {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 4px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: rgba(250, 250, 247, 0.55);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background-color 0.15s, color 0.15s;
+}
+.history-item:hover .history-item-delete,
+.history-item-delete:focus-visible {
+  opacity: 1;
+}
+.history-item-delete:hover {
+  background: rgba(226, 104, 90, 0.18);
+  color: #f3a99e;
+}
+/* En pantallas táctiles no hay "hover": el botón se ve siempre. */
+@media (hover: none) {
+  .history-item-delete { opacity: 1; }
 }
 
 .sidebar-footer :deep(.auth-buttons) {
@@ -522,5 +587,19 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   .q-page {
     padding: 16px 12px 32px;
   }
+}
+</style>
+
+<!-- Sin scoped a propósito: $q.dialog() (ver borrarConsulta) crea el
+     diálogo por fuera del árbol de este componente (lo monta aparte, no
+     lo declara en el template), así que el atributo de scope normal no
+     es un mecanismo confiable para llegar a él. La clase
+     "borrar-consulta-dialog" es única para este diálogo puntual (se la
+     pone el propio $q.dialog()), así que esta regla global no puede
+     afectar a ningún otro componente. -->
+<style>
+.borrar-consulta-dialog .q-dialog__title,
+.borrar-consulta-dialog .q-dialog__message {
+  color: #16161a !important;
 }
 </style>

@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { getErrorMessage } from '../utils/errors'
 import type { FragmentoResultado } from '../services/pineconeService'
 import { consultarLexit } from '../services/consultaLexitService'
-import { guardarSesion, obtenerHistorial, type SesionConsulta } from '../services/historialService'
+import { guardarSesion, obtenerHistorial, eliminarSesion, type SesionConsulta } from '../services/historialService'
 import { useAuthStore } from './auth'
 
 export interface Mensaje {
@@ -224,6 +224,16 @@ export const useConsultasStore = defineStore('consultas', {
     nuevaSesion() {
       this.limpiar()
       this.iniciarSesion()
+    },
+
+    // Borra la conversación en Firestore y la quita del historial. Si era
+    // la que estaba abierta, se empieza una nueva en su lugar.
+    async borrarSesion(id: string) {
+      const auth = useAuthStore()
+      if (!auth.user?.uid) return
+      await eliminarSesion(auth.user.uid, id)
+      this.historialSesiones = this.historialSesiones.filter(s => s.id !== id)
+      if (this.sesionActualId === id) this.nuevaSesion()
     },
 
     limpiar() {
