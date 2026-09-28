@@ -144,18 +144,34 @@ function dividirEnArticulos(textoOriginal: string): UnidadArticulo[] {
       orden: numero * 100 + (letra ? letra.charCodeAt(0) - 64 : 0)
     }
   })
-  const encabezados: typeof candidatos = []
-  let ultimo = 0
-  candidatos.forEach((c, k) => {
-    if (c.orden <= ultimo) return
-    const saltoNormal = ultimo === 0 || c.numero - Math.floor(ultimo / 100) <= 50
-    const siguiente = candidatos.slice(k + 1).find(s => s.orden !== c.orden)
-    const confirmadoPorElSiguiente = !siguiente || (siguiente.orden > c.orden && siguiente.numero - c.numero <= 5)
-    if (saltoNormal || confirmadoPorElSiguiente) {
-      encabezados.push(c)
-      ultimo = c.orden
-    }
-  })
+  type Candidato = typeof candidatos[number]
+  const secuenciaDesde = (inicio: number): Candidato[] => {
+    const aceptados: Candidato[] = []
+    let ultimo = 0
+    candidatos.slice(inicio).forEach((c, k) => {
+      if (c.orden <= ultimo) return
+      const saltoNormal = ultimo === 0 || c.numero - Math.floor(ultimo / 100) <= 50
+      const siguiente = candidatos.slice(inicio + k + 1).find(s => s.orden !== c.orden)
+      const confirmadoPorElSiguiente = !siguiente || (siguiente.orden > c.orden && siguiente.numero - c.numero <= 5)
+      if (saltoNormal || confirmadoPorElSiguiente) {
+        aceptados.push(c)
+        ultimo = c.orden
+      }
+    })
+    return aceptados
+  }
+
+  // Los PDF oficiales empiezan con el decreto que promulga el código, con
+  // sus propios "Artículo 1.- Promúlgase ..." y "Artículo 2.-". Si se parte
+  // de ahí, el artículo 1 real del código se descarta como repetido. Se
+  // prueba empezar en cada "Artículo 1" y se queda la secuencia más larga,
+  // que es la del código (el decreto solo tiene 2 o 3 artículos).
+  let encabezados: Candidato[] = []
+  const posiblesInicios = [0, ...candidatos.flatMap((c, k) => (c.numero === 1 && !c.letra && k > 0 ? [k] : []))]
+  for (const inicio of posiblesInicios) {
+    const secuencia = secuenciaDesde(inicio)
+    if (secuencia.length >= encabezados.length) encabezados = secuencia
+  }
 
   if (encabezados.length === 0) return []
 
