@@ -49,3 +49,6 @@ firebase-debug.*.log
 /.scratch-5docs/
 /.scratch-poc-docx/
 /.scratch-poc-reales/
+
+# informes del banco de pruebas del chat (se generan en cada corrida)
+/scripts/banco-pruebas/resultados/

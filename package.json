@@ -16,6 +16,7 @@
     "dev": "quasar dev",
     "build": "quasar build",
     "extract-pdf-text": "node ./scripts/extract-pdf-text.mjs",
+    "banco-pruebas": "node ./scripts/banco-pruebas/correr.mjs",
     "postinstall": "quasar prepare"
   },
   "dependencies": {
