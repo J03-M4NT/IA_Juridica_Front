@@ -332,6 +332,9 @@
           <q-spinner-dots color="primary" size="28px" />
           <p class="sugerencias-cargando-titulo">Analizando el contrato</p>
           <p class="sugerencias-cargando-sub">LexIT está revisando las cláusulas y evaluando riesgos…</p>
+          <p v-if="(store.archivoAdjunto?.texto.length ?? 0) > 30000" class="sugerencias-cargando-sub">
+            Es un contrato largo: se revisa por partes y puede tardar un par de minutos.
+          </p>
         </div>
         <div v-else-if="errorSugerencias" class="sugerencias-error-state">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">

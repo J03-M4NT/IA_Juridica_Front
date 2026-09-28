@@ -33,6 +33,11 @@ export const LIMITE_DIARIO_IA = 50
 // Tamaños máximos de lo que se manda a la IA — un contrato real ronda los
 // 20-60k caracteres; esto deja margen sin permitir pegar libros enteros.
 export const MAX_CARACTERES_DOCUMENTO = 200_000
+// Contratos en Análisis de Contratos: hasta ~270 páginas. Es más alto que
+// MAX_CARACTERES_DOCUMENTO porque esos contratos NO se mandan enteros a
+// Gemini: se dividen en secciones (ver seccionesContrato.ts) y cada
+// llamada recibe solo una parte.
+export const MAX_CARACTERES_CONTRATO = 600_000
 export const MAX_CARACTERES_MENSAJE = 4_000
 export const MAX_MENSAJES_HISTORIAL = 30
 

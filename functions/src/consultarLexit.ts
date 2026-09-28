@@ -5,13 +5,14 @@ import * as logger from 'firebase-functions/logger'
 import { GEMINI_API_KEY, TIMEOUT_FUNCIONES_IA_SEGUNDOS, conModeloDeRespaldo } from './geminiClient'
 import {
   ORIGENES_PERMITIDOS,
-  MAX_CARACTERES_DOCUMENTO,
+  MAX_CARACTERES_CONTRATO,
   MAX_CARACTERES_MENSAJE,
   MAX_MENSAJES_HISTORIAL,
   autorizar,
   consumirCuotaIA,
   excede
 } from './seguridad'
+import { dividirEnSecciones, seleccionarSecciones } from './seccionesContrato'
 
 const PINECONE_INDEX = 'lexit'
 const PINECONE_HOST = 'https://lexit-rv6se0q.svc.aped-4627-b74a.pinecone.io'
@@ -25,6 +26,10 @@ const PINECONE_API_KEY = defineSecret('PINECONE_API_KEY')
 // de la Constitución que no vienen al caso. Valor inicial conservador:
 // calibrarlo con los scores que se registran en los logs ("🔎 Scores").
 const SCORE_MINIMO_RELEVANCIA = 0.25
+
+// Hasta este tamaño el contrato adjunto se manda entero a Gemini; más
+// largo, solo las secciones relacionadas con la pregunta.
+const LIMITE_CONTRATO_COMPLETO = 90_000
 
 // =========================
 // TIPOS
@@ -382,7 +387,7 @@ export const consultarLexit = onRequest(
         res.status(400).json({ error: 'historialMensajes debe ser un array' })
         return
       }
-      if (excede(pregunta, MAX_CARACTERES_MENSAJE) || excede(textoDocumentoAdjunto, MAX_CARACTERES_DOCUMENTO)) {
+      if (excede(pregunta, MAX_CARACTERES_MENSAJE) || excede(textoDocumentoAdjunto, MAX_CARACTERES_CONTRATO)) {
         res.status(413).json({ error: 'La pregunta o el documento adjunto son demasiado largos' })
         return
       }
@@ -598,13 +603,36 @@ export const consultarLexit = onRequest(
 
       let mensajeFinal = preguntaConContexto
 
-      if (esSolicitudAnalisis && textoDocumentoAdjunto) {
-        const bloqueAdjunto = [
+      // Contrato adjunto (Análisis de Contratos). Hasta ~90.000 caracteres
+      // se manda entero; uno más largo (70-270 páginas) se divide en
+      // secciones y solo van las relacionadas con la pregunta, más la
+      // primera (partes, objeto, definiciones): mandar 200 páginas en cada
+      // mensaje lo haría lento y se cortaría por tiempo.
+      let bloqueAdjunto = ''
+      if (textoDocumentoAdjunto) {
+        const esParcial = textoDocumentoAdjunto.length > LIMITE_CONTRATO_COMPLETO
+        const textoContrato = esParcial
+          ? seleccionarSecciones(
+            dividirEnSecciones(textoDocumentoAdjunto),
+            `${preguntaAnterior} ${pregunta}`,
+            LIMITE_CONTRATO_COMPLETO
+          ).join('\n\n[...]\n\n')
+          : textoDocumentoAdjunto
+        if (esParcial) {
+          logger.info(`📑 Contrato largo: se envían ${textoContrato.length} de ${textoDocumentoAdjunto.length} car. (secciones relacionadas)`)
+        }
+        bloqueAdjunto = [
           `\n\n---\nCONTRATO ADJUNTO POR EL USUARIO ("${nombreDocumentoAdjunto ?? 'documento'}") — documento privado de esta conversación, NO forma parte de la base de datos jurídica compartida.`,
           'Este documento reemplaza cualquier otro contrato adjuntado antes en esta conversación; analiza únicamente este a menos que el usuario indique lo contrario.',
-          textoDocumentoAdjunto,
+          esParcial
+            ? 'Por su extensión, aquí van SOLO las partes del contrato relacionadas con la pregunta ("[...]" separa partes no consecutivas). Si la respuesta pudiera estar en otra parte que no ves, dilo y sugiere preguntar por ese tema de forma más específica.'
+            : '',
+          textoContrato,
           '---\n'
         ].join('\n')
+      }
+
+      if (esSolicitudAnalisis && textoDocumentoAdjunto) {
 
         const bloqueFormato = [
           'El usuario adjuntó un contrato y quiere un análisis de riesgos. Responde revisando las cláusulas relevantes, en este formato para cada una:',
@@ -616,6 +644,16 @@ export const consultarLexit = onRequest(
         ].join('\n')
 
         mensajeFinal = `${bloqueFormato}\n${bloqueAdjunto}\n${mensajeFinal}\n\n(Recuerda: responde con la lista de cláusulas en el formato de arriba — riesgo alto/medio/bajo sin porcentajes, razón, base legal y sugerencia.)`
+      } else if (textoDocumentoAdjunto) {
+        // Pregunta puntual sobre el contrato ("¿qué dice sobre las
+        // penalidades?"). Antes el contrato solo se enviaba al pedir un
+        // análisis de riesgos, así que estas preguntas se respondían sin
+        // haberlo leído.
+        mensajeFinal = [
+          'El usuario pregunta sobre el contrato adjunto. Responde basándote en su texto: indica la cláusula o numeral de donde sale la respuesta y cita la parte relevante entre comillas. Si el contrato no trata ese tema, dilo claramente.',
+          bloqueAdjunto,
+          mensajeFinal
+        ].join('\n')
       }
 
       // El chat se arma dentro del callback: si el modelo principal está
