@@ -192,6 +192,23 @@ function esIndiceDelDocumento(texto: string): boolean {
   return (texto.match(/\.{6,}/g) ?? []).length >= 3
 }
 
+// Después del texto de un artículo, el PDF del MINJUS a veces trae el
+// título de la sección siguiente y "CONCORDANCIAS: Casación Nº ..."
+// (jurisprudencia relacionada). Eso no es parte del artículo y confunde a
+// Gemini (ej. el 1054, sobre el ancho del camino, terminaba en "SECCIÓN
+// CUARTA DERECHOS REALES DE GARANTÍA"). Se corta solo DESPUÉS del
+// encabezado, porque ANTES va la sumilla propia del artículo ("TÍTULO VI
+// Arrendamiento ... Definición Artículo 1666 º .-").
+function recortarAnexosDelArticulo(fragmento: FragmentoResultado): string {
+  if (fragmento.numeroArticulo === undefined) return fragmento.texto
+  const encabezado = new RegExp(`Art[íi]culo\\s+${fragmento.numeroArticulo}\\s*[°º]?\\s*(?:-\\s*[A-Z]\\s*)?(?:\\(continuaci[óo]n\\)\\s*)?\\.\\s*-`, 'i').exec(fragmento.texto)
+  if (!encabezado) return fragmento.texto
+  const inicioCuerpo = encabezado.index + encabezado[0].length
+  const cuerpo = fragmento.texto.slice(inicioCuerpo)
+  const corte = cuerpo.search(/\s(?:CONCORDANCIAS?\s*:|SECCI[ÓO]N\s+[A-ZÁÉÍÓÚÑ]{4,}|T[ÍI]TULO\s+[IVXL]+\b|CAP[ÍI]TULO\s+[A-ZÁÉÍÓÚÑ]{4,}|LIBRO\s+[IVXL]+\b)/)
+  return corte === -1 ? fragmento.texto : fragmento.texto.slice(0, inicioCuerpo + corte).trim()
+}
+
 // Agrupa por documento (el más relevante primero) y, dentro de cada uno,
 // ordena por posición en el documento (indiceChunk).
 function ordenarComoEnElDocumento(fragmentos: FragmentoResultado[]): FragmentoResultado[] {
@@ -499,7 +516,8 @@ export const consultarLexit = onRequest(
                 })
             fragmentosEncontrados = fragmentosEncontrados.map(f => {
               const sufijo = sufijoDeArticulo(f)
-              return sufijo ? { ...f, sufijoArticulo: sufijo } : f
+              const texto = recortarAnexosDelArticulo(f)
+              return { ...f, texto, ...(sufijo ? { sufijoArticulo: sufijo } : {}) }
             })
             logger.info(`🧹 Fragmentos útiles: ${fragmentosEncontrados.length} de ${antes}` +
               ` (${fragmentosEncontrados.filter(f => f.esComentario).length} comentario/nota)`)
@@ -522,6 +540,7 @@ export const consultarLexit = onRequest(
               textoFragmentos,
               '\nInstrucciones sobre este contexto:',
               '- Si algún fragmento responde la pregunta, úsalo y cítalo con su número entre corchetes justo después de la idea que sustenta, ej. [1] o [1, 3].',
+              '- Si explicas una figura (ej. el usufructo) y uno de estos fragmentos es el artículo que la regula, cítalo en esa parte: no la expliques solo de memoria teniendo la norma aquí.',
               '- Cita SOLO los fragmentos que realmente usaste. Si ninguno sirve, ignóralos por completo, no los menciones y responde con tu conocimiento general.',
               '- Úsalos solo si la pregunta trata sobre lo que regula esa norma. No relaciones la pregunta con un artículo solo porque comparten palabras (ej. "pedir una reunión" por correo NO es la convocatoria a asamblea de una asociación). Si la pregunta es práctica o cotidiana (redactar un correo, un trámite general, una duda común), ignora los fragmentos.',
               '- Las citas textuales (entre comillas) solo pueden salir de estos fragmentos; no transcribas artículos de memoria.',
