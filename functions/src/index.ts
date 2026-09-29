@@ -12,6 +12,10 @@ import { ORIGENES_PERMITIDOS, MAX_CARACTERES_MENSAJE, autorizar, consumirCuotaIA
 // editarDocxPoc.ts para el porqué de que viva en su propio archivo.
 export { editarParrafoDocxPoc } from './editarDocxPoc'
 
+// Descarga del Word editado en Análisis de Contratos: aplica los cambios
+// de texto sobre el .docx original sin reconstruirlo (ver editarDocx.ts).
+export { descargarWordEditado } from './descargarWordEditado'
+
 // Orquestación del chat jurídico (saludo/Pinecone/guardrails/contrato
 // adjunto) y las llamadas puntuales a Gemini que antes se hacían desde el
 // navegador con la API key expuesta en el bundle — ver consultarLexit.ts
