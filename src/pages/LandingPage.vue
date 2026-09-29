@@ -236,6 +236,7 @@
             <div class="persona-caption">
               <h3 class="persona-nombre">Alex Zegarra</h3>
               <p class="persona-cargo">Presidente</p>
+              <p class="persona-area">Derecho Corporativo</p>
             </div>
           </article>
 
@@ -246,6 +247,7 @@
             <div class="persona-caption">
               <h3 class="persona-nombre">Mijhail Medina</h3>
               <p class="persona-cargo">Vicepresidente</p>
+              <p class="persona-area">Ingeniería de Tecnologías de Información y Sistemas</p>
             </div>
           </article>
 
@@ -260,7 +262,7 @@
               <img :src="fotoJoeMantilla" alt="Joe Mantilla" class="miembro-photo" />
             </div>
             <h4 class="miembro-nombre">Joe Mantilla</h4>
-            <p class="miembro-cargo">Equipo LexIT</p>
+            <p class="miembro-cargo">Ingeniería de Tecnologías de Información y Sistemas</p>
           </article>
 
           <article class="miembro-card reveal">
@@ -268,7 +270,7 @@
               <img :src="fotoSandroAvila" alt="Sandro Avila" class="miembro-photo" />
             </div>
             <h4 class="miembro-nombre">Sandro Avila</h4>
-            <p class="miembro-cargo">Equipo LexIT</p>
+            <p class="miembro-cargo">Ingeniería de Tecnologías de Información y Sistemas</p>
           </article>
 
           <article class="miembro-card reveal">
@@ -276,7 +278,7 @@
               <img :src="fotoDayanaCoello" alt="Irene Paye" class="miembro-photo" />
             </div>
             <h4 class="miembro-nombre">Irene Paye</h4>
-            <p class="miembro-cargo">Equipo LexIT</p>
+            <p class="miembro-cargo">Derecho Corporativo</p>
           </article>
 
           <article class="miembro-card reveal">
@@ -284,7 +286,15 @@
               <img :src="fotoIrenePaye" alt="Dayana Coello" class="miembro-photo" />
             </div>
             <h4 class="miembro-nombre">Dayana Coello</h4>
-            <p class="miembro-cargo">Equipo LexIT</p>
+            <p class="miembro-cargo">Derecho Corporativo</p>
+          </article>
+
+          <article class="miembro-card reveal">
+            <div class="miembro-photo-wrap">
+              <img :src="fotoTarishGonzales" alt="Tarish Gonzales" class="miembro-photo" />
+            </div>
+            <h4 class="miembro-nombre">Tarish Gonzales</h4>
+            <p class="miembro-cargo">Derecho Corporativo</p>
           </article>
 
         </div>
@@ -321,6 +331,7 @@ import fotoJoeMantilla from '../assets/equipo/joe-mantilla.jpg'
 import fotoSandroAvila from '../assets/equipo/sandro-avila.jpg'
 import fotoDayanaCoello from '../assets/equipo/dayana-coello.jpg'
 import fotoIrenePaye from '../assets/equipo/irene-paye.jpg'
+import fotoTarishGonzales from '../assets/equipo/tarish-gonzales.jpg'
 import imagenMisionVision from '../assets/equipo/mision-vision.jpg'
 import imagenProposito from '../assets/nosotros/proposito.jpg'
 
@@ -1462,10 +1473,20 @@ onUnmounted(() => {
    la foto y el texto debajo, nada de caja). */
 .equipo-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(5, 1fr);
   gap: 20px;
-  max-width: 920px;
+  max-width: 1080px;
   margin: 0 auto;
+}
+
+/* 5 en fila solo cuando entran; en tablet y celular, menos columnas para
+   que las fotos no queden diminutas. */
+@media (max-width: 900px) {
+  .equipo-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 520px) {
+  .equipo-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 .miembro-card {
@@ -1505,12 +1526,12 @@ onUnmounted(() => {
 }
 
 .miembro-cargo {
-  font-size: 0.66rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.4;
   color: var(--sp-text-faint);
   margin: 0;
+  padding: 0 4px;
 }
 
 .nosotros-grid {
@@ -1572,6 +1593,12 @@ onUnmounted(() => {
   text-transform: uppercase;
   color: var(--sp-accent);
   margin: 0;
+}
+
+.persona-area {
+  font-size: 0.85rem;
+  color: var(--sp-text-muted);
+  margin: 4px 0 0;
 }
 
 /* ==============================
