@@ -161,6 +161,48 @@
           </button>
         </div>
       </div>
+
+      <!-- Resumen con IA del PDF de esta norma — plegable, para dejar
+           todo el alto al PDF cuando ya se leyó. -->
+      <div class="norma-resumen" :class="{ 'norma-resumen--plegado': !resumenNormaAbierto }">
+        <button type="button" class="norma-resumen-toggle" @click="resumenNormaAbierto = !resumenNormaAbierto">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/>
+          </svg>
+          <span>Resumen de la norma con IA</span>
+          <svg
+            class="norma-resumen-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          >
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </button>
+
+        <div v-if="resumenNormaAbierto" class="norma-resumen-body">
+          <div v-if="cargandoResumenNorma" class="resumen-loading">
+            <div class="spinner spinner--small"></div>
+            <span>Leyendo el PDF y generando el resumen…</span>
+          </div>
+          <div v-else-if="errorResumenNorma" class="norma-resumen-error">
+            <span>{{ errorResumenNorma }}</span>
+            <button type="button" class="norma-resumen-reintentar" @click="cargarResumenNorma(normaSeleccionada)">Reintentar</button>
+          </div>
+          <template v-else-if="resumenNorma">
+            <p class="norma-resumen-texto">{{ resumenNorma.resumen }}</p>
+            <ul v-if="resumenNorma.puntosClave.length" class="norma-resumen-puntos">
+              <li v-for="(punto, idx) in resumenNorma.puntosClave" :key="idx">{{ punto }}</li>
+            </ul>
+            <p v-if="resumenNorma.aQuienAplica" class="norma-resumen-dato">
+              <span class="norma-resumen-etiqueta">A quién aplica:</span> {{ resumenNorma.aQuienAplica }}
+            </p>
+            <p v-if="resumenNorma.vigencia" class="norma-resumen-dato">
+              <span class="norma-resumen-etiqueta">Vigencia:</span> {{ resumenNorma.vigencia }}
+            </p>
+            <p class="norma-resumen-aviso">Generado con IA a partir del PDF oficial. Verifica en el texto de la norma.</p>
+          </template>
+        </div>
+      </div>
+
       <div class="pdf-panel-body">
         <div v-if="cargandoPdf" class="pdf-panel-status">
           <div class="spinner spinner--small"></div>
@@ -182,7 +224,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { obtenerUltimasNormas, actualizarNormasDelDia, resolverUrlPdf, type NormaDelDia } from '../services/normasService'
+import { obtenerUltimasNormas, actualizarNormasDelDia, resolverUrlPdf, resumirNorma, type NormaDelDia, type ResumenNorma } from '../services/normasService'
 import { resumirNormasDelDia, type ResumenNormasDelDia } from '../services/geminiService'
 import { getErrorMessage } from '../utils/errors'
 
@@ -225,9 +267,44 @@ const cargandoPdf = ref(false)
 const errorPdf = ref<string | null>(null)
 const cachePdf = new Map<string, string>()
 
+// Resumen con IA del PDF de la norma abierta. El servidor lo guarda para
+// todos los usuarios; acá además se recuerda en la sesión para no volver
+// a pedirlo al reabrir la misma norma.
+const resumenNorma = ref<ResumenNorma | null>(null)
+const cargandoResumenNorma = ref(false)
+const errorResumenNorma = ref<string | null>(null)
+const resumenNormaAbierto = ref(true)
+const cacheResumenNorma = new Map<string, ResumenNorma>()
+
+async function cargarResumenNorma(norma: NormaDelDia | null) {
+  if (!norma) return
+  const urlOrigen = norma.urlPdf || norma.urlDetalle
+  errorResumenNorma.value = null
+
+  const cacheado = cacheResumenNorma.get(urlOrigen)
+  if (cacheado) {
+    resumenNorma.value = cacheado
+    cargandoResumenNorma.value = false
+    return
+  }
+
+  resumenNorma.value = null
+  cargandoResumenNorma.value = true
+  try {
+    const resultado = await resumirNorma(urlOrigen, norma.titulo)
+    cacheResumenNorma.set(urlOrigen, resultado)
+    if (normaSeleccionada.value?.id === norma.id) resumenNorma.value = resultado
+  } catch (err) {
+    if (normaSeleccionada.value?.id === norma.id) errorResumenNorma.value = getErrorMessage(err)
+  } finally {
+    if (normaSeleccionada.value?.id === norma.id) cargandoResumenNorma.value = false
+  }
+}
+
 async function verPdf(norma: NormaDelDia) {
   normaSeleccionada.value = norma
   errorPdf.value = null
+  void cargarResumenNorma(norma)
 
   const urlOrigen = norma.urlPdf || norma.urlDetalle
   const cacheada = cachePdf.get(urlOrigen)
@@ -261,6 +338,9 @@ function cerrarPdf() {
   normaSeleccionada.value = null
   urlPdfSeleccionada.value = null
   errorPdf.value = null
+  resumenNorma.value = null
+  errorResumenNorma.value = null
+  cargandoResumenNorma.value = false
 }
 
 const resumen = ref<ResumenNormasDelDia | null>(null)
@@ -460,6 +540,112 @@ onMounted(() => {
 .pdf-panel-boton:hover {
   background: var(--ln-surface-alt);
   color: var(--ln-text);
+}
+
+/* Resumen de la norma, entre la cabecera y el PDF. Alto acotado con
+   scroll propio para que el PDF siempre quede visible debajo. */
+.norma-resumen {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--ln-border);
+  background: var(--ln-surface-alt);
+}
+
+.norma-resumen-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ln-accent);
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+.norma-resumen-toggle span {
+  flex: 1;
+}
+
+.norma-resumen-chevron {
+  transform: rotate(180deg);
+  transition: transform 0.2s;
+}
+
+.norma-resumen--plegado .norma-resumen-chevron {
+  transform: none;
+}
+
+.norma-resumen-body {
+  max-height: 38vh;
+  overflow-y: auto;
+  padding: 0 16px 14px;
+}
+
+.norma-resumen-texto {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--ln-text);
+  margin: 0 0 10px;
+}
+
+.norma-resumen-puntos {
+  margin: 0 0 10px;
+  padding-left: 18px;
+  color: var(--ln-text);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.norma-resumen-puntos li {
+  margin-bottom: 4px;
+}
+
+.norma-resumen-dato {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--ln-text-muted);
+  margin: 0 0 6px;
+}
+
+.norma-resumen-etiqueta {
+  font-weight: 600;
+  color: var(--ln-text);
+}
+
+.norma-resumen-aviso {
+  font-size: 0.75rem;
+  color: var(--ln-text-faint);
+  margin: 8px 0 0;
+}
+
+.norma-resumen-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.86rem;
+  color: #e2685a;
+}
+
+.norma-resumen-reintentar {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--ln-border-strong);
+  border-radius: var(--border-radius-small);
+  color: var(--ln-text);
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.norma-resumen-reintentar:hover {
+  background: var(--ln-surface);
 }
 
 .pdf-panel-body {
