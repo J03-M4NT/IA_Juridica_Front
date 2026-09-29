@@ -84,7 +84,7 @@ function ubicarRango(mapa: EntradaMapa[], texto: string, buscado: string): Ubica
 
 // Texto plano visible de un HTML — es la fuente que se usa como contexto
 // para Gemini/Pinecone cuando el documento adjunto es un Word (ver
-// sincronizarTextoDesdeHtml en consultas-store.ts).
+// sincronizarTextoDesdeHtml en analisis-contratos-store.ts).
 export function extraerTextoVisibleDeHtml(html: string): string {
   return walkTextoConMapa(crearContenedor(html)).texto
 }

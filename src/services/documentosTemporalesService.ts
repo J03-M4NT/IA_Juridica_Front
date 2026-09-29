@@ -25,6 +25,32 @@ export async function subirDocumentoTemporal(uid: string, archivo: File): Promis
   return storagePath
 }
 
+export interface ResultadoWordEditado {
+  url: string
+  aplicados: number
+  fallidos: { antes: string; motivo: string }[]
+}
+
+// Aplica los cambios de texto de la app sobre el .docx original guardado en
+// Storage (sin reconstruirlo, ver functions/src/editarDocx.ts) y devuelve un
+// link temporal para descargar el resultado, más el detalle de qué cambios
+// no se pudieron aplicar.
+export async function descargarWordEditado(
+  storagePath: string,
+  cambios: { antes: string; despues: string; indice?: number; ocurrencia?: number }[],
+  nombreDescarga: string,
+  // marcaLexit: agrega el membrete "LEXIT" / "Generado por LexIT" dentro del
+  // Word original (descargas de Contratos y de Análisis de contratos).
+  opciones: { marcaLexit?: boolean } = {}
+): Promise<ResultadoWordEditado> {
+  const response = await postFuncion('descargarWordEditado', { storagePath, cambios, nombreDescarga, marcaLexit: opciones.marcaLexit === true })
+  const data = await response.json() as Partial<ResultadoWordEditado> & { error?: string }
+  if (!response.ok || !data.url) {
+    throw new Error(data.error ?? 'No se pudo generar el Word editado')
+  }
+  return { url: data.url, aplicados: data.aplicados ?? 0, fallidos: data.fallidos ?? [] }
+}
+
 // Pide una URL firmada temporal (6 horas) para ese documento — nunca una
 // URL pública permanente. La Cloud Function verifica el ID token y que el
 // storagePath pedido sea del usuario que llama.

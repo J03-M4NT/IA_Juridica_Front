@@ -16,6 +16,7 @@
     "dev": "quasar dev",
     "build": "quasar build",
     "extract-pdf-text": "node ./scripts/extract-pdf-text.mjs",
+    "banco-pruebas": "node ./scripts/banco-pruebas/correr.mjs",
     "postinstall": "quasar prepare"
   },
   "dependencies": {
@@ -29,6 +30,7 @@
     "@tiptap/vue-3": "^3.23.6",
     "axios": "^1.2.1",
     "docx": "^9.6.1",
+    "docx-preview": "^0.3.7",
     "docxtemplater": "^3.66.5",
     "firebase": "^12.17.1",
     "gsap": "^3.15.0",

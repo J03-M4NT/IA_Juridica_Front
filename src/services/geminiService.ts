@@ -89,6 +89,14 @@ export interface SugerenciaCambio {
   textoSugerido: string
   explicacion: string
   nivel?: 'alto' | 'medio' | 'bajo'
+  // Artículo de la base jurídica que sustenta directamente la sugerencia.
+  // Solo viene cuando existe uno; si no, la sugerencia va sin cita.
+  baseLegal?: {
+    documento: string
+    articulo?: number
+    sufijo?: string
+    texto: string
+  }
 }
 
 export async function sugerirCambiosContrato(textoContrato: string): Promise<SugerenciaCambio[]> {

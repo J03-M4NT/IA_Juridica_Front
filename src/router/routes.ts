@@ -20,6 +20,11 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true },
       },
       {
+        path: 'analisis',
+        component: () => import('pages/AnalisisContratosPage.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
         path: 'contratos',
         component: () => import('pages/ContratosPage.vue'),
         meta: { requiresAuth: true },
