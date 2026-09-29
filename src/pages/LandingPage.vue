@@ -10,11 +10,12 @@
     <header class="landing-header">
       <div class="header-inner">
         <div class="header-logo">
-          <span class="header-logo-text">LEXIT</span>
+          <span class="header-logo-text">LexIT</span>
         </div>
         <nav class="header-nav">
           <a href="#producto" class="header-nav-link" @click.prevent="scrollToSection('producto')">Producto</a>
           <a href="#como-funciona" class="header-nav-link" @click.prevent="scrollToSection('como-funciona')">Cómo funciona</a>
+          <a href="#nosotros" class="header-nav-link" @click.prevent="scrollToSection('nosotros')">Nosotros</a>
         </nav>
         <auth-buttons ref="authButtonsRef" />
       </div>
@@ -43,7 +44,7 @@
           <p class="hero-description">
             Resuelve consultas legales y analiza el riesgo de tus contratos por chat, completa
             plantillas de contratos conversando con la IA, y mantente al día con las normas de
-            El Peruano — de principio a fin, sin salir de LEXIT AI.
+            El Peruano — de principio a fin, sin salir de LexIT AI.
           </p>
 
           <p class="hero-caption">Hecho para abogados y estudios jurídicos en Perú</p>
@@ -56,7 +57,7 @@
                 <span class="mock-dot"></span>
                 <span class="mock-dot"></span>
                 <span class="mock-dot"></span>
-                <span class="mock-window-title">Consultas — LEXIT AI</span>
+                <span class="mock-window-title">Consultas — LexIT AI</span>
               </div>
               <div class="mock-chat">
                 <div class="mock-bubble mock-bubble--user">
@@ -105,7 +106,7 @@
               </svg>
             </div>
             <h3 class="feature-title">Gestión de Contratos</h3>
-            <p class="feature-description">Elige una plantilla y complétala conversando con la IA, o edítala tú mismo. Descárgala lista, con marca de agua, o sigue editándola en Word con el complemento de LEXIT.</p>
+            <p class="feature-description">Elige una plantilla y complétala conversando con la IA, o edítala tú mismo. Descárgala lista, con marca de agua, o sigue editándola en Word con el complemento de LexIT.</p>
           </article>
 
           <article class="feature-card">
@@ -119,6 +120,32 @@
             <p class="feature-description">Las normas publicadas en El Peruano, organizadas por sector, con un resumen diario generado por IA y lo más relevante para tu práctica.</p>
           </article>
 
+        </div>
+      </section>
+
+      <!-- Fuentes legales / credibilidad — inspirado en la banda de
+           "reconocimientos" y áreas de práctica de estudios de abogados
+           tradicionales (ref. Estudio Rodrigo), pero con contenido real de
+           LEXIT: los códigos que de verdad tiene indexados como fuente
+           primaria (ver TIPOS_FUENTE_PRIMARIA en pineconeService.ts), no
+           premios ni cifras inventadas. -->
+      <section class="fuentes-section">
+        <div class="section-header reveal">
+          <span class="section-label">Base legal</span>
+          <h2 class="section-title">Respaldado por los códigos del Perú</h2>
+          <p class="fuentes-subtitle">
+            Las respuestas que citan artículos se basan en una base jurídica indexada por
+            código y por número de artículo — no en un resumen genérico — para que la cita
+            textual sea exacta.
+          </p>
+        </div>
+
+        <div class="fuentes-badges reveal">
+          <span class="fuente-badge">Código Civil</span>
+          <span class="fuente-badge">Código Penal</span>
+          <span class="fuente-badge">Código Laboral</span>
+          <span class="fuente-badge">Código Tributario</span>
+          <span class="fuente-badge">Constitución Política</span>
         </div>
       </section>
 
@@ -152,15 +179,126 @@
         </div>
       </section>
 
+      <!-- Nosotros / Dirección -->
+      <section class="nosotros-section" id="nosotros">
+        <div class="section-header reveal">
+          <span class="section-label">Nosotros</span>
+          <h2 class="section-title">Quiénes están detrás de LexIT</h2>
+          <p class="nosotros-intro">
+            LexIT nace para poner una IA jurídica entrenada en derecho peruano al alcance de
+            cualquier abogado o estudio, sin perder el rigor de citar la norma exacta.
+          </p>
+        </div>
+
+        <div class="proposito-split reveal">
+          <div class="proposito-content">
+            <p class="proposito-quote">
+              LexIT nace para hacer el derecho más comprensible y fácil de consultar, tanto
+              para quienes no son abogados como para quienes lo ejercen a diario.
+            </p>
+
+            <span class="proposito-label">Propósito</span>
+            <p class="proposito-tagline">Confianza - Certeza - Utilidad</p>
+          </div>
+
+          <div class="proposito-image-wrap">
+            <img :src="imagenProposito" alt="" class="proposito-image" />
+          </div>
+        </div>
+
+        <div class="mv-split reveal">
+          <div class="mv-image-wrap">
+            <img :src="imagenMisionVision" alt="" class="mv-image" />
+          </div>
+
+          <div class="mv-block">
+            <p class="mv-text"><span class="mv-label">Misión</span><br />
+              Facilitar el acceso a información jurídica clara mediante una herramienta de
+              inteligencia artificial, para que personas, abogados y practicantes puedan
+              consultar y trabajar con mayor seguridad.
+            </p>
+
+            <p class="mv-text"><span class="mv-label">Visión</span><br />
+              Ser una herramienta presente en el trabajo diario de estudiantes, practicantes y
+              abogados, y una primera puerta de entrada al derecho para quienes no lo son.
+            </p>
+          </div>
+        </div>
+
+        <h3 class="nosotros-subheading reveal">Dirección</h3>
+
+        <div class="nosotros-grid">
+
+          <article class="persona-card reveal">
+            <div class="persona-photo-wrap">
+              <img :src="fotoAlexZegarra" alt="Alex Zegarra" class="persona-photo" />
+            </div>
+            <div class="persona-caption">
+              <h3 class="persona-nombre">Alex Zegarra</h3>
+              <p class="persona-cargo">Presidente</p>
+            </div>
+          </article>
+
+          <article class="persona-card reveal">
+            <div class="persona-photo-wrap">
+              <img :src="fotoMijhailMedina" alt="Mijhail Medina" class="persona-photo" />
+            </div>
+            <div class="persona-caption">
+              <h3 class="persona-nombre">Mijhail Medina</h3>
+              <p class="persona-cargo">Vicepresidente</p>
+            </div>
+          </article>
+
+        </div>
+
+        <h3 class="nosotros-subheading reveal">Equipo</h3>
+
+        <div class="equipo-grid">
+
+          <article class="miembro-card reveal">
+            <div class="miembro-photo-wrap">
+              <img :src="fotoJoeMantilla" alt="Joe Mantilla" class="miembro-photo" />
+            </div>
+            <h4 class="miembro-nombre">Joe Mantilla</h4>
+            <p class="miembro-cargo">Equipo LexIT</p>
+          </article>
+
+          <article class="miembro-card reveal">
+            <div class="miembro-photo-wrap">
+              <img :src="fotoSandroAvila" alt="Sandro Avila" class="miembro-photo" />
+            </div>
+            <h4 class="miembro-nombre">Sandro Avila</h4>
+            <p class="miembro-cargo">Equipo LexIT</p>
+          </article>
+
+          <article class="miembro-card reveal">
+            <div class="miembro-photo-wrap">
+              <img :src="fotoDayanaCoello" alt="Irene Paye" class="miembro-photo" />
+            </div>
+            <h4 class="miembro-nombre">Irene Paye</h4>
+            <p class="miembro-cargo">Equipo LexIT</p>
+          </article>
+
+          <article class="miembro-card reveal">
+            <div class="miembro-photo-wrap">
+              <img :src="fotoIrenePaye" alt="Dayana Coello" class="miembro-photo" />
+            </div>
+            <h4 class="miembro-nombre">Dayana Coello</h4>
+            <p class="miembro-cargo">Equipo LexIT</p>
+          </article>
+
+        </div>
+      </section>
+
     </main>
 
     <!-- Footer -->
     <footer class="landing-footer">
       <div class="footer-inner">
         <div class="footer-brand">
-          <span class="footer-logo-text">LEXIT</span>
+          <span class="footer-logo-text">LexIT</span>
         </div>
-        <p class="footer-copy">© 2026 LEXIT AI. Todos los derechos reservados.</p>
+        <p class="footer-copy">© 2026 LexIT AI. Todos los derechos reservados.</p>
       </div>
     </footer>
 
@@ -177,6 +315,14 @@ import { useAuthStore } from '../stores/auth'
 import AuthButtons from '../components/Auth/AuthButtons.vue'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import fotoAlexZegarra from '../assets/equipo/alex-zegarra.jpg'
+import fotoMijhailMedina from '../assets/equipo/mijhail-medina.jpg'
+import fotoJoeMantilla from '../assets/equipo/joe-mantilla.jpg'
+import fotoSandroAvila from '../assets/equipo/sandro-avila.jpg'
+import fotoDayanaCoello from '../assets/equipo/dayana-coello.jpg'
+import fotoIrenePaye from '../assets/equipo/irene-paye.jpg'
+import imagenMisionVision from '../assets/equipo/mision-vision.jpg'
+import imagenProposito from '../assets/nosotros/proposito.jpg'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -420,6 +566,26 @@ onMounted(() => {
     scrollTriggers.push(st)
   })
 
+  // Parallax sutil para las imágenes editoriales de "Propósito" y "Misión/Visión"
+  // (misma técnica que los blobs: la imagen se mueve más lento/rápido que el
+  // scroll, recortada por el contenedor con overflow:hidden).
+  const parallaxImages: { selector: string; trigger: string }[] = [
+    { selector: '.proposito-image', trigger: '.proposito-split' },
+    { selector: '.mv-image', trigger: '.mv-split' }
+  ]
+  parallaxImages.forEach(({ selector, trigger }) => {
+    const el = root.querySelector<HTMLElement>(selector)
+    if (!el) return
+    const st = ScrollTrigger.create({
+      trigger,
+      start: 'top bottom',
+      end: 'bottom top',
+      scrub: true,
+      animation: gsap.fromTo(el, { y: -30 }, { y: 30, ease: 'none' })
+    })
+    scrollTriggers.push(st)
+  })
+
   // Advanced text parallax
   heroTexts.forEach((el, index) => {
     const st = ScrollTrigger.create({
@@ -449,18 +615,68 @@ onUnmounted(() => {
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Figtree:wght@400;500;600;700&display=swap');
 
+/* Baskervville (SIL Open Font License, ver src/assets/fonts/baskervville/
+   OFL.txt) para los títulos de la landing. Fuentes variables: un archivo
+   cubre los pesos 400-700. */
+@font-face {
+  font-family: 'Baskervville';
+  src: url('../assets/fonts/baskervville/Baskervville-VariableFont_wght.ttf') format('truetype');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Baskervville';
+  src: url('../assets/fonts/baskervville/Baskervville-Italic-VariableFont_wght.ttf') format('truetype');
+  font-weight: 400 700;
+  font-style: italic;
+  font-display: swap;
+}
+
 /* ==============================
-   Base
+   Base — misma paleta verde-bosque/beige, ahora invertida a fondo claro
+   (Blanco Cálido) a pedido explícito del usuario: el verde oscuro pasa
+   de ser el canvas a ser el texto/acento, y el beige claro/blanco pasa
+   de ser el texto a ser la superficie. Mismos 8 tonos, otra jerarquía.
    ============================== */
 .landing-page {
+  --sp-canvas: #F8F7F2;          /* Blanco Cálido */
+  --sp-surface: #FFFFFF;         /* blanco puro — un paso "arriba" del canvas para las tarjetas */
+  --sp-surface-alt: #D9D4C6;     /* Marfil Claro — hover de tarjetas */
+  --sp-border: rgba(23, 33, 27, 0.10);
+  --sp-border-strong: rgba(23, 33, 27, 0.18);
+  --sp-text: #17211B;            /* Verde Bosque Profundo */
+  --sp-text-muted: #3D473A;      /* Verde Grisáceo */
+  --sp-text-faint: #686A57;      /* Oliva Medio */
+  /* --sp-accent (Verde Grisáceo) cumple doble rol: como texto (labels,
+     links, cargos) se distingue del texto normal por ser un poco más
+     cálido/menos oscuro que --sp-text; como fondo de botón (CTA) es lo
+     bastante oscuro para que el texto claro (--sp-ink) encima se lea
+     bien — por eso NO es el mismo tono que --sp-text ni tan claro como
+     --sp-text-muted. */
+  --sp-accent: #3D473A;
+  --sp-accent-hover: #17211B;
+  --sp-accent-soft: rgba(61, 71, 58, 0.08);
+  --sp-accent-soft-strong: rgba(61, 71, 58, 0.16);
+  /* Acento secundario (Oliva Medio) para contenido editorial/de confianza
+     (badges de fuentes legales) — un tercer tono, más cálido, distinto
+     del acento principal (más frío/verdoso). */
+  --sp-accent-secondary: #686A57;
+  --sp-accent-secondary-soft: rgba(104, 106, 87, 0.12);
+  --sp-accent-secondary-soft-strong: rgba(104, 106, 87, 0.28);
+  --sp-ink: #F8F7F2;              /* texto claro sobre superficies oscuras (--sp-accent) */
+
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   position: relative;
   overflow-x: hidden;
-  background: #FAFAF7;
-  color: #1b1b1e;
-  font-family: 'Figtree', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--sp-canvas);
+  color: var(--sp-text);
+  font-family: 'Baskervville', 'EB Garamond', Georgia, serif;
+  font-kerning: normal;
+  font-variant-ligatures: common-ligatures;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -492,16 +708,19 @@ onUnmounted(() => {
   filter: blur(8px);
 }
 
+/* Mismo tono cálido de la paleta (Beige Oliva), mucho más sutil ahora
+   que el fondo es claro — sobre blanco, la misma opacidad de antes se
+   vería sucia en vez de atmosférica. */
 .blob-1 {
-  background: radial-gradient(circle at 30% 30%, rgba(57, 199, 216, 0.28), transparent 70%);
+  background: radial-gradient(circle at 30% 30%, rgba(156, 146, 117, 0.14), transparent 70%);
 }
 
 .blob-2 {
-  background: radial-gradient(circle at 40% 40%, rgba(255, 100, 176, 0.20), transparent 70%);
+  background: radial-gradient(circle at 40% 40%, rgba(156, 146, 117, 0.10), transparent 70%);
 }
 
 .blob-3 {
-  background: radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.18), transparent 70%);
+  background: radial-gradient(circle at 50% 50%, rgba(61, 71, 58, 0.05), transparent 70%);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -553,9 +772,36 @@ onUnmounted(() => {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(250, 250, 247, 0.82);
+  background: rgba(248, 247, 242, 0.86);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(27, 27, 30, 0.07);
+  border-bottom: 1px solid var(--sp-border);
+}
+
+/* AuthButtons.vue trae sus propios colores de "Iniciar Sesión"/
+   "Registrarse" — ya estaban pensados para un header claro, así que acá
+   alcanza con acercarlos a la paleta verde en vez de su terracota por
+   defecto, sin tocar ese componente. */
+:deep(.auth-buttons .login-btn) {
+  color: var(--sp-text) !important;
+}
+
+:deep(.auth-buttons .login-btn:hover) {
+  background: rgba(23, 33, 27, 0.05) !important;
+}
+
+:deep(.auth-buttons .register-btn) {
+  background: var(--sp-accent) !important;
+  color: var(--sp-ink) !important;
+}
+
+:deep(.auth-buttons .register-btn:hover) {
+  background: var(--sp-accent-hover) !important;
+}
+
+/* Misma tipografía que el resto de la landing (el componente usa Figtree,
+   que se mantiene dentro de la app). */
+:deep(.auth-buttons .auth-btn) {
+  font-family: 'Baskervville', 'EB Garamond', serif;
 }
 
 .header-inner {
@@ -575,12 +821,12 @@ onUnmounted(() => {
 }
 
 .header-logo-text {
-  font-family: 'Fraunces', 'EB Garamond', serif;
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
   font-optical-sizing: auto;
   font-size: 1.7rem;
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: #1b1b1e;
+  color: var(--sp-text);
 }
 
 .header-nav {
@@ -594,13 +840,13 @@ onUnmounted(() => {
 .header-nav-link {
   font-size: 0.92rem;
   font-weight: 500;
-  color: #55555c;
+  color: var(--sp-text-muted);
   text-decoration: none;
   transition: color 0.18s;
 }
 
 .header-nav-link:hover {
-  color: var(--accent);
+  color: var(--sp-accent);
 }
 
 /* ==============================
@@ -613,12 +859,14 @@ onUnmounted(() => {
 }
 
 /* ==============================
-   Hero — sección oscura y atmosférica
+   Hero — fondo blanco cálido, atmósfera muy sutil (los glows de acá
+   abajo quedan casi imperceptibles a propósito: sobre fondo oscuro
+   sumaban drama, sobre blanco lo que suma es que el texto respire).
    ============================== */
 .hero-section {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(165deg, #14151c 0%, #1c2130 38%, #262a22 72%, #332a1c 100%);
+  background: var(--sp-canvas);
   padding: 96px 28px 110px;
   animation: floatUp 0.7s ease-out both;
 }
@@ -642,7 +890,7 @@ onUnmounted(() => {
   height: 520px;
   top: -180px;
   left: -120px;
-  background: radial-gradient(circle, rgba(181, 80, 46, 0.55), transparent 70%);
+  background: radial-gradient(circle, rgba(156, 146, 117, 0.22), transparent 70%);
 }
 
 .hero-glow--2 {
@@ -650,7 +898,7 @@ onUnmounted(() => {
   height: 460px;
   bottom: -220px;
   right: -100px;
-  background: radial-gradient(circle, rgba(223, 168, 97, 0.35), transparent 70%);
+  background: radial-gradient(circle, rgba(156, 146, 117, 0.14), transparent 70%);
   animation-delay: -6s;
 }
 
@@ -659,7 +907,7 @@ onUnmounted(() => {
   height: 380px;
   top: 30%;
   left: 55%;
-  background: radial-gradient(circle, rgba(90, 110, 140, 0.35), transparent 70%);
+  background: radial-gradient(circle, rgba(61, 71, 58, 0.06), transparent 70%);
   animation-delay: -3s;
 }
 
@@ -667,8 +915,8 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(250, 250, 247, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(250, 250, 247, 0.05) 1px, transparent 1px);
+    linear-gradient(rgba(23, 33, 27, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(23, 33, 27, 0.05) 1px, transparent 1px);
   background-size: 42px 42px;
   mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 40%, transparent 100%);
 }
@@ -692,48 +940,46 @@ onUnmounted(() => {
 .hero-badge {
   display: inline-block;
   padding: 6px 14px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #C9D9F2;
+  border-radius: 999px;
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border-strong);
+  color: var(--sp-text-muted);
   font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   margin-bottom: 24px;
 }
 
+/* Serif editorial (equivalente a "Arizona Mix" de la referencia) con
+   tracking negativo agresivo — nada de texto en gradiente, un solo color
+   sólido por línea, como pide la referencia. */
 .hero-title {
-  font-family: 'Figtree', -apple-system, sans-serif;
-  font-size: 3.6rem;
-  line-height: 1.08;
-  font-weight: 700;
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
+  font-optical-sizing: auto;
+  font-size: clamp(2.6rem, 5vw + 1rem, 4.6rem);
+  line-height: 1.04;
+  font-weight: 500;
   margin: 0 0 22px;
-  letter-spacing: -0.02em;
-  background: linear-gradient(135deg, #FFFFFF 0%, #C9D9F2 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.03em;
+  color: var(--sp-text);
 }
 
 .hero-title em {
-  font-style: normal;
-  background: linear-gradient(135deg, #7EA2F2 0%, #4B79D8 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-style: italic;
+  color: var(--sp-accent);
 }
 
 .hero-description {
   font-size: 1.14rem;
   line-height: 1.65;
-  color: rgba(250, 250, 247, 0.72);
+  color: var(--sp-text-muted);
   max-width: 580px;
   margin: 0 auto 14px;
 }
 
 .hero-caption {
   font-size: 0.85rem;
-  color: rgba(250, 250, 247, 0.45);
+  color: var(--sp-text-faint);
   margin: 0 0 48px;
 }
 
@@ -762,8 +1008,12 @@ onUnmounted(() => {
   transform: translateY(-1px) scale(0.99);
 }
 
+/* Blanco puro + borde visible: el canvas del hero ya es casi blanco
+   (Blanco Cálido), así que sin esto la ventana del mock se perdería
+   contra el fondo en vez de leerse como una tarjeta flotando. */
 .mock-window {
-  background: #FAFAF7;
+  background: #FFFFFF;
+  border: 1px solid var(--sp-border);
   border-radius: 14px;
   overflow: hidden;
   text-align: left;
@@ -834,7 +1084,7 @@ onUnmounted(() => {
 
 .mock-bubble-tag {
   display: block;
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'EB Garamond', serif;
   font-weight: 600;
   color: var(--accent);
   margin-bottom: 4px;
@@ -854,16 +1104,18 @@ onUnmounted(() => {
   font-weight: 600;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--sp-accent);
   margin-bottom: 12px;
 }
 
 .section-title {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
+  font-optical-sizing: auto;
   font-size: 2.3rem;
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: -0.02em;
   margin: 0;
-  color: #16161a;
+  color: var(--sp-text);
 }
 
 /* ==============================
@@ -881,64 +1133,98 @@ onUnmounted(() => {
   gap: 22px;
 }
 
+/* Tarjeta plana (ver "Dark Card" de la referencia): sin vidrio esmerilado
+   ni sombra fuerte — la profundidad sale del cambio de fondo (canvas →
+   surface) y de un borde fino, no de blur/shadow. El tilt 3D de GSAP
+   sigue funcionando igual, solo cambia qué se ve debajo del cursor. */
 .feature-card {
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: 20px;
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border);
+  border-radius: 4px;
   padding: 30px 26px;
-  box-shadow: 0 4px 12px rgba(27, 27, 30, 0.02);
-  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  box-shadow: none;
+  transition: transform 0.3s ease, border-color 0.3s ease, background-color 0.3s ease;
 }
 
 .feature-card:hover {
   transform: translateY(-5px);
-  border-color: rgba(255, 255, 255, 1);
-}
-
-.feature-card:nth-child(1):hover {
-  box-shadow: 0 16px 40px rgba(57, 199, 216, 0.25);
-}
-.feature-card:nth-child(2):hover {
-  box-shadow: 0 16px 40px rgba(255, 100, 176, 0.22);
-}
-.feature-card:nth-child(3):hover {
-  box-shadow: 0 16px 40px rgba(139, 92, 246, 0.22);
+  border-color: var(--sp-accent-soft-strong);
+  background: var(--sp-surface-alt);
 }
 
 .feature-icon-wrap {
   width: 56px;
   height: 56px;
-  border-radius: 16px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 22px;
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--sp-accent-soft);
+  color: var(--sp-accent);
   transition: background 0.25s, color 0.25s, transform 0.25s;
 }
 
 .feature-card:hover .feature-icon-wrap {
-  background: var(--accent);
-  color: #fff;
+  background: var(--sp-accent);
+  color: var(--sp-ink);
   transform: scale(1.06);
 }
 
 .feature-title {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
+  font-optical-sizing: auto;
   font-size: 1.45rem;
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   margin: 0 0 9px;
-  color: #16161a;
+  color: var(--sp-text);
 }
 
 .feature-description {
   font-size: 1rem;
   line-height: 1.6;
-  color: #5c5c63;
+  color: var(--sp-text-muted);
   margin: 0;
+}
+
+/* ==============================
+   Fuentes legales / credibilidad
+   ============================== */
+.fuentes-section {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 40px 28px 70px;
+  text-align: center;
+}
+
+.fuentes-subtitle {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--sp-text-muted);
+  max-width: 560px;
+  margin: 14px auto 0;
+}
+
+.fuentes-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 30px;
+}
+
+.fuente-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 18px;
+  border-radius: 999px;
+  background: var(--sp-accent-secondary-soft);
+  border: 1px solid var(--sp-accent-secondary-soft-strong);
+  color: var(--sp-accent-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 /* ==============================
@@ -959,14 +1245,12 @@ onUnmounted(() => {
 .step-card {
   position: relative;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: 20px;
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border);
+  border-radius: 4px;
   padding: 30px 26px;
-  box-shadow: 0 4px 12px rgba(27, 27, 30, 0.02);
-  transition: border-color 0.25s, box-shadow 0.25s;
+  box-shadow: none;
+  transition: border-color 0.25s, background-color 0.25s;
 }
 
 .step-card::before {
@@ -976,7 +1260,7 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   height: 3px;
-  background: var(--accent);
+  background: var(--sp-accent);
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 0.3s ease;
@@ -984,8 +1268,8 @@ onUnmounted(() => {
 
 .step-card:hover {
   transform: translateY(-6px);
-  border-color: var(--accent);
-  box-shadow: 0 20px 42px rgba(27, 27, 30, 0.1);
+  border-color: var(--sp-accent-soft-strong);
+  background: var(--sp-surface-alt);
 }
 
 .step-card:hover::before {
@@ -997,31 +1281,296 @@ onUnmounted(() => {
 }
 
 .step-number {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
+  font-optical-sizing: auto;
   font-size: 2.6rem;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1;
-  color: var(--accent-soft-strong);
+  color: var(--sp-accent-soft-strong);
   margin-bottom: 14px;
   transition: color 0.25s;
 }
 
 .step-card:hover .step-number {
-  color: var(--accent);
+  color: var(--sp-accent);
 }
 
 .step-title {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
+  font-optical-sizing: auto;
   font-size: 1.35rem;
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   margin: 0 0 8px;
-  color: #16161a;
+  color: var(--sp-text);
 }
 
 .step-description {
   font-size: 0.98rem;
   line-height: 1.6;
-  color: #5c5c63;
+  color: var(--sp-text-muted);
+  margin: 0;
+}
+
+/* ==============================
+   Nosotros / Dirección
+   ============================== */
+.nosotros-section {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 60px 28px 100px;
+}
+
+.nosotros-intro {
+  font-size: 1.05rem;
+  line-height: 1.65;
+  color: var(--sp-text-muted);
+  max-width: 620px;
+  margin: 14px auto 0;
+}
+
+/* Propósito — cita editorial a la izquierda + fotografía institucional
+   (blanco y negro) a la derecha, con leve parallax de scroll (ver script)
+   para que se sienta interactiva sin salirse del tono editorial. */
+.proposito-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 56px;
+  align-items: center;
+  max-width: 1080px;
+  margin: 48px auto 0;
+}
+
+.proposito-content {
+  text-align: left;
+}
+
+.proposito-quote {
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
+  font-optical-sizing: auto;
+  font-size: 1.5rem;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--sp-text);
+  text-align: justify;
+  margin: 0 0 32px;
+}
+
+.proposito-label {
+  display: inline-block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--sp-accent);
+  margin-bottom: 14px;
+}
+
+.proposito-tagline {
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
+  font-optical-sizing: auto;
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: var(--sp-text);
+  margin: 0;
+}
+
+.proposito-image-wrap {
+  position: relative;
+  aspect-ratio: 1500 / 1434;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.proposito-image {
+  position: absolute;
+  top: -10%;
+  left: 0;
+  width: 100%;
+  height: 120%;
+  object-fit: cover;
+  display: block;
+  will-change: transform;
+}
+
+/* Misión / Visión — imagen a la izquierda, texto plano editorial a la
+   derecha (sin caja ni borde en el texto: solo título en negrita +
+   párrafo debajo, como una cita de catálogo/galería). */
+.mv-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 48px;
+  align-items: center;
+  max-width: 1080px;
+  margin: 48px auto 0;
+}
+
+.mv-image-wrap {
+  position: relative;
+  aspect-ratio: 1500 / 1105;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.mv-image {
+  position: absolute;
+  top: -10%;
+  left: 0;
+  width: 100%;
+  height: 120%;
+  object-fit: cover;
+  display: block;
+  will-change: transform;
+}
+
+.mv-block {
+  text-align: left;
+}
+
+.mv-text {
+  font-size: 1.02rem;
+  line-height: 1.7;
+  color: var(--sp-text-muted);
+  margin: 0 0 28px;
+}
+
+.mv-text:last-child {
+  margin-bottom: 0;
+}
+
+.mv-label {
+  display: inline;
+  font-weight: 700;
+  color: var(--sp-text);
+}
+
+/* Subtítulo que separa "Equipo" (grilla general) de "Dirección" (las dos
+   tarjetas grandes que ya había) dentro de la misma sección Nosotros. */
+.nosotros-subheading {
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
+  font-optical-sizing: auto;
+  font-size: 1.1rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--sp-text);
+  text-align: center;
+  margin: 56px 0 24px;
+}
+
+/* Grilla "Equipo" — más chica que la de Dirección pero no tan angosta
+   como antes, en fila, sin recuadro (mismo criterio que Dirección: solo
+   la foto y el texto debajo, nada de caja). */
+.equipo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.miembro-card {
+  text-align: center;
+}
+
+.miembro-photo-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4.3;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--sp-canvas);
+}
+
+.miembro-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+  transition: transform 0.4s ease;
+}
+
+.miembro-card:hover .miembro-photo {
+  transform: scale(1.04);
+}
+
+.miembro-nombre {
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
+  font-optical-sizing: auto;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  margin: 14px 0 3px;
+  color: var(--sp-text);
+}
+
+.miembro-cargo {
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--sp-text-faint);
+  margin: 0;
+}
+
+.nosotros-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+/* Retrato grande sin recuadro — solo la foto "flotando" sobre el fondo
+   de la página, con el nombre/cargo debajo, también sin caja. Antes
+   tenían una tarjeta (fondo + borde) alrededor; a pedido del usuario se
+   quitó ese encierro. */
+.persona-card {
+  text-align: center;
+}
+
+.persona-photo-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--sp-canvas);
+}
+
+.persona-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+  transition: transform 0.4s ease;
+}
+
+.persona-card:hover .persona-photo {
+  transform: scale(1.03);
+}
+
+.persona-caption {
+  padding: 18px 6px 0;
+}
+
+.persona-nombre {
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
+  font-optical-sizing: auto;
+  font-size: 1.3rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+  color: var(--sp-text);
+}
+
+.persona-cargo {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sp-accent);
   margin: 0;
 }
 
@@ -1029,7 +1578,7 @@ onUnmounted(() => {
    Footer
    ============================== */
 .landing-footer {
-  border-top: 1px solid rgba(27, 27, 30, 0.07);
+  border-top: 1px solid var(--sp-border);
   padding: 30px 28px;
   position: relative;
   z-index: 1;
@@ -1052,17 +1601,17 @@ onUnmounted(() => {
 }
 
 .footer-logo-text {
-  font-family: 'Fraunces', 'EB Garamond', serif;
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
   font-optical-sizing: auto;
   font-size: 1.2rem;
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: #3a3a40;
+  color: var(--sp-text);
 }
 
 .footer-copy {
   font-size: 0.85rem;
-  color: #9a9aa2;
+  color: var(--sp-text-faint);
   margin: 0;
 }
 
@@ -1098,9 +1647,28 @@ onUnmounted(() => {
     padding: 40px 16px 40px;
   }
 
+  .nosotros-section {
+    padding: 40px 16px 60px;
+  }
+
   .features-grid,
-  .steps-grid {
+  .steps-grid,
+  .nosotros-grid {
     grid-template-columns: 1fr;
+  }
+
+  .proposito-split,
+  .mv-split {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .proposito-quote {
+    font-size: 1.25rem;
+  }
+
+  .equipo-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .footer-inner {
