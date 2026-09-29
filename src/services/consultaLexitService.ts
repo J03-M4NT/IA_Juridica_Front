@@ -1,6 +1,6 @@
 import type { FragmentoResultado } from './pineconeService'
 
-const FUNCTIONS_URL = 'https://us-central1-lexit-ai.cloudfunctions.net'
+import { postFuncion } from './functionsClient'
 
 export interface MensajeHistorialLexit {
   esIA: boolean
@@ -29,16 +29,12 @@ export async function consultarLexit(
   historialMensajes: MensajeHistorialLexit[],
   opciones?: OpcionesConsultaLexit
 ): Promise<ConsultaLexitResultado> {
-  const response = await fetch(`${FUNCTIONS_URL}/consultarLexit`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      pregunta,
-      historialMensajes,
-      textoDocumentoAdjunto: opciones?.textoDocumentoAdjunto,
-      nombreDocumentoAdjunto: opciones?.nombreDocumentoAdjunto,
-      esSolicitudAnalisis: opciones?.esSolicitudAnalisis ?? false
-    })
+  const response = await postFuncion('consultarLexit', {
+    pregunta,
+    historialMensajes,
+    textoDocumentoAdjunto: opciones?.textoDocumentoAdjunto,
+    nombreDocumentoAdjunto: opciones?.nombreDocumentoAdjunto,
+    esSolicitudAnalisis: opciones?.esSolicitudAnalisis ?? false
   })
 
   const data = await response.json() as Partial<ConsultaLexitResultado> & { error?: string }

@@ -81,7 +81,7 @@
         <!-- Documentos indexados -->
         <div v-if="documentosIndexados.length > 0" class="q-mt-md">
           <div class="text-weight-bold text-grey-8 q-mb-sm" style="font-size:0.85rem;">
-            DOCUMENTOS INDEXADOS
+            DOCUMENTOS INDEXADOS ({{ documentosIndexados.length }})
           </div>
           <div class="row q-gutter-sm">
             <q-chip
@@ -94,11 +94,21 @@
               @remove="eliminarDeIndexados(doc)"
             >
               {{ doc.nombre }}
+              <span class="q-ml-xs" style="opacity:0.75;">· {{ doc.chunks }} frag.</span>
+              <q-tooltip>{{ doc.tipo || 'sin tipo' }} — {{ doc.chunks }} fragmentos en Pinecone</q-tooltip>
             </q-chip>
           </div>
         </div>
 
-        <div v-else class="q-mt-sm text-grey-5" style="font-size:0.85rem;">
+        <div v-else-if="cargandoStats" class="q-mt-sm text-grey-6" style="font-size:0.85rem;">
+          Cargando documentos indexados…
+        </div>
+
+        <div v-else-if="errorDocumentos" class="q-mt-sm text-negative" style="font-size:0.85rem;">
+          {{ errorDocumentos }}
+        </div>
+
+        <div v-else class="q-mt-sm text-grey-6" style="font-size:0.85rem;">
           No hay documentos indexados aún. Sube un PDF jurídico para comenzar.
         </div>
       </div>
@@ -317,6 +327,33 @@
       </div>
     </q-dialog>
 
+    <!-- ✅ DIALOG ELIMINAR DOCUMENTO DE PINECONE -->
+    <q-dialog v-model="eliminarDocumentoDialog" persistent>
+      <div class="lx-dialog-card">
+        <div class="lx-dialog-header">
+          <span class="lx-dialog-title">Eliminar de la base jurídica</span>
+          <button class="lx-dialog-close" type="button" @click="eliminarDocumentoDialog = false">✕</button>
+        </div>
+        <div class="lx-dialog-body">
+          <p class="delete-warning-text">
+            ¿Seguro que deseas eliminar <strong>{{ documentoAEliminar?.nombre }}</strong>
+            ({{ documentoAEliminar?.chunks }} fragmentos) de Pinecone?
+            La IA dejará de usarlo para responder. Esta acción no se puede deshacer.
+          </p>
+          <div class="lx-dialog-footer">
+            <button class="lx-btn-ghost" type="button" @click="eliminarDocumentoDialog = false">Cancelar</button>
+            <q-btn
+              color="negative"
+              label="Eliminar"
+              no-caps unelevated
+              :loading="eliminandoDocumento"
+              @click="confirmarEliminarDocumento"
+            />
+          </div>
+        </div>
+      </div>
+    </q-dialog>
+
   </q-page>
 </template>
 
@@ -326,7 +363,13 @@ import { useQuasar } from 'quasar'
 import { collection, getDocs, orderBy, query } from 'firebase/firestore'
 import { db } from '../firebase/firebaseConfig'
 import { uploadTemplate, deleteTemplate, getTemplateDownloadURL } from '../services/contratosService'
-import { guardarDocumentoEnPinecone, verificarConexionPinecone } from '../services/pineconeService'
+import {
+  guardarDocumentoEnPinecone,
+  verificarConexionPinecone,
+  listarDocumentosPinecone,
+  eliminarDocumentoPinecone,
+  type DocumentoIndexado
+} from '../services/pineconeService'
 import { extraerTextoPDF } from '../utils/pdfExtractor'
 const $q = useQuasar()
 
@@ -336,13 +379,6 @@ interface Template {
   type: string
   description?: string
   storage_path: string
-}
-
-interface DocumentoIndexado {
-  id: string
-  nombre: string
-  tipo: string
-  chunks: number
 }
 
 // =========================
@@ -373,6 +409,10 @@ const vectoresTotales = ref(0)
 const progresoPinecone = ref('')
 const porcentajePinecone = ref(0)
 const documentosIndexados = ref<DocumentoIndexado[]>([])
+const errorDocumentos = ref('')
+const documentoAEliminar = ref<DocumentoIndexado | null>(null)
+const eliminarDocumentoDialog = ref(false)
+const eliminandoDocumento = ref(false)
 
 const tiposDocumento = [
   'codigo-penal',
@@ -401,18 +441,29 @@ const columns = [
 ]
 
 // =========================
+// DOCUMENTOS INDEXADOS (desde Pinecone, compartido entre todos los admins)
+// =========================
+const cargarDocumentosIndexados = async () => {
+  errorDocumentos.value = ''
+  try {
+    documentosIndexados.value = await listarDocumentosPinecone()
+  } catch (err) {
+    console.error('Error listando documentos de Pinecone:', err)
+    errorDocumentos.value = err instanceof Error ? err.message : 'No se pudo cargar la lista de documentos'
+  }
+}
+
+// =========================
 // CARGAR STATS PINECONE
 // =========================
 const cargarStatsPinecone = async () => {
   cargandoStats.value = true
   try {
-    const { totalVectores } = await verificarConexionPinecone()
+    const [{ totalVectores }] = await Promise.all([
+      verificarConexionPinecone(),
+      cargarDocumentosIndexados()
+    ])
     vectoresTotales.value = totalVectores
-    // Cargar documentos indexados del localStorage
-    const guardados = localStorage.getItem('pinecone_documentos')
-    if (guardados) {
-      documentosIndexados.value = JSON.parse(guardados) as DocumentoIndexado[]
-    }
   } catch (err) {
     console.error('Error stats Pinecone:', err)
   } finally {
@@ -461,19 +512,9 @@ const subirPDFaPinecone = async () => {
 
     porcentajePinecone.value = 1
 
-    // 3. Guardar registro local
-    const nuevoDoc: DocumentoIndexado = {
-      id: documentoId,
-      nombre: pdfPinecone.value.nombre,
-      tipo: pdfPinecone.value.tipo,
-      chunks: resultado.chunksGuardados
-    }
-
-    documentosIndexados.value.push(nuevoDoc)
-    localStorage.setItem('pinecone_documentos', JSON.stringify(documentosIndexados.value))
-
-    // 4. Actualizar contador
+    // 3. Refrescar lista y contador desde Pinecone
     vectoresTotales.value += resultado.chunksGuardados
+    void cargarDocumentosIndexados()
 
     $q.notify({
       type: 'positive',
@@ -500,12 +541,29 @@ const subirPDFaPinecone = async () => {
 }
 
 // =========================
-// ELIMINAR DE INDEXADOS
+// ELIMINAR DOCUMENTO DE PINECONE (con confirmación — es irreversible)
 // =========================
 const eliminarDeIndexados = (doc: DocumentoIndexado) => {
-  documentosIndexados.value = documentosIndexados.value.filter(d => d.id !== doc.id)
-  localStorage.setItem('pinecone_documentos', JSON.stringify(documentosIndexados.value))
-  $q.notify({ type: 'info', message: `"${doc.nombre}" eliminado de la lista local` })
+  documentoAEliminar.value = doc
+  eliminarDocumentoDialog.value = true
+}
+
+const confirmarEliminarDocumento = async () => {
+  const doc = documentoAEliminar.value
+  if (!doc) return
+  eliminandoDocumento.value = true
+  try {
+    const eliminados = await eliminarDocumentoPinecone(doc.id)
+    documentosIndexados.value = documentosIndexados.value.filter(d => d.id !== doc.id)
+    vectoresTotales.value = Math.max(0, vectoresTotales.value - eliminados)
+    eliminarDocumentoDialog.value = false
+    $q.notify({ type: 'positive', message: `"${doc.nombre}" eliminado de la base jurídica (${eliminados} fragmentos)` })
+  } catch (err) {
+    console.error('Error eliminando documento de Pinecone:', err)
+    $q.notify({ type: 'negative', message: err instanceof Error ? err.message : 'No se pudo eliminar el documento' })
+  } finally {
+    eliminandoDocumento.value = false
+  }
 }
 
 // =========================

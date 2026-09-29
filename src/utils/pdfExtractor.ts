@@ -1,7 +1,9 @@
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist'
 import type { TextItem, TextMarkedContent } from 'pdfjs-dist/types/src/display/api'
 
-GlobalWorkerOptions.workerSrc = new URL('/IA_Juridica_Front/pdf.worker.min.js', window.location.origin).href
+// BASE_URL sale de publicPath en quasar.config.ts ('/' en desarrollo,
+// '/IA_Juridica_Front/' en GitHub Pages) — no escribir la ruta a mano.
+GlobalWorkerOptions.workerSrc = new URL(`${import.meta.env.BASE_URL}pdf.worker.min.js`, window.location.origin).href
 
 // =========================
 // LIMPIAR ARTEFACTOS TÍPICOS DE EXTRACCIÓN DE PDF

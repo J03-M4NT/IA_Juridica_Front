@@ -62,6 +62,25 @@ export default defineRouter(function (/* { store, ssrContext } */) {
       next('/app/consultas');
     } else if (requiresAdmin) {
       const profileStore = useUserProfileStore();
+
+      // auth-sync marca la sesión como lista ANTES de terminar de leer el
+      // perfil de Firestore — al recargar en /app/admin, isAdmin todavía
+      // sería false y te sacaría a Consultas. Se espera a que termine
+      // (máximo 5 segundos, igual que con la sesión).
+      if (!profileStore.profile || profileStore.loading) {
+        await Promise.race([
+          new Promise<void>(resolve => {
+            const unsubscribe = profileStore.$subscribe(() => {
+              if (profileStore.profile && !profileStore.loading) {
+                unsubscribe()
+                resolve()
+              }
+            })
+          }),
+          new Promise<void>(resolve => setTimeout(resolve, 5000))
+        ])
+      }
+
       if (!profileStore.isAdmin) {
         next('/app/consultas');
       } else {

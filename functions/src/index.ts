@@ -6,10 +6,15 @@ import * as logger from 'firebase-functions/logger'
 import * as cheerio from 'cheerio'
 import { initializeApp, getApps } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
+import { ORIGENES_PERMITIDOS, MAX_CARACTERES_MENSAJE, autorizar, consumirCuotaIA, excede } from './seguridad'
 
 // Prueba de concepto aislada (edición quirúrgica de .docx) — ver
 // editarDocxPoc.ts para el porqué de que viva en su propio archivo.
 export { editarParrafoDocxPoc } from './editarDocxPoc'
+
+// Descarga del Word editado en Análisis de Contratos: aplica los cambios
+// de texto sobre el .docx original sin reconstruirlo (ver editarDocx.ts).
+export { descargarWordEditado } from './descargarWordEditado'
 
 // Orquestación del chat jurídico (saludo/Pinecone/guardrails/contrato
 // adjunto) y las llamadas puntuales a Gemini que antes se hacían desde el
@@ -18,6 +23,9 @@ export { editarParrafoDocxPoc } from './editarDocxPoc'
 export { consultarLexit } from './consultarLexit'
 export { generarSugerenciasContrato, modificarPlantillaIA, resumirNormasDelDiaIA, chatEdicionContratoIA } from './geminiTools'
 export { obtenerUrlFirmadaDocumento } from './documentosTemporales'
+
+// Resumen del PDF de una norma al abrirla en la Biblioteca Legal.
+export { resumirNormaIA } from './resumenNorma'
 
 if (getApps().length === 0) {
   initializeApp()
@@ -87,6 +95,15 @@ async function obtenerYGuardarNormasDelDia(): Promise<{ fechaId: string; total: 
 
   const fechaId = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
 
+  // De madrugada El Peruano todavía no publicó la edición del día y
+  // devuelve la lista vacía. Si se guardara, ese documento vacío pasaría
+  // a ser "el más reciente" y la Biblioteca Legal se vería sin normas
+  // hasta la mañana — mejor no tocar nada y seguir mostrando la anterior.
+  if (normas.length === 0) {
+    logger.info(`ℹ️ El Peruano aún no publica normas para ${fechaId}, se conserva la última edición`)
+    return { fechaId, total: 0 }
+  }
+
   const db = getFirestore()
   await db.collection('normas_diarias').doc(fechaId).set({
     fecha: fechaId,
@@ -113,11 +130,29 @@ export const scrapearNormasDiarias = onSchedule(
   }
 )
 
-// Versión manual (HTTP) para probar ahora mismo, sin esperar a las 7am.
+// Si la última actualización fue hace menos que esto, el botón
+// "Actualizar" devuelve lo guardado en vez de volver a scrapear — así
+// nadie puede usar la función para bombardear El Peruano ni Firestore.
+const ESPERA_MINIMA_SCRAPING_MS = 10 * 60 * 1000
+
+// Versión manual (HTTP) — la usa el botón "Actualizar" de la Biblioteca
+// Legal, disponible para cualquier usuario con sesión.
 export const scrapearNormasDiariasManual = onRequest(
-  { cors: true },
+  { cors: ORIGENES_PERMITIDOS },
   async (req, res) => {
+    const uid = await autorizar(req, res)
+    if (!uid) return
+
     try {
+      const fechaId = new Date().toISOString().slice(0, 10)
+      const guardado = await getFirestore().collection('normas_diarias').doc(fechaId).get()
+      const actualizadoEn = guardado.get('actualizadoEn') as string | undefined
+      if (actualizadoEn && Date.now() - new Date(actualizadoEn).getTime() < ESPERA_MINIMA_SCRAPING_MS) {
+        const normas = (guardado.get('normas') as unknown[] | undefined) ?? []
+        res.json({ success: true, fechaId, total: normas.length, reciente: true })
+        return
+      }
+
       const resultado = await obtenerYGuardarNormasDelDia()
       res.json({ success: true, ...resultado })
     } catch (err) {
@@ -144,12 +179,15 @@ export const scrapearNormasDiariasManual = onRequest(
 // porque eso lo rige X-Frame-Options, no CORS).
 // ================================
 export const resolverUrlPdfNorma = onRequest(
-  { cors: true, timeoutSeconds: 30 },
+  { cors: ORIGENES_PERMITIDOS, timeoutSeconds: 30 },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
       return
     }
+
+    const uid = await autorizar(req, res)
+    if (!uid) return
 
     const { urlWrapper } = req.body as { urlWrapper?: string }
     if (!urlWrapper || !urlWrapper.startsWith('https://busquedas.elperuano.pe/')) {
@@ -194,6 +232,7 @@ interface PineconeRecord {
   fechaGuardado?: unknown
   numeroArticulo?: unknown
   esFuentePrimaria?: unknown
+  esComentario?: unknown
 }
 
 interface SearchRequest {
@@ -207,12 +246,16 @@ interface SearchRequest {
 // UPSERT RECORDS (integrated embedding)
 // ================================
 export const upsertToPinecone = onRequest(
-  { cors: true, secrets: [PINECONE_API_KEY] },
+  { cors: ORIGENES_PERMITIDOS, secrets: [PINECONE_API_KEY] },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
       return
     }
+
+    // Escribe en la base jurídica que la IA cita como ley — solo admins.
+    const uid = await autorizar(req, res, { soloAdmin: true })
+    if (!uid) return
 
     try {
       const pinecone = new Pinecone({
@@ -227,6 +270,12 @@ export const upsertToPinecone = onRequest(
         res.status(400).json({ error: 'records debe ser un array no vacío' })
         return
       }
+      if (records.length > 100) {
+        res.status(413).json({ error: 'Máximo 100 records por lote' })
+        return
+      }
+
+      logger.info(`👤 Upsert solicitado por admin ${uid}`)
 
       logger.info(`Procesando ${records.length} records`)
 
@@ -248,7 +297,9 @@ export const upsertToPinecone = onRequest(
         esFuentePrimaria: Boolean(record.esFuentePrimaria ?? false),
         ...(record.numeroArticulo !== undefined
           ? { numeroArticulo: Number(record.numeroArticulo) }
-          : {})
+          : {}),
+        // Ensayo/nota de doctrina que trae el PDF del código (no es ley)
+        ...(record.esComentario === true ? { esComentario: true } : {})
       }))
 
       await idx.upsertRecords({ records: registros })
@@ -271,15 +322,19 @@ export const upsertToPinecone = onRequest(
 // el patrón `${documentoId}_chunk_N`) y los borramos en lote.
 // ================================
 export const eliminarDocumentoDePinecone = onRequest(
-  { cors: true, secrets: [PINECONE_API_KEY] },
+  { cors: ORIGENES_PERMITIDOS, secrets: [PINECONE_API_KEY] },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
       return
     }
 
+    const uid = await autorizar(req, res, { soloAdmin: true })
+    if (!uid) return
+
     try {
       const { documentoId } = req.body as { documentoId: string }
+      logger.info(`👤 Eliminación de "${documentoId}" solicitada por admin ${uid}`)
 
       if (!documentoId) {
         res.status(400).json({ error: 'documentoId es requerido' })
@@ -294,7 +349,6 @@ export const eliminarDocumentoDePinecone = onRequest(
       const prefix = `${documentoId}_chunk_`
 
       let totalEliminados = 0
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let paginationToken: string | undefined = undefined
       let paginaNum = 0
 
@@ -310,7 +364,6 @@ export const eliminarDocumentoDePinecone = onRequest(
         logger.info(`--- Página ${paginaNum} ---`)
         logger.info('Respuesta cruda de listPaginated:', JSON.stringify(pagina).slice(0, 800))
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const ids: string[] = (pagina.vectors ?? [])
           .map((v: { id?: string }) => v.id)
           .filter((id: string | undefined): id is string => !!id)
@@ -345,15 +398,19 @@ export const eliminarDocumentoDePinecone = onRequest(
 // grupo. Usa dryRun:true para solo contar, sin borrar nada todavía.
 // ================================
 export const eliminarDuplicadosDePinecone = onRequest(
-  { cors: true, secrets: [PINECONE_API_KEY], timeoutSeconds: 300 },
+  { cors: ORIGENES_PERMITIDOS, secrets: [PINECONE_API_KEY], timeoutSeconds: 300 },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
       return
     }
 
+    const uid = await autorizar(req, res, { soloAdmin: true })
+    if (!uid) return
+
     try {
       const { dryRun } = req.body as { dryRun?: boolean }
+      logger.info(`👤 Limpieza de duplicados (dryRun=${String(dryRun)}) solicitada por admin ${uid}`)
 
       const pinecone = new Pinecone({
         apiKey: PINECONE_API_KEY.value()
@@ -363,7 +420,6 @@ export const eliminarDuplicadosDePinecone = onRequest(
 
       // 1. Listar TODOS los IDs del índice (paginado, sin filtro de prefijo)
       const todosLosIds: string[] = []
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let paginationToken: string | undefined = undefined
 
       do {
@@ -488,20 +544,35 @@ export const eliminarDuplicadosDePinecone = onRequest(
 // SEARCH RECORDS (integrated embedding)
 // ================================
 export const searchInPinecone = onRequest(
-  { cors: true, secrets: [PINECONE_API_KEY] },
+  { cors: ORIGENES_PERMITIDOS, secrets: [PINECONE_API_KEY] },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
       return
     }
 
+    const uid = await autorizar(req, res)
+    if (!uid) return
+
     try {
+      const { query, topK: topKPedido = 5, tipoDocumento, soloFuentePrimaria } = req.body as SearchRequest
+      if (typeof query !== 'string' || !query.trim()) {
+        res.status(400).json({ error: 'Falta query' })
+        return
+      }
+      if (excede(query, MAX_CARACTERES_MENSAJE)) {
+        res.status(413).json({ error: 'La búsqueda es demasiado larga' })
+        return
+      }
+      if (!(await consumirCuotaIA(uid, res))) return
+
+      const topK = Math.min(Math.max(Number(topKPedido) || 5, 1), 20)
+
       const pinecone = new Pinecone({
         apiKey: PINECONE_API_KEY.value()
       })
 
       const idx = pinecone.index(PINECONE_INDEX, PINECONE_HOST)
-      const { query, topK = 5, tipoDocumento, soloFuentePrimaria } = req.body as SearchRequest
 
       const filtros: Record<string, unknown> = {}
       if (tipoDocumento) filtros.tipoDocumento = { $eq: tipoDocumento }
@@ -539,6 +610,120 @@ export const searchInPinecone = onRequest(
     } catch (err) {
       const error = err as Error
       logger.error('❌ Error en search:', error.message)
+      res.status(500).json({ error: error.message })
+    }
+  }
+)
+
+// ================================
+// ESTADÍSTICAS DEL ÍNDICE (panel Admin)
+// Antes se consultaba desde el navegador con el SDK de Pinecone, lo que
+// obligaba a meter la API key en el bundle público. Ahora la key solo
+// vive aquí, como secreto de Firebase.
+// ================================
+export const estadisticasPinecone = onRequest(
+  { cors: ORIGENES_PERMITIDOS, secrets: [PINECONE_API_KEY] },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).send('Method not allowed')
+      return
+    }
+
+    const uid = await autorizar(req, res, { soloAdmin: true })
+    if (!uid) return
+
+    try {
+      const pinecone = new Pinecone({ apiKey: PINECONE_API_KEY.value() })
+      const idx = pinecone.index(PINECONE_INDEX, PINECONE_HOST)
+      const stats = await idx.describeIndexStats()
+
+      res.json({ conectado: true, totalVectores: stats.totalRecordCount ?? 0 })
+    } catch (err) {
+      const error = err as Error
+      logger.error('❌ Error en estadisticasPinecone:', error.message)
+      res.status(500).json({ error: error.message })
+    }
+  }
+)
+
+// ================================
+// LISTAR DOCUMENTOS INDEXADOS (panel Admin)
+// La lista antes vivía en el localStorage del navegador de quien subió
+// cada PDF, así que cada admin solo veía lo suyo. Ahora se reconstruye
+// desde el propio índice: los IDs siguen el patrón `${documentoId}_chunk_N`
+// (ver guardarDocumentoEnPinecone), así que se agrupan por ese prefijo y
+// se lee el nombre/tipo del primer chunk de cada documento.
+// ================================
+interface DocumentoIndexadoResumen {
+  id: string
+  nombre: string
+  tipo: string
+  chunks: number
+}
+
+export const listarDocumentosPinecone = onRequest(
+  { cors: ORIGENES_PERMITIDOS, secrets: [PINECONE_API_KEY], timeoutSeconds: 120 },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).send('Method not allowed')
+      return
+    }
+
+    const uid = await autorizar(req, res, { soloAdmin: true })
+    if (!uid) return
+
+    try {
+      const pinecone = new Pinecone({ apiKey: PINECONE_API_KEY.value() })
+      const idx = pinecone.index(PINECONE_INDEX, PINECONE_HOST)
+
+      // 1. Todos los IDs, agrupados por documento
+      const chunksPorDocumento = new Map<string, string[]>()
+      let paginationToken: string | undefined = undefined
+      do {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pagina: any = await idx.listPaginated({
+          limit: 100,
+          ...(paginationToken ? { paginationToken } : {})
+        })
+        for (const v of (pagina.vectors ?? []) as { id?: string }[]) {
+          if (!v.id) continue
+          const separador = v.id.lastIndexOf('_chunk_')
+          const documentoId = separador === -1 ? v.id : v.id.slice(0, separador)
+          const lista = chunksPorDocumento.get(documentoId) ?? []
+          lista.push(v.id)
+          chunksPorDocumento.set(documentoId, lista)
+        }
+        paginationToken = pagina.pagination?.next
+      } while (paginationToken)
+
+      // 2. Nombre y tipo, leídos de un chunk representativo por documento
+      const representantes = [...chunksPorDocumento.values()].map(ids => ids[0] ?? '')
+      const metadatos = new Map<string, Record<string, unknown>>()
+      for (let i = 0; i < representantes.length; i += 100) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const resultado: any = await idx.fetch({ ids: representantes.slice(i, i + 100) })
+        for (const [id, record] of Object.entries(resultado.records ?? {})) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          metadatos.set(id, ((record as any)?.metadata ?? {}) as Record<string, unknown>)
+        }
+      }
+
+      const documentos: DocumentoIndexadoResumen[] = [...chunksPorDocumento.entries()]
+        .map(([documentoId, ids]) => {
+          const meta = metadatos.get(ids[0] ?? '') ?? {}
+          return {
+            id: documentoId,
+            nombre: typeof meta.nombreDocumento === 'string' && meta.nombreDocumento ? meta.nombreDocumento : documentoId,
+            tipo: typeof meta.tipoDocumento === 'string' ? meta.tipoDocumento : '',
+            chunks: ids.length
+          }
+        })
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+
+      res.json({ documentos })
+    } catch (err) {
+      const error = err as Error
+      logger.error('❌ Error en listarDocumentosPinecone:', error.message)
       res.status(500).json({ error: error.message })
     }
   }

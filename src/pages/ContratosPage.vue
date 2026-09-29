@@ -111,8 +111,14 @@
               </div>
             </div>
 
-            <!-- Word: sin "páginas" que paginar — se muestra el HTML extraído
-                 directo, como una hoja continua. -->
+            <!-- Word: vista fiel (docx-preview), tal como es la plantilla —
+                 con las ediciones hechas en "Editar Contrato". -->
+            <div v-else-if="modoWordFiel" class="contrato-vista-word">
+              <VistaWord :html="htmlVistaWordEditado || htmlVistaWord" :estilos="estilosVistaWord" />
+            </div>
+
+            <!-- Word (respaldo): si la vista fiel no se pudo dibujar, o después
+                 de "Completar con IA" — el HTML extraído, como hoja continua. -->
             <div v-else-if="esWordTemplate && textoHtml" class="word-preview-container">
               <div
                 class="document-preview"
@@ -157,7 +163,18 @@
 
             <!-- TAB MANUAL -->
             <div v-if="tabEdicion === 'manual'">
-              <EditorContrato :model-value="textoHtml" @update:model-value="onEditorHtmlUpdate" />
+              <!-- Plantilla Word: se edita sobre la vista fiel; la descarga
+                   aplica los cambios al Word original conservando el formato. -->
+              <template v-if="modoWordFiel">
+                <p class="vista-word-ayuda">
+                  <q-icon name="edit" class="q-mr-xs" />
+                  Edita el texto directamente en el documento. Al descargar, tus cambios se aplican sobre el Word original y se conserva todo su formato.
+                </p>
+                <div class="contrato-vista-word">
+                  <VistaWord editable :html="htmlVistaWordEditado" :estilos="estilosVistaWord" @editar="onEditarVistaWord" />
+                </div>
+              </template>
+              <EditorContrato v-else :model-value="textoHtml" @update:model-value="onEditorHtmlUpdate" />
             </div>
 
             <!-- TAB CHAT: la IA analiza el contrato y pregunta un dato a la vez
@@ -251,28 +268,8 @@
                 unelevated no-caps
                 class="download-btn download-btn--primary"
               />
-              <q-btn
-                outline
-                color="grey-4"
-                icon="picture_as_pdf"
-                label="PDF"
-                @click="descargarPDF"
-                :loading="descargandoPDF"
-                no-caps
-                class="download-btn"
-              />
-              <q-btn
-                outline
-                color="grey-4"
-                icon="edit_document"
-                label="Abrir en Word"
-                @click="abrirEnWord"
-                :loading="abriendoEnWord"
-                no-caps
-                class="download-btn"
-              />
             </div>
-            <p v-if="errorAbrirWord" class="text-negative text-caption q-mt-sm q-mb-none">{{ errorAbrirWord }}</p>
+            <p v-if="avisoDescargaWord" class="download-aviso q-mt-sm q-mb-none">{{ avisoDescargaWord }}</p>
           </div>
         </div>
 
@@ -309,10 +306,14 @@ import { useAuthStore } from '../stores/auth'
 import type { ContractTemplate } from '../stores/contratos-store'
 import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy } from 'pdfjs-dist'
 import { chatEditarContratoIA, type MensajeChatEdicion } from '../services/geminiService'
-import { exportToWord, exportToWordConMarcaDeAgua, exportToPDF } from '../utils/documentExport'
+import { exportToWordConMarcaDeAgua } from '../utils/documentExport'
 import { extraerHtmlWord } from '../utils/mammothExtractor'
-import { subirDocumentoTemporal, obtenerUrlFirmadaDocumento } from '../services/documentosTemporalesService'
+import { subirDocumentoTemporal, descargarWordEditado } from '../services/documentosTemporalesService'
+import { renderizarWord } from '../utils/vistaWord'
+import { calcularCambios } from '../utils/edicionWord'
+import { extraerTextoVisibleDeHtml } from '../utils/htmlTexto'
 import EditorContrato from '../components/EditorContrato.vue'
+import VistaWord from '../components/VistaWord.vue'
 
 GlobalWorkerOptions.workerSrc = `${import.meta.env.BASE_URL}pdf.worker.min.js`
 
@@ -342,10 +343,7 @@ const tabEdicion = ref('manual')
 const textoEditado = ref('')
 const textoHtml = ref('')
 const descargandoWord = ref(false)
-const descargandoPDF = ref(false)
 const extrayendoTexto = ref(false)
-const abriendoEnWord = ref(false)
-const errorAbrirWord = ref('')
 
 // =========================
 // CHAT DE EDICIÓN CON IA (tab "Completar con IA")
@@ -403,6 +401,7 @@ const selectTemplate = (template: ContractTemplate) => {
   textoEditado.value = ''
   textoHtml.value = ''
   plantillaFuenteDetectada.value = undefined
+  reiniciarVistaWord()
   reiniciarChatEdicion()
 }
 
@@ -489,6 +488,80 @@ const esWordTemplate = computed(() =>
 const plantillaFuenteDetectada = ref<string | undefined>(undefined)
 
 // =========================
+// VISTA Y EDICIÓN FIEL DEL WORD (plantillas .docx subidas en Admin)
+// La plantilla se muestra con docx-preview (utils/vistaWord.ts), tal como es
+// el Word: fuentes, tamaños, márgenes, tablas, encabezados, pies y logos. Se
+// edita sobre esa misma vista y la descarga aplica solo los cambios de texto
+// sobre el .docx ORIGINAL (Cloud Function descargarWordEditado), más el
+// membrete LEXIT. El HTML de mammoth (textoHtml/textoEditado) se sigue
+// generando para "Completar con IA" y el PDF, que no cambian.
+//
+// Si se usa "Completar con IA", ese resultado viene como texto reescrito y
+// se sigue mostrando/descargando como hasta ahora (usandoResultadoIA).
+// =========================
+const htmlVistaWord = ref('')          // la plantilla tal como se cargó
+const htmlVistaWordEditado = ref('')   // con las ediciones del usuario
+const estilosVistaWord = ref('')
+const archivoPlantillaWord = shallowRef<File | null>(null)
+const usandoResultadoIA = ref(false)
+const avisoDescargaWord = ref('')
+// Copia del .docx original en la carpeta privada del usuario (Storage),
+// que es de donde la Cloud Function lo toma para aplicar los cambios.
+let storagePathPlantillaTemporal: string | null = null
+
+const modoWordFiel = computed(() => esWordTemplate.value && !!htmlVistaWord.value && !usandoResultadoIA.value)
+
+function reiniciarVistaWord() {
+  htmlVistaWord.value = ''
+  htmlVistaWordEditado.value = ''
+  estilosVistaWord.value = ''
+  archivoPlantillaWord.value = null
+  usandoResultadoIA.value = false
+  avisoDescargaWord.value = ''
+  storagePathPlantillaTemporal = null
+}
+
+// Texto del cuerpo (sin encabezados/pies) para "Completar con IA".
+function textoDelCuerpo(html: string): string {
+  return extraerTextoVisibleDeHtml(html.replace(/<(header|footer)\b[\s\S]*?<\/\1>/gi, ''))
+}
+
+function onEditarVistaWord(html: string) {
+  htmlVistaWordEditado.value = html
+  textoEditado.value = textoDelCuerpo(html)
+}
+
+async function prepararPlantillaEnStorage(): Promise<string> {
+  if (storagePathPlantillaTemporal) return storagePathPlantillaTemporal
+  const uid = authStore.user?.uid
+  if (!uid) throw new Error('No hay una sesión activa.')
+  const original = archivoPlantillaWord.value
+  if (!original) throw new Error('No se encontró la plantilla original. Vuelve a seleccionarla.')
+  // La Cloud Function exige extensión .docx en la ruta.
+  const nombre = /\.docx$/i.test(original.name) ? original.name : `${original.name}.docx`
+  const archivo = new File([original], nombre, { type: original.type })
+  storagePathPlantillaTemporal = await subirDocumentoTemporal(uid, archivo)
+  return storagePathPlantillaTemporal
+}
+
+function cambiosDeLaVistaWord() {
+  return calcularCambios(htmlVistaWord.value, htmlVistaWordEditado.value || htmlVistaWord.value)
+}
+
+// Descarga fiel: Word original + cambios (+ membrete LEXIT si se pide).
+async function descargarWordFiel(marcaLexit: boolean) {
+  avisoDescargaWord.value = ''
+  const cambios = cambiosDeLaVistaWord()
+  const storagePath = await prepararPlantillaEnStorage()
+  const resultado = await descargarWordEditado(storagePath, cambios, currentTemplate.value?.name || 'contrato', { marcaLexit })
+  window.location.href = resultado.url
+  if (resultado.fallidos.length > 0) {
+    avisoDescargaWord.value = `Se aplicaron ${resultado.aplicados} de ${cambios.length} cambios; ` +
+      `${resultado.fallidos.length} no se pudieron aplicar sin alterar el formato. Hazlos directamente en Word.`
+  }
+}
+
+// =========================
 // CARGAR PLANTILLA WORD (mismo rol que loadPDFPreview, pero para .docx —
 // no hay "páginas" que renderizar en canvas, se muestra el HTML extraído
 // directo, igual que en Consultas)
@@ -501,6 +574,7 @@ const loadWordPreview = async () => {
   textoEditado.value = ''
   textoHtml.value = ''
   pdfDoc.value = null
+  reiniciarVistaWord()
 
   try {
     const blob = await store.downloadOriginalPDF(currentTemplate.value.id)
@@ -509,10 +583,25 @@ const loadWordPreview = async () => {
       currentTemplate.value.name || 'plantilla.docx',
       { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
     )
-    const { html, fuenteDetectada } = await extraerHtmlWord(archivo)
+    // HTML de mammoth (para "Completar con IA" y el PDF, como siempre) y la
+    // vista fiel del Word. Si la vista fiel fallara, se sigue mostrando la
+    // de siempre.
+    const [{ html, fuenteDetectada }, vistaFiel] = await Promise.all([
+      extraerHtmlWord(archivo),
+      renderizarWord(archivo).catch(err => {
+        console.error('No se pudo dibujar la vista fiel del Word:', err)
+        return null
+      })
+    ])
     textoHtml.value = html
     textoEditado.value = stripHtml(html)
     plantillaFuenteDetectada.value = fuenteDetectada ?? undefined
+    if (vistaFiel) {
+      htmlVistaWord.value = vistaFiel.html
+      htmlVistaWordEditado.value = vistaFiel.html
+      estilosVistaWord.value = vistaFiel.estilos
+      archivoPlantillaWord.value = archivo
+    }
     loadingPdf.value = false
   } catch (err) {
     console.error('Error cargando plantilla Word:', err)
@@ -631,6 +720,9 @@ const aplicarResultadoChatEdicion = (textoModificado: string) => {
   textoEditado.value = textoModificado
   textoHtml.value = textoAHtml(textoModificado)
   chatEdicionTerminado.value = true
+  // El resultado de la IA es texto reescrito: desde aquí se muestra y
+  // descarga como hasta ahora (no con la vista/descarga fiel del Word).
+  usandoResultadoIA.value = true
 }
 
 const iniciarChatEdicion = async () => {
@@ -698,6 +790,20 @@ const triggerDownload = (blob: Blob, fileName: string) => {
 // por LexIT" — descarga final del contrato, no para seguir editando)
 // =========================
 const descargarWord = async () => {
+  // Plantilla Word: el Word original con los cambios y el membrete LEXIT,
+  // sin reconstruirlo (mismo formato que la plantilla).
+  if (modoWordFiel.value) {
+    descargandoWord.value = true
+    try {
+      await descargarWordFiel(true)
+    } catch (err) {
+      console.error('Error descargando el Word:', err)
+      avisoDescargaWord.value = err instanceof Error ? err.message : 'No se pudo descargar el Word.'
+    } finally {
+      descargandoWord.value = false
+    }
+    return
+  }
   if (!textoHtml.value) return
   descargandoWord.value = true
   try {
@@ -707,53 +813,6 @@ const descargarWord = async () => {
     console.error('Error exportando Word:', err)
   } finally {
     descargandoWord.value = false
-  }
-}
-
-// =========================
-// ABRIR EN WORD (mismo flujo que Consultas: documento LIMPIO, sin marca
-// de agua, subido a Storage temporal y abierto vía URL firmada para
-// seguir editando en Word de escritorio con el Add-in)
-// =========================
-const abrirEnWord = async () => {
-  if (!textoHtml.value) return
-  const uid = authStore.user?.uid
-  if (!uid) {
-    errorAbrirWord.value = 'No hay una sesión activa.'
-    return
-  }
-  abriendoEnWord.value = true
-  errorAbrirWord.value = ''
-  try {
-    const nombre = `${currentTemplate.value?.name || 'contrato'}.docx`
-    const blob = await exportToWord(textoHtml.value, currentTemplate.value?.name || 'contrato', plantillaFuenteDetectada.value)
-    const archivo = new File([blob], nombre, {
-      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    })
-    const storagePath = await subirDocumentoTemporal(uid, archivo)
-    const urlFirmada = await obtenerUrlFirmadaDocumento(storagePath)
-    window.location.href = urlFirmada
-  } catch (err) {
-    console.error('Error al abrir en Word:', err)
-    errorAbrirWord.value = err instanceof Error ? err.message : 'No se pudo abrir en Word.'
-  } finally {
-    abriendoEnWord.value = false
-  }
-}
-
-// =========================
-// DESCARGAR PDF
-// =========================
-const descargarPDF = async () => {
-  if (!textoHtml.value) return
-  descargandoPDF.value = true
-  try {
-    const blob = await exportToPDF(textoHtml.value, currentTemplate.value?.name || 'contrato')
-    triggerDownload(blob, `${currentTemplate.value?.name || 'contrato'}.pdf`)
-  } catch (err) {
-    console.error('Error exportando PDF:', err)
-  } finally {
-    descargandoPDF.value = false
   }
 }
 
@@ -988,6 +1047,24 @@ canvas {
 /* Plantilla Word: hoja continua (sin paginación como el PDF) — se deja en
    blanco a propósito, como el papel real de un documento, apoyada sobre
    la card oscura */
+/* Vista fiel del Word (componente VistaWord): alto generoso para ver el
+   documento cómodo; la hoja se ajusta sola al ancho. */
+.contrato-vista-word {
+  height: 75vh;
+  min-height: 480px;
+}
+
+.vista-word-ayuda {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  color: var(--lx-text-muted, #a9a9b0);
+}
+
+.download-aviso {
+  font-size: 0.8rem;
+  color: #e8c48c;
+}
+
 .word-preview-container {
   background: white;
   border-radius: var(--border-radius-small);

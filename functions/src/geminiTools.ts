@@ -1,6 +1,20 @@
 import { onRequest } from 'firebase-functions/v2/https'
 import * as logger from 'firebase-functions/logger'
-import { GEMINI_API_KEY, obtenerModeloGemini } from './geminiClient'
+import { createHash } from 'node:crypto'
+import { getFirestore } from 'firebase-admin/firestore'
+import { GEMINI_API_KEY, TIMEOUT_FUNCIONES_IA_SEGUNDOS, conModeloDeRespaldo } from './geminiClient'
+import {
+  ORIGENES_PERMITIDOS,
+  MAX_CARACTERES_DOCUMENTO,
+  MAX_CARACTERES_CONTRATO,
+  MAX_CARACTERES_MENSAJE,
+  MAX_MENSAJES_HISTORIAL,
+  autorizar,
+  consumirCuotaIA,
+  excede
+} from './seguridad'
+import { dividirEnSecciones } from './seccionesContrato'
+import { asignarBaseLegal, PINECONE_API_KEY } from './baseLegal'
 
 // ================================
 // SUGERENCIAS DE CAMBIOS (redline) PARA UN CONTRATO
@@ -15,22 +29,20 @@ interface SugerenciaCambio {
   nivel?: 'alto' | 'medio' | 'bajo'
 }
 
-export const generarSugerenciasContrato = onRequest(
-  { cors: true, secrets: [GEMINI_API_KEY], timeoutSeconds: 120 },
-  async (req, res) => {
-    if (req.method !== 'POST') {
-      res.status(405).send('Method not allowed')
-      return
-    }
+// Contratos largos (70-270 páginas) se revisan por secciones: cada una va
+// en su propia llamada a Gemini, varias a la vez, y los resultados se
+// juntan. Así no se corta por tiempo y cada parte recibe su propia
+// revisión (con una sola llamada, un contrato de 200 páginas quedaba con
+// 10 marcas en total). Sigue contando como 1 consulta del límite diario.
+const CARACTERES_POR_SECCION = 30_000
+const SECCIONES_EN_PARALELO = 4
+const MAX_ANOTACIONES_CONTRATO_CORTO = 10
+const MAX_ANOTACIONES_POR_SECCION = 8
+// Con muchas secciones cada llamada puede tardar; más margen que el resto.
+const TIMEOUT_SUGERENCIAS_SEGUNDOS = 300
 
-    try {
-      const { textoContrato } = req.body as { textoContrato?: string }
-      if (!textoContrato?.trim()) {
-        res.status(400).json({ error: 'Falta textoContrato' })
-        return
-      }
-
-      const prompt = `
+function promptSugerencias(texto: string, maxAnotaciones: number, parte?: { numero: number; total: number }): string {
+  return `
     Eres un abogado experto en derecho peruano. Revisa este contrato y devuelve
     dos tipos de anotaciones, para poder marcarlas directamente sobre el texto:
 
@@ -54,20 +66,119 @@ export const generarSugerenciasContrato = onRequest(
     Reglas importantes:
     - "textoOriginal" debe ser una copia literal de un fragmento del contrato de abajo (para poder ubicarlo con una búsqueda de texto exacta). No lo alteres ni corrijas errores de tipeo del original.
     - Si no hay nada que anotar, responde con un array vacío [].
-    - Máximo 10 anotaciones en total, prioriza las más importantes.
+    - Máximo ${maxAnotaciones} anotaciones en total, prioriza las más importantes.
+    ${parte ? `- Esta es la PARTE ${parte.numero} de ${parte.total} de un contrato largo. Revisa SOLO esta parte (las demás se revisan por separado) y no marques como faltante algo que podría estar en otra parte.` : ''}
 
-    CONTRATO:
-    ${textoContrato}
+    ${parte ? `CONTRATO (parte ${parte.numero} de ${parte.total}):` : 'CONTRATO:'}
+    ${texto}
   `
+}
 
-      const model = obtenerModeloGemini()
-      const result = await model.generateContent(prompt)
-      const text = result.response.text()
-      const clean = text.replace(/```json|```/g, '').trim()
-      const sugerencias = JSON.parse(clean) as Omit<SugerenciaCambio, 'id'>[]
+// Gemini a veces envuelve el array en un objeto ({"anotaciones": [...]}).
+function leerAnotaciones(respuesta: string): Omit<SugerenciaCambio, 'id'>[] {
+  const datos: unknown = JSON.parse(respuesta.replace(/```json|```/g, '').trim())
+  if (Array.isArray(datos)) return datos as Omit<SugerenciaCambio, 'id'>[]
+  if (datos && typeof datos === 'object') {
+    const lista = Object.values(datos).find(Array.isArray)
+    if (lista) return lista as Omit<SugerenciaCambio, 'id'>[]
+  }
+  return []
+}
+
+async function anotarTexto(texto: string, maxAnotaciones: number, parte?: { numero: number; total: number }) {
+  const result = await conModeloDeRespaldo(model => model.generateContent(promptSugerencias(texto, maxAnotaciones, parte)), { json: true })
+  return leerAnotaciones(result.response.text())
+}
+
+// Ejecuta las tareas de a `limite` a la vez, conservando el orden.
+async function enParalelo<T, R>(items: T[], limite: number, tarea: (item: T, indice: number) => Promise<R>): Promise<PromiseSettledResult<R>[]> {
+  const resultados: PromiseSettledResult<R>[] = new Array(items.length)
+  let siguiente = 0
+  const trabajador = async () => {
+    while (siguiente < items.length) {
+      const indice = siguiente++
+      const item = items[indice]
+      if (item === undefined) continue
+      try {
+        resultados[indice] = { status: 'fulfilled', value: await tarea(item, indice) }
+      } catch (reason) {
+        resultados[indice] = { status: 'rejected', reason }
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limite, items.length) }, trabajador))
+  return resultados
+}
+
+const ORDEN_NIVEL: Record<string, number> = { alto: 0, medio: 1, bajo: 2 }
+
+export const generarSugerenciasContrato = onRequest(
+  { cors: ORIGENES_PERMITIDOS, secrets: [GEMINI_API_KEY, PINECONE_API_KEY], timeoutSeconds: TIMEOUT_SUGERENCIAS_SEGUNDOS },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).send('Method not allowed')
+      return
+    }
+
+    const uid = await autorizar(req, res)
+    if (!uid) return
+
+    try {
+      const { textoContrato } = req.body as { textoContrato?: string }
+      if (!textoContrato?.trim()) {
+        res.status(400).json({ error: 'Falta textoContrato' })
+        return
+      }
+      if (excede(textoContrato, MAX_CARACTERES_CONTRATO)) {
+        res.status(413).json({ error: 'El contrato es demasiado largo para analizarlo' })
+        return
+      }
+      if (!(await consumirCuotaIA(uid, res))) return
+
+      const secciones = dividirEnSecciones(textoContrato, CARACTERES_POR_SECCION)
+      let anotaciones: Omit<SugerenciaCambio, 'id'>[]
+      let partesConError = 0
+
+      if (secciones.length <= 1) {
+        anotaciones = await anotarTexto(textoContrato, MAX_ANOTACIONES_CONTRATO_CORTO)
+      } else {
+        logger.info(`📑 Contrato largo (${textoContrato.length} car.): ${secciones.length} secciones`)
+        const resultados = await enParalelo(secciones, SECCIONES_EN_PARALELO, (texto, i) =>
+          anotarTexto(texto, MAX_ANOTACIONES_POR_SECCION, { numero: i + 1, total: secciones.length }))
+        anotaciones = []
+        resultados.forEach((r, i) => {
+          if (r.status === 'fulfilled') {
+            anotaciones.push(...r.value)
+          } else {
+            partesConError++
+            logger.error(`❌ Sección ${i + 1}/${secciones.length} sin analizar:`, (r.reason as Error)?.message)
+          }
+        })
+        if (partesConError === secciones.length) {
+          throw new Error('No se pudo analizar ninguna parte del contrato')
+        }
+        // Sin repetidos (mismo fragmento marcado dos veces) y los riesgos
+        // más graves primero; los cambios de redacción al final.
+        const vistos = new Set<string>()
+        anotaciones = anotaciones
+          .filter(a => {
+            const clave = `${a.tipo}::${(a.textoOriginal ?? '').trim()}`
+            if (vistos.has(clave)) return false
+            vistos.add(clave)
+            return true
+          })
+          .sort((a, b) => (ORDEN_NIVEL[a.nivel ?? ''] ?? 3) - (ORDEN_NIVEL[b.nivel ?? ''] ?? 3))
+      }
+
+      // Base legal de la base jurídica, solo cuando un artículo sustenta
+      // directamente la sugerencia (ver baseLegal.ts). Si falla, las
+      // sugerencias van igual, sin cita.
+      const conBaseLegal = await asignarBaseLegal(anotaciones)
 
       res.json({
-        sugerencias: sugerencias.map((s, i) => ({ id: `sugerencia-${i}`, ...s }))
+        sugerencias: conBaseLegal.map((s, i) => ({ id: `sugerencia-${i}`, ...s })),
+        partes: secciones.length,
+        partesConError
       })
     } catch (err) {
       const error = err as Error
@@ -81,12 +192,15 @@ export const generarSugerenciasContrato = onRequest(
 // MODIFICAR PLANTILLA CON IA
 // ================================
 export const modificarPlantillaIA = onRequest(
-  { cors: true, secrets: [GEMINI_API_KEY], timeoutSeconds: 120 },
+  { cors: ORIGENES_PERMITIDOS, secrets: [GEMINI_API_KEY], timeoutSeconds: TIMEOUT_FUNCIONES_IA_SEGUNDOS },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
       return
     }
+
+    const uid = await autorizar(req, res)
+    if (!uid) return
 
     try {
       const { textoPlantilla, instruccion } = req.body as { textoPlantilla?: string; instruccion?: string }
@@ -94,6 +208,11 @@ export const modificarPlantillaIA = onRequest(
         res.status(400).json({ error: 'Falta textoPlantilla o instruccion' })
         return
       }
+      if (excede(textoPlantilla, MAX_CARACTERES_DOCUMENTO) || excede(instruccion, MAX_CARACTERES_MENSAJE)) {
+        res.status(413).json({ error: 'La plantilla o la instrucción son demasiado largas' })
+        return
+      }
+      if (!(await consumirCuotaIA(uid, res))) return
 
       const prompt = `
     Eres un abogado experto en derecho peruano.
@@ -107,8 +226,7 @@ export const modificarPlantillaIA = onRequest(
     Devuelve SOLO el contrato modificado, sin explicaciones.
   `
 
-      const model = obtenerModeloGemini()
-      const result = await model.generateContent(prompt)
+      const result = await conModeloDeRespaldo(model => model.generateContent(prompt))
 
       res.json({ textoModificado: result.response.text() })
     } catch (err) {
@@ -136,15 +254,18 @@ interface RespuestaChatEdicion {
 }
 
 export const chatEdicionContratoIA = onRequest(
-  { cors: true, secrets: [GEMINI_API_KEY], timeoutSeconds: 120 },
+  { cors: ORIGENES_PERMITIDOS, secrets: [GEMINI_API_KEY], timeoutSeconds: TIMEOUT_FUNCIONES_IA_SEGUNDOS },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
       return
     }
 
+    const uid = await autorizar(req, res)
+    if (!uid) return
+
     try {
-      const { textoContrato, historialChat = [], respuestaUsuario } = req.body as {
+      const { textoContrato, historialChat: historialRecibido = [], respuestaUsuario } = req.body as {
         textoContrato?: string
         historialChat?: MensajeChatEdicion[]
         respuestaUsuario?: string
@@ -153,6 +274,19 @@ export const chatEdicionContratoIA = onRequest(
         res.status(400).json({ error: 'Falta textoContrato' })
         return
       }
+      if (!Array.isArray(historialRecibido)) {
+        res.status(400).json({ error: 'historialChat debe ser un array' })
+        return
+      }
+      if (excede(textoContrato, MAX_CARACTERES_DOCUMENTO) || excede(respuestaUsuario, MAX_CARACTERES_MENSAJE)) {
+        res.status(413).json({ error: 'El contrato o el mensaje son demasiado largos' })
+        return
+      }
+      if (!(await consumirCuotaIA(uid, res))) return
+
+      // Solo los últimos mensajes: la conversación completa puede crecer
+      // sin límite y cada turno se reenvía entero a Gemini.
+      const historialChat = historialRecibido.slice(-MAX_MENSAJES_HISTORIAL)
 
       const systemInstruction = `
 Eres un asistente legal que ayuda a un usuario a completar o modificar un contrato, conversando paso a paso.
@@ -174,20 +308,19 @@ Responde SIEMPRE y ÚNICAMENTE en JSON, con esta estructura exacta, sin texto fu
 }
 `
 
-      const model = obtenerModeloGemini()
-      const chat = model.startChat({
+      const mensajeUsuario = respuestaUsuario?.trim() ||
+        'Analiza el contrato y hazme la primera pregunta para completarlo o modificarlo.'
+
+      // El chat se arma dentro del callback: si el modelo principal está
+      // saturado, se vuelve a armar con el modelo de respaldo.
+      const result = await conModeloDeRespaldo(model => model.startChat({
         history: historialChat.map(m => ({
           role: m.esIA ? 'model' : 'user',
           parts: [{ text: m.contenido }]
         })),
-        generationConfig: { maxOutputTokens: 4000 },
+        generationConfig: { maxOutputTokens: 4000, responseMimeType: 'application/json' },
         systemInstruction: { role: 'user', parts: [{ text: systemInstruction }] }
-      })
-
-      const mensajeUsuario = respuestaUsuario?.trim() ||
-        'Analiza el contrato y hazme la primera pregunta para completarlo o modificarlo.'
-
-      const result = await chat.sendMessage(mensajeUsuario)
+      }).sendMessage(mensajeUsuario))
       const text = result.response.text()
       const clean = text.replace(/```json|```/g, '').trim()
       const parsed = JSON.parse(clean) as Partial<RespuestaChatEdicion>
@@ -217,23 +350,44 @@ Responde SIEMPRE y ÚNICAMENTE en JSON, con esta estructura exacta, sin texto fu
 // RESUMEN DE NORMAS DEL DÍA
 // ================================
 export const resumirNormasDelDiaIA = onRequest(
-  { cors: true, secrets: [GEMINI_API_KEY], timeoutSeconds: 60 },
+  { cors: ORIGENES_PERMITIDOS, secrets: [GEMINI_API_KEY], timeoutSeconds: TIMEOUT_FUNCIONES_IA_SEGUNDOS },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
       return
     }
 
+    const uid = await autorizar(req, res)
+    if (!uid) return
+
     try {
       const { normas } = req.body as { normas?: { titulo: string; sumilla: string }[] }
-      if (!normas || normas.length === 0) {
+      if (!Array.isArray(normas) || normas.length === 0) {
         res.status(400).json({ error: 'Falta normas' })
+        return
+      }
+      if (normas.length > 300 || excede(JSON.stringify(normas), MAX_CARACTERES_DOCUMENTO)) {
+        res.status(413).json({ error: 'Demasiadas normas para resumir' })
         return
       }
 
       const listado = normas
         .map((n, i) => `${i + 1}. ${n.titulo}${n.sumilla ? ` — ${n.sumilla}` : ''}`)
         .join('\n')
+
+      // Todos los usuarios ven las mismas normas del día, así que el
+      // resumen se genera una sola vez por listado y se reutiliza — abrir
+      // la Biblioteca Legal no gasta Gemini ni el cupo del usuario.
+      const cacheRef = getFirestore()
+        .collection('resumenes_normas')
+        .doc(createHash('sha256').update(listado).digest('hex'))
+      const cache = await cacheRef.get()
+      if (cache.exists) {
+        res.json(cache.get('resultado'))
+        return
+      }
+
+      if (!(await consumirCuotaIA(uid, res))) return
 
       const prompt = `
     Eres un abogado experto en derecho peruano.
@@ -251,12 +405,13 @@ export const resumirNormasDelDiaIA = onRequest(
     }
   `
 
-      const model = obtenerModeloGemini()
-      const result = await model.generateContent(prompt)
+      const result = await conModeloDeRespaldo(model => model.generateContent(prompt), { json: true })
       const text = result.response.text()
       const clean = text.replace(/```json|```/g, '').trim()
+      const resultado = JSON.parse(clean) as unknown
 
-      res.json(JSON.parse(clean))
+      await cacheRef.set({ resultado, creadoEn: new Date().toISOString() })
+      res.json(resultado)
     } catch (err) {
       const error = err as Error
       logger.error('❌ Error en resumirNormasDelDiaIA:', error.message)

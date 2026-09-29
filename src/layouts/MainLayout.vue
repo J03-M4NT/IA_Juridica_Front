@@ -44,6 +44,16 @@
             Consultas
           </router-link>
 
+          <router-link to="/app/analisis" class="sidebar-link"
+            :class="{ 'sidebar-link--active': $route.path === '/app/analisis' }"
+            @click="cerrarDrawerEnMobile">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>
+              <circle cx="11.5" cy="14.5" r="2.5"/><path d="M13.3 16.3L15 18"/>
+            </svg>
+            Análisis
+          </router-link>
+
           <router-link to="/app/contratos" class="sidebar-link"
             :class="{ 'sidebar-link--active': $route.path === '/app/contratos' }"
             @click="cerrarDrawerEnMobile">
@@ -97,6 +107,15 @@
             >
               <q-icon name="chat_bubble_outline" size="xs" class="q-mr-sm" />
               <span class="history-item-text">{{ sesion.titulo }}</span>
+              <button
+                type="button"
+                class="history-item-delete"
+                title="Borrar conversación"
+                aria-label="Borrar conversación"
+                @click.stop="borrarConsulta(sesion.id, sesion.titulo)"
+              >
+                <q-icon name="delete_outline" size="16px" />
+              </button>
             </div>
           </div>
         </div>
@@ -141,6 +160,7 @@ import { useQuasar } from 'quasar'
 import AuthButtons from '../components/Auth/AuthButtons.vue'
 import { useUserProfileStore } from '../stores/userProfile'
 import { useConsultasStore } from '../stores/consultas-store'
+import { useAnalisisContratosStore } from '../stores/analisis-contratos-store'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
@@ -174,10 +194,48 @@ function cargarConsulta(id: string) {
 
 const $q = useQuasar()
 const profileStore = useUserProfileStore()
+
+function borrarConsulta(id: string, titulo: string) {
+  $q.dialog({
+    title: 'Borrar conversación',
+    message: `¿Borrar "${titulo}"? Esta acción no se puede deshacer.`,
+    // La app activa el modo oscuro de Quasar (boot/dark.ts) de forma
+    // global vía la clase body--dark, y app.scss fuerza fondo blanco en
+    // TODAS las .q-card (!important) — el resultado es texto claro (del
+    // modo oscuro ambiental, que dark:false por sí solo no anula del
+    // todo) sobre fondo blanco: invisible. class + :deep() más abajo
+    // fuerza el color de texto explícito para este diálogo puntual.
+    dark: false,
+    class: 'borrar-consulta-dialog',
+    cancel: { label: 'Cancelar', flat: true, noCaps: true, color: 'grey-8' },
+    ok: { label: 'Borrar', color: 'negative', unelevated: true, noCaps: true },
+    persistent: true
+  }).onOk(() => {
+    consultasStore.borrarSesion(id).catch(err => {
+      console.error('No se pudo borrar la conversación:', err)
+      $q.notify({ type: 'negative', message: 'No se pudo borrar la conversación. Intenta de nuevo.' })
+    })
+  })
+}
 // Abierto por defecto en desktop (mismo umbral que :breakpoint="1023" del
 // q-drawer), cerrado por defecto en mobile — el valor solo se usa como
 // estado inicial, después el botón hamburguesa/toggle lo controla.
 const drawerOpen = ref($q.screen.width > 1023)
+
+// Mientras se trabaja un documento en Análisis de Contratos, el menú
+// lateral se oculta para dar más espacio (el botón de la flecha lo vuelve a
+// mostrar). Al salir de esa vista, el menú vuelve a como estaba.
+const analisisStore = useAnalisisContratosStore()
+let drawerAntesDeTrabajo: boolean | null = null
+watch(() => analisisStore.vistaTrabajoActiva, activa => {
+  if (activa) {
+    drawerAntesDeTrabajo = drawerOpen.value
+    drawerOpen.value = false
+  } else if (drawerAntesDeTrabajo !== null) {
+    drawerOpen.value = drawerAntesDeTrabajo
+    drawerAntesDeTrabajo = null
+  }
+})
 
 // El panel lateral es un overlay en mobile — cerrarlo incondicionalmente
 // al navegar evita que quede tapando la pantalla después de elegir una
@@ -427,8 +485,41 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   color: #e8b381;
 }
 .history-item-text {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Botón de borrar: aparece al pasar el mouse sobre la conversación. */
+.history-item-delete {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 4px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: rgba(250, 250, 247, 0.55);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background-color 0.15s, color 0.15s;
+}
+.history-item:hover .history-item-delete,
+.history-item-delete:focus-visible {
+  opacity: 1;
+}
+.history-item-delete:hover {
+  background: rgba(226, 104, 90, 0.18);
+  color: #f3a99e;
+}
+/* En pantallas táctiles no hay "hover": el botón se ve siempre. */
+@media (hover: none) {
+  .history-item-delete { opacity: 1; }
 }
 
 .sidebar-footer :deep(.auth-buttons) {
@@ -512,5 +603,19 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   .q-page {
     padding: 16px 12px 32px;
   }
+}
+</style>
+
+<!-- Sin scoped a propósito: $q.dialog() (ver borrarConsulta) crea el
+     diálogo por fuera del árbol de este componente (lo monta aparte, no
+     lo declara en el template), así que el atributo de scope normal no
+     es un mecanismo confiable para llegar a él. La clase
+     "borrar-consulta-dialog" es única para este diálogo puntual (se la
+     pone el propio $q.dialog()), así que esta regla global no puede
+     afectar a ningún otro componente. -->
+<style>
+.borrar-consulta-dialog .q-dialog__title,
+.borrar-consulta-dialog .q-dialog__message {
+  color: #16161a !important;
 }
 </style>
