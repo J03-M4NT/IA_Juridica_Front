@@ -697,7 +697,7 @@ export const listarDocumentosPinecone = onRequest(
       } while (paginationToken)
 
       // 2. Nombre y tipo, leídos de un chunk representativo por documento
-      const representantes = [...chunksPorDocumento.values()].map(ids => ids[0])
+      const representantes = [...chunksPorDocumento.values()].map(ids => ids[0] ?? '')
       const metadatos = new Map<string, Record<string, unknown>>()
       for (let i = 0; i < representantes.length; i += 100) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -710,7 +710,7 @@ export const listarDocumentosPinecone = onRequest(
 
       const documentos: DocumentoIndexadoResumen[] = [...chunksPorDocumento.entries()]
         .map(([documentoId, ids]) => {
-          const meta = metadatos.get(ids[0]) ?? {}
+          const meta = metadatos.get(ids[0] ?? '') ?? {}
           return {
             id: documentoId,
             nombre: typeof meta.nombreDocumento === 'string' && meta.nombreDocumento ? meta.nombreDocumento : documentoId,
