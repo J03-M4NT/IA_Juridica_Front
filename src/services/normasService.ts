@@ -55,6 +55,32 @@ export async function actualizarNormasDelDia(): Promise<number> {
   return data.total ?? 0
 }
 
+export interface ResumenNorma {
+  resumen: string
+  puntosClave: string[]
+  aQuienAplica: string
+  vigencia: string
+}
+
+/**
+ * Resumen con IA del PDF oficial de una norma (Cloud Function
+ * `resumirNormaIA`). Se genera una sola vez por norma y queda guardado
+ * para todos los usuarios.
+ */
+export async function resumirNorma(urlWrapper: string, titulo: string): Promise<ResumenNorma> {
+  const response = await postFuncion('resumirNormaIA', { urlWrapper, titulo })
+
+  const data = await response.json() as Partial<ResumenNorma> & { error?: string }
+  if (!response.ok || !data.resumen) throw new Error(data.error ?? 'No se pudo generar el resumen de esta norma')
+
+  return {
+    resumen: data.resumen,
+    puntosClave: data.puntosClave ?? [],
+    aQuienAplica: data.aQuienAplica ?? '',
+    vigencia: data.vigencia ?? ''
+  }
+}
+
 /**
  * El link que guardamos por norma (urlPdf/urlDetalle) apunta a la página
  * visor de El Peruano, no al archivo en sí — esta función resuelve, en el

@@ -24,6 +24,9 @@ export { consultarLexit } from './consultarLexit'
 export { generarSugerenciasContrato, modificarPlantillaIA, resumirNormasDelDiaIA, chatEdicionContratoIA } from './geminiTools'
 export { obtenerUrlFirmadaDocumento } from './documentosTemporales'
 
+// Resumen del PDF de una norma al abrirla en la Biblioteca Legal.
+export { resumirNormaIA } from './resumenNorma'
+
 if (getApps().length === 0) {
   initializeApp()
 }
