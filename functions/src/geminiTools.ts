@@ -14,6 +14,7 @@ import {
   excede
 } from './seguridad'
 import { dividirEnSecciones } from './seccionesContrato'
+import { asignarBaseLegal, PINECONE_API_KEY } from './baseLegal'
 
 // ================================
 // SUGERENCIAS DE CAMBIOS (redline) PARA UN CONTRATO
@@ -112,7 +113,7 @@ async function enParalelo<T, R>(items: T[], limite: number, tarea: (item: T, ind
 const ORDEN_NIVEL: Record<string, number> = { alto: 0, medio: 1, bajo: 2 }
 
 export const generarSugerenciasContrato = onRequest(
-  { cors: ORIGENES_PERMITIDOS, secrets: [GEMINI_API_KEY], timeoutSeconds: TIMEOUT_SUGERENCIAS_SEGUNDOS },
+  { cors: ORIGENES_PERMITIDOS, secrets: [GEMINI_API_KEY, PINECONE_API_KEY], timeoutSeconds: TIMEOUT_SUGERENCIAS_SEGUNDOS },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method not allowed')
@@ -169,8 +170,13 @@ export const generarSugerenciasContrato = onRequest(
           .sort((a, b) => (ORDEN_NIVEL[a.nivel ?? ''] ?? 3) - (ORDEN_NIVEL[b.nivel ?? ''] ?? 3))
       }
 
+      // Base legal de la base jurídica, solo cuando un artículo sustenta
+      // directamente la sugerencia (ver baseLegal.ts). Si falla, las
+      // sugerencias van igual, sin cita.
+      const conBaseLegal = await asignarBaseLegal(anotaciones)
+
       res.json({
-        sugerencias: anotaciones.map((s, i) => ({ id: `sugerencia-${i}`, ...s })),
+        sugerencias: conBaseLegal.map((s, i) => ({ id: `sugerencia-${i}`, ...s })),
         partes: secciones.length,
         partesConError
       })

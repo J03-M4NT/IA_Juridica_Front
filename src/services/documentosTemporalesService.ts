@@ -40,7 +40,7 @@ export async function descargarWordEditado(
   cambios: { antes: string; despues: string; indice?: number; ocurrencia?: number }[],
   nombreDescarga: string,
   // marcaLexit: agrega el membrete "LEXIT" / "Generado por LexIT" dentro del
-  // Word original (descarga de Contratos). Análisis no lo usa.
+  // Word original (descargas de Contratos y de Análisis de contratos).
   opciones: { marcaLexit?: boolean } = {}
 ): Promise<ResultadoWordEditado> {
   const response = await postFuncion('descargarWordEditado', { storagePath, cambios, nombreDescarga, marcaLexit: opciones.marcaLexit === true })

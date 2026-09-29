@@ -14,10 +14,10 @@ import {
 } from './seguridad'
 import { dividirEnSecciones, seleccionarSecciones } from './seccionesContrato'
 
-const PINECONE_INDEX = 'lexit'
-const PINECONE_HOST = 'https://lexit-rv6se0q.svc.aped-4627-b74a.pinecone.io'
+export const PINECONE_INDEX = 'lexit'
+export const PINECONE_HOST = 'https://lexit-rv6se0q.svc.aped-4627-b74a.pinecone.io'
 
-const PINECONE_API_KEY = defineSecret('PINECONE_API_KEY')
+export const PINECONE_API_KEY = defineSecret('PINECONE_API_KEY')
 
 // Pinecone siempre devuelve los topK fragmentos "más parecidos", aunque no
 // tengan nada que ver con la pregunta. En Consultas (sin documento adjunto)
@@ -25,7 +25,7 @@ const PINECONE_API_KEY = defineSecret('PINECONE_API_KEY')
 // coseno), para que una pregunta común no termine respondida con artículos
 // de la Constitución que no vienen al caso. Valor inicial conservador:
 // calibrarlo con los scores que se registran en los logs ("🔎 Scores").
-const SCORE_MINIMO_RELEVANCIA = 0.25
+export const SCORE_MINIMO_RELEVANCIA = 0.25
 
 // Hasta este tamaño el contrato adjunto se manda entero a Gemini; más
 // largo, solo las secciones relacionadas con la pregunta.
@@ -34,7 +34,7 @@ const LIMITE_CONTRATO_COMPLETO = 90_000
 // =========================
 // TIPOS
 // =========================
-interface FragmentoResultado {
+export interface FragmentoResultado {
   texto: string
   nombreDocumento: string
   tipoDocumento: string
@@ -90,7 +90,7 @@ function numeroArticuloDe(fragmento: FragmentoResultado): number | null {
   return match?.[1] ? Number(match[1]) : null
 }
 
-function dedupeFragmentos(fragmentos: FragmentoResultado[]): FragmentoResultado[] {
+export function dedupeFragmentos(fragmentos: FragmentoResultado[]): FragmentoResultado[] {
   const vistos = new Set<string>()
   return fragmentos.filter(f => {
     // Un artículo largo se sube en varios trozos con el mismo número
@@ -110,7 +110,7 @@ function dedupeFragmentos(fragmentos: FragmentoResultado[]): FragmentoResultado[
 // =========================
 // BÚSQUEDA EN PINECONE (fuente primaria primero)
 // =========================
-async function buscarEnPineconeInterno(
+export async function buscarEnPineconeInterno(
   idx: ReturnType<Pinecone['index']>,
   consulta: string,
   topK = 5,
@@ -182,7 +182,7 @@ async function buscarEnPineconeInterno(
 }
 
 // "Artículo 108 ° -C.- Sicariato" o "Artículo 108-C (continuación).-" → "C".
-function sufijoDeArticulo(fragmento: FragmentoResultado): string | undefined {
+export function sufijoDeArticulo(fragmento: FragmentoResultado): string | undefined {
   if (fragmento.numeroArticulo === undefined) return undefined
   // Primer encabezado del artículo en el trozo (con o sin letra): así una
   // referencia interna a otro "108-A" no cambia la etiqueta del 108.
@@ -193,7 +193,7 @@ function sufijoDeArticulo(fragmento: FragmentoResultado): string | undefined {
 // Índice del PDF ("Nulidad ....... SECCIÓN TERCERA ......."). Los códigos
 // subidos antes del arreglo en pineconeService.ts lo tienen pegado como
 // "continuación" del último artículo; aquí se descarta al buscar.
-function esIndiceDelDocumento(texto: string): boolean {
+export function esIndiceDelDocumento(texto: string): boolean {
   return (texto.match(/\.{6,}/g) ?? []).length >= 3
 }
 
@@ -204,7 +204,7 @@ function esIndiceDelDocumento(texto: string): boolean {
 // CUARTA DERECHOS REALES DE GARANTÍA"). Se corta solo DESPUÉS del
 // encabezado, porque ANTES va la sumilla propia del artículo ("TÍTULO VI
 // Arrendamiento ... Definición Artículo 1666 º .-").
-function recortarAnexosDelArticulo(fragmento: FragmentoResultado): string {
+export function recortarAnexosDelArticulo(fragmento: FragmentoResultado): string {
   if (fragmento.numeroArticulo === undefined) return fragmento.texto
   const encabezado = new RegExp(`Art[íi]culo\\s+${fragmento.numeroArticulo}\\s*[°º]?\\s*(?:-\\s*[A-Z]\\s*)?(?:\\(continuaci[óo]n\\)\\s*)?\\.\\s*-`, 'i').exec(fragmento.texto)
   if (!encabezado) return fragmento.texto
@@ -242,7 +242,7 @@ function tipoDocumentoEnPregunta(pregunta: string): string | undefined {
 // Los trozos siguientes de un artículo largo se suben como
 // "Artículo 2 (continuación).- ..." (ver dividirEnArticulos en
 // pineconeService.ts) y también cuentan como texto del artículo.
-function tieneEncabezadoDeArticulo(fragmento: FragmentoResultado): boolean {
+export function tieneEncabezadoDeArticulo(fragmento: FragmentoResultado): boolean {
   if (fragmento.esComentario) return false
   if (fragmento.numeroArticulo === undefined) return true
   return new RegExp(`Art[íi]culo\\s+${fragmento.numeroArticulo}\\s*[°º]?\\s*(?:-\\s*[A-Z]\\s*)?(?:\\(continuaci[óo]n\\)\\s*)?\\.\\s*-`, 'i').test(fragmento.texto)

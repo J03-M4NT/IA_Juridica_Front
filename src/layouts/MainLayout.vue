@@ -160,6 +160,7 @@ import { useQuasar } from 'quasar'
 import AuthButtons from '../components/Auth/AuthButtons.vue'
 import { useUserProfileStore } from '../stores/userProfile'
 import { useConsultasStore } from '../stores/consultas-store'
+import { useAnalisisContratosStore } from '../stores/analisis-contratos-store'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
@@ -220,6 +221,21 @@ function borrarConsulta(id: string, titulo: string) {
 // q-drawer), cerrado por defecto en mobile — el valor solo se usa como
 // estado inicial, después el botón hamburguesa/toggle lo controla.
 const drawerOpen = ref($q.screen.width > 1023)
+
+// Mientras se trabaja un documento en Análisis de Contratos, el menú
+// lateral se oculta para dar más espacio (el botón de la flecha lo vuelve a
+// mostrar). Al salir de esa vista, el menú vuelve a como estaba.
+const analisisStore = useAnalisisContratosStore()
+let drawerAntesDeTrabajo: boolean | null = null
+watch(() => analisisStore.vistaTrabajoActiva, activa => {
+  if (activa) {
+    drawerAntesDeTrabajo = drawerOpen.value
+    drawerOpen.value = false
+  } else if (drawerAntesDeTrabajo !== null) {
+    drawerOpen.value = drawerAntesDeTrabajo
+    drawerAntesDeTrabajo = null
+  }
+})
 
 // El panel lateral es un overlay en mobile — cerrarlo incondicionalmente
 // al navegar evita que quede tapando la pantalla después de elegir una

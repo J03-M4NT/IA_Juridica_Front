@@ -22,6 +22,10 @@ export interface ArchivoAdjunto {
   // Solo presente si el adjunto es un .docx — fuente de verdad real para
   // el panel "Editando"/"Documento final" y la descarga de ese documento.
   html?: string
+  // HTML tal como se cargó (con las marcas data-p de cada párrafo, ver
+  // utils/edicionWord.ts). Al descargar se compara con html para saber qué
+  // párrafos cambió el usuario y aplicar solo eso sobre el .docx original.
+  htmlOriginal?: string
   // true en cuanto se aplica una sugerencia o se edita el texto/html a
   // mano. Mientras siga en false, la descarga puede devolver el archivo
   // original tal cual en vez de reconstruirlo con la librería docx — ver
@@ -32,6 +36,9 @@ export interface ArchivoAdjunto {
   // en mammothExtractor.ts. Si no se detectó, exportToWord usa su propia
   // fuente de respaldo al reconstruir.
   fuenteDetectada?: string | undefined
+  // CSS que genera docx-preview para dibujar el Word tal cual (fuentes,
+  // tamaños, márgenes, estilos del documento). Ver utils/vistaWord.ts.
+  estilosDocx?: string | undefined
   // Ruta en Firebase Storage del .docx original, una vez que terminó de
   // subirse (ver AnalisisContratosPage.vue/procesarArchivo). Solo se setea para
   // adjuntos Word — habilita el botón "Abrir en Word". Ausente mientras la
@@ -42,7 +49,13 @@ export interface ArchivoAdjunto {
 // Toda acción que mute archivoAdjunto.html debe llamar esto como último
 // paso, para que texto nunca quede desincronizado de html.
 function sincronizarTextoDesdeHtml(adjunto: ArchivoAdjunto) {
-  if (adjunto.html) adjunto.texto = extraerTextoVisibleDeHtml(adjunto.html)
+  if (adjunto.html) adjunto.texto = textoDelCuerpo(adjunto.html)
+}
+
+// Texto que se envía a la IA: sin encabezados ni pies de página (la vista
+// fiel del Word los repite en cada página y solo meterían ruido).
+function textoDelCuerpo(html: string): string {
+  return extraerTextoVisibleDeHtml(html.replace(/<(header|footer)\b[\s\S]*?<\/\1>/gi, ''))
 }
 
 interface AnalisisContratosState {
@@ -56,6 +69,10 @@ interface AnalisisContratosState {
   fragmentosEncontrados: number
   archivoAdjunto: ArchivoAdjunto | null
   analisisPendiente: boolean
+  // true mientras la página de Análisis muestra la vista de trabajo
+  // (documento + análisis/chat): MainLayout oculta el menú lateral para dar
+  // más espacio y lo restaura al salir.
+  vistaTrabajoActiva: boolean
 }
 
 // Ritmo del efecto "escribiéndose" al mostrar la respuesta (ver
@@ -100,7 +117,8 @@ export const useAnalisisContratosStore = defineStore('analisis-contratos', {
     usandoPinecone: false,
     fragmentosEncontrados: 0,
     archivoAdjunto: null,
-    analisisPendiente: false
+    analisisPendiente: false,
+    vistaTrabajoActiva: false
   }),
 
   actions: {
@@ -239,8 +257,10 @@ export const useAnalisisContratosStore = defineStore('analisis-contratos', {
       this.archivoAdjunto = { nombre, texto, modificado: false }
     },
 
-    adjuntarWord(nombre: string, html: string, fuenteDetectada?: string) {
-      this.archivoAdjunto = { nombre, html, texto: extraerTextoVisibleDeHtml(html), modificado: false, fuenteDetectada }
+    // html: la vista fiel del Word (docx-preview, ver utils/vistaWord.ts);
+    // estilos: el CSS que esa vista necesita para verse igual que en Word.
+    adjuntarWord(nombre: string, html: string, estilosDocx?: string) {
+      this.archivoAdjunto = { nombre, html, htmlOriginal: html, texto: textoDelCuerpo(html), modificado: false, estilosDocx }
     },
 
     // Se llama cuando termina la subida a Storage del .docx original (ver
