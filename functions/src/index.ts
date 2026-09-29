@@ -349,7 +349,6 @@ export const eliminarDocumentoDePinecone = onRequest(
       const prefix = `${documentoId}_chunk_`
 
       let totalEliminados = 0
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let paginationToken: string | undefined = undefined
       let paginaNum = 0
 
@@ -365,7 +364,6 @@ export const eliminarDocumentoDePinecone = onRequest(
         logger.info(`--- Página ${paginaNum} ---`)
         logger.info('Respuesta cruda de listPaginated:', JSON.stringify(pagina).slice(0, 800))
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const ids: string[] = (pagina.vectors ?? [])
           .map((v: { id?: string }) => v.id)
           .filter((id: string | undefined): id is string => !!id)
@@ -422,7 +420,6 @@ export const eliminarDuplicadosDePinecone = onRequest(
 
       // 1. Listar TODOS los IDs del índice (paginado, sin filtro de prefijo)
       const todosLosIds: string[] = []
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let paginationToken: string | undefined = undefined
 
       do {
@@ -700,7 +697,7 @@ export const listarDocumentosPinecone = onRequest(
       } while (paginationToken)
 
       // 2. Nombre y tipo, leídos de un chunk representativo por documento
-      const representantes = [...chunksPorDocumento.values()].map(ids => ids[0]!)
+      const representantes = [...chunksPorDocumento.values()].map(ids => ids[0])
       const metadatos = new Map<string, Record<string, unknown>>()
       for (let i = 0; i < representantes.length; i += 100) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -713,7 +710,7 @@ export const listarDocumentosPinecone = onRequest(
 
       const documentos: DocumentoIndexadoResumen[] = [...chunksPorDocumento.entries()]
         .map(([documentoId, ids]) => {
-          const meta = metadatos.get(ids[0]!) ?? {}
+          const meta = metadatos.get(ids[0]) ?? {}
           return {
             id: documentoId,
             nombre: typeof meta.nombreDocumento === 'string' && meta.nombreDocumento ? meta.nombreDocumento : documentoId,
