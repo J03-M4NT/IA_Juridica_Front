@@ -8,7 +8,7 @@
          y el panel de análisis/chat usan todo el alto de la pantalla. -->
     <div v-show="etapa !== 'trabajo'" class="page-header" :class="{ 'page-header--compact': chatDesplazado }">
       <div class="section-icon-wrap icon-blue">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7EA2F2" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2B352B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
       </div>
@@ -321,27 +321,39 @@
               <button type="button" class="sugerencias-reintentar-btn" @click="generarSugerencias">Reintentar</button>
             </div>
             <template v-else>
+              <!-- Cada bloque filtra la lista por ese nivel; "Total" muestra todas. -->
               <div class="sugerencias-metricas">
-                <div class="metrica-bloque">
+                <button
+                  type="button"
+                  class="metrica-bloque"
+                  :class="{ 'metrica-bloque--activo': filtroNivel === null }"
+                  :aria-pressed="filtroNivel === null"
+                  @click="filtroNivel = null"
+                >
                   <span class="metrica-numero">{{ conteoSugerencias.total }}</span>
                   <span class="metrica-label">Total</span>
-                </div>
-                <div class="metrica-bloque metrica-bloque--alto">
-                  <span class="metrica-numero">{{ conteoSugerencias.alto }}</span>
-                  <span class="metrica-label">Alto</span>
-                </div>
-                <div class="metrica-bloque metrica-bloque--medio">
-                  <span class="metrica-numero">{{ conteoSugerencias.medio }}</span>
-                  <span class="metrica-label">Medio</span>
-                </div>
-                <div class="metrica-bloque metrica-bloque--bajo">
-                  <span class="metrica-numero">{{ conteoSugerencias.bajo }}</span>
-                  <span class="metrica-label">Bajo</span>
-                </div>
+                </button>
+                <button
+                  v-for="nivel in NIVELES_RIESGO"
+                  :key="nivel.valor"
+                  type="button"
+                  class="metrica-bloque"
+                  :class="[`metrica-bloque--${nivel.valor}`, { 'metrica-bloque--activo': filtroNivel === nivel.valor }]"
+                  :aria-pressed="filtroNivel === nivel.valor"
+                  @click="filtroNivel = filtroNivel === nivel.valor ? null : nivel.valor"
+                >
+                  <span class="metrica-numero">{{ conteoSugerencias[nivel.valor] }}</span>
+                  <span class="metrica-label">{{ nivel.etiqueta }}</span>
+                </button>
               </div>
 
+              <p v-if="filtroNivel && sugerenciasVisibles.length === 0" class="sugerencias-filtro-vacio">
+                No hay observaciones de riesgo {{ filtroNivel }}.
+                <button type="button" class="sugerencias-filtro-quitar" @click="filtroNivel = null">Ver todas</button>
+              </p>
+
               <div class="sugerencias-list">
-                <div v-for="s in sugerencias" :id="`sugerencia-${s.id}`" :key="s.id" class="sugerencia-card">
+                <div v-for="s in sugerenciasVisibles" :id="`sugerencia-${s.id}`" :key="s.id" class="sugerencia-card">
                   <div class="sugerencia-card-top">
                     <div class="sugerencia-clausula">{{ s.clausula }}</div>
                     <span class="riesgo-badge" :class="s.nivel ? `riesgo-badge--${s.nivel}` : 'riesgo-badge--cambio'">
@@ -375,8 +387,13 @@
                   <!-- Aplica el texto sugerido en el documento; al descargar,
                        entra al Word original como cualquier otra edición. -->
                   <p v-if="s.error" class="sugerencia-error">{{ s.error }}</p>
-                  <div v-if="s.textoSugerido && esWordAdjunto" class="sugerencia-acciones">
-                    <button type="button" class="sugerencia-aplicar" @click="aplicarSugerencia(s)">Aplicar al documento</button>
+                  <p v-if="observacionNoUbicada === s.id" class="sugerencia-error">
+                    No se encontró este texto en el documento (puede que ya haya cambiado).
+                  </p>
+                  <div class="sugerencia-acciones">
+                    <!-- Lleva al lugar del documento donde está la observación. -->
+                    <button type="button" class="sugerencia-ver" @click="verObservacion(s)">Ver observación</button>
+                    <button v-if="s.textoSugerido && esWordAdjunto" type="button" class="sugerencia-aplicar" @click="aplicarSugerencia(s)">Aplicar al documento</button>
                   </div>
                 </div>
               </div>
@@ -689,6 +706,43 @@ const conteoSugerencias = computed(() => {
   }
   return { total: sugerencias.value.length, alto, medio, bajo }
 })
+
+// Filtro por nivel al hacer clic en las métricas (null = todas). Solo
+// cambia qué tarjetas se listan; las marcas del documento siguen todas.
+type NivelRiesgo = 'alto' | 'medio' | 'bajo'
+const NIVELES_RIESGO: { valor: NivelRiesgo; etiqueta: string }[] = [
+  { valor: 'alto', etiqueta: 'Alto' },
+  { valor: 'medio', etiqueta: 'Medio' },
+  { valor: 'bajo', etiqueta: 'Bajo' }
+]
+const filtroNivel = ref<NivelRiesgo | null>(null)
+const sugerenciasVisibles = computed(() =>
+  filtroNivel.value ? sugerencias.value.filter(s => s.nivel === filtroNivel.value) : sugerencias.value
+)
+
+// "Ver observación": lleva al lugar del documento donde está marcada la
+// observación (<mark data-sugerencia-id>) y la hace destacar un momento.
+const observacionNoUbicada = ref<string | null>(null)
+let temporizadorObservacion: ReturnType<typeof setTimeout> | null = null
+
+async function verObservacion(s: SugerenciaConError) {
+  observacionNoUbicada.value = null
+  // PDF: las marcas solo se ven en la pestaña "editando".
+  if (!esWordAdjunto.value && tabDocumento.value !== 'editando') {
+    tabDocumento.value = 'editando'
+    await nextTick()
+  }
+  const marca = documentoEditableRef.value?.querySelector<HTMLElement>(`[data-sugerencia-id="${CSS.escape(s.id)}"]`)
+  if (!marca) {
+    observacionNoUbicada.value = s.id
+    return
+  }
+  marca.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  documentoEditableRef.value?.querySelectorAll('.hl-foco').forEach(m => m.classList.remove('hl-foco'))
+  marca.classList.add('hl-foco')
+  if (temporizadorObservacion) clearTimeout(temporizadorObservacion)
+  temporizadorObservacion = setTimeout(() => marca.classList.remove('hl-foco'), 2400)
+}
 
 function limpiarSugerencias() {
   sugerencias.value = []
@@ -1356,6 +1410,12 @@ function onDocumentoClick(event: MouseEvent) {
   const target = (event.target as HTMLElement).closest<HTMLElement>('[data-sugerencia-id]')
   const id = target?.dataset.sugerenciaId
   if (!id) return
+  // Si el filtro por nivel oculta esa tarjeta, se quita para poder mostrarla.
+  if (!document.getElementById(`sugerencia-${id}`) && filtroNivel.value) {
+    filtroNivel.value = null
+    void nextTick(() => document.getElementById(`sugerencia-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+    return
+  }
   document.getElementById(`sugerencia-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 
@@ -1682,30 +1742,30 @@ watch(mensajes, async () => {
 
 <style scoped>
 /* ==============================
-   Paleta oscura azul de esta página — variables propias, con prefijo lc-,
-   definidas solo dentro de .analisis-page. No se tocan las variables
-   globales (--surface, --bg, etc. en src/css/app.scss), así que el resto
-   de la app sigue con el tema claro de siempre. Distinta de la paleta
-   cálida/terracota de Contratos a propósito — un azul noche elegante,
-   con la terracota de marca como acento cálido puntual (ver
-   --lc-accent-warm, usado en detalles chicos, no como color base).
+   Paleta clara verde-bosque/beige (misma familia que LandingPage.vue,
+   Contratos y Consultas), variables propias con prefijo lc-, definidas
+   solo dentro de .analisis-page. No se tocan las variables globales
+   (--surface, --bg, etc. en src/css/app.scss). Acento en verde oliva
+   oscuro, distinto del oliva medio de Consultas, para distinguir esta
+   sub-vista dentro de la misma familia de colores.
    ============================== */
 .analisis-page {
-  --lc-bg: #10151f;
-  --lc-surface: #182234;
-  --lc-surface-alt: #131b29;
-  --lc-surface-sunken: #0c111a;
-  --lc-border: rgba(255, 255, 255, 0.08);
-  --lc-border-strong: rgba(255, 255, 255, 0.16);
-  --lc-text: #eef1f7;
-  --lc-text-muted: #a9b4c7;
-  --lc-text-faint: #78839c;
-  --lc-accent: #5B8DEF;
-  --lc-accent-hover: #4874D1;
-  --lc-accent-soft: rgba(91, 141, 239, 0.14);
-  --lc-accent-soft-strong: rgba(91, 141, 239, 0.26);
-  --lc-accent-warm: #D97A4D;
-  --lc-accent-warm-soft: rgba(217, 122, 77, 0.16);
+  --lc-bg: #FFFFFF;
+  --lc-surface: #FFFFFF;
+  --lc-surface-alt: #D9D4C6;
+  --lc-surface-sunken: #BDB59B;
+  --lc-border: rgba(23, 33, 27, 0.10);
+  --lc-border-strong: rgba(23, 33, 27, 0.18);
+  --lc-text: #17211B;
+  --lc-text-muted: #3D473A;
+  --lc-text-faint: #686A57;
+  --lc-accent: #2B352B;
+  --lc-accent-hover: #17211B;
+  --lc-accent-soft: rgba(43, 53, 43, 0.10);
+  --lc-accent-soft-strong: rgba(43, 53, 43, 0.20);
+  --lc-accent-warm: #9C9275;
+  --lc-accent-warm-soft: rgba(156, 146, 117, 0.18);
+  --lc-ink: #F8F7F2;
 
   /* El max-width:none real vive en ".q-page.analisis-page" más abajo —
      acá no alcanza, empata en especificidad con la regla global ".q-page"
@@ -2211,6 +2271,17 @@ watch(mensajes, async () => {
 .documento-word :deep(.hl-riesgo--medio) { background: #FCE3D6; }
 .documento-word :deep(.hl-riesgo--bajo) { background: #FDEFD6; }
 
+/* "Ver observación": la marca destaca un momento al llegar a ella. */
+.documento-word :deep(mark.hl-foco),
+.documento-texto :deep(mark.hl-foco) {
+  animation: hlFoco 0.8s ease-in-out 3;
+}
+
+@keyframes hlFoco {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(194, 59, 46, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(194, 59, 46, 0.45); }
+}
+
 .documento-texto--editable {
   outline: none;
   cursor: text;
@@ -2229,7 +2300,7 @@ watch(mensajes, async () => {
   background: var(--lc-surface);
   border: 1px solid var(--lc-border);
   border-radius: var(--border-radius);
-  box-shadow: 0 8px 26px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 26px -14px rgba(23, 33, 27, 0.20);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -2270,7 +2341,7 @@ watch(mensajes, async () => {
   justify-content: center;
   gap: 8px;
   background: var(--lc-accent);
-  color: #0d1220;
+  color: var(--lc-ink);
   border: none;
   border-radius: var(--border-radius-small);
   padding: 11px 14px;
@@ -2327,9 +2398,52 @@ watch(mensajes, async () => {
   color: var(--lc-text-muted);
 }
 
-.metrica-bloque--alto .metrica-numero { color: #e2685a; }
-.metrica-bloque--medio .metrica-numero { color: #dba24d; }
-.metrica-bloque--bajo .metrica-numero { color: #5fb98a; }
+/* Las métricas son botones de filtro. */
+button.metrica-bloque {
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.18s, box-shadow 0.18s, background-color 0.18s;
+}
+
+button.metrica-bloque:hover {
+  border-color: rgba(23, 33, 27, 0.28);
+}
+
+button.metrica-bloque:focus-visible {
+  outline: 2px solid #3D473A;
+  outline-offset: 2px;
+}
+
+.metrica-bloque--activo {
+  border-color: #17211B;
+  box-shadow: inset 0 0 0 1px #17211B;
+}
+
+.metrica-bloque--alto.metrica-bloque--activo { border-color: #C23B2E; box-shadow: inset 0 0 0 1px #C23B2E; background: rgba(194, 59, 46, 0.06); }
+.metrica-bloque--medio.metrica-bloque--activo { border-color: #B9791E; box-shadow: inset 0 0 0 1px #B9791E; background: rgba(185, 121, 30, 0.07); }
+.metrica-bloque--bajo.metrica-bloque--activo { border-color: #2F8F5E; box-shadow: inset 0 0 0 1px #2F8F5E; background: rgba(47, 143, 94, 0.07); }
+
+.sugerencias-filtro-vacio {
+  font-size: 0.86rem;
+  color: var(--lc-text-muted);
+  margin: 0 0 12px;
+}
+
+.sugerencias-filtro-quitar {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 4px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--lc-text);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.metrica-bloque--alto .metrica-numero { color: #C23B2E; }
+.metrica-bloque--medio .metrica-numero { color: #B9791E; }
+.metrica-bloque--bajo .metrica-numero { color: #2F8F5E; }
 
 .sugerencias-cargando {
   display: flex;
@@ -2363,7 +2477,7 @@ watch(mensajes, async () => {
   text-align: center;
   gap: 6px;
   padding: 32px 16px;
-  color: #e2685a;
+  color: #C23B2E;
 }
 
 .sugerencias-error-titulo {
@@ -2385,7 +2499,7 @@ watch(mensajes, async () => {
 .sugerencias-reintentar-btn {
   margin-top: 10px;
   background: var(--lc-accent);
-  color: #0d1220;
+  color: var(--lc-ink);
   border: none;
   border-radius: var(--border-radius-small);
   padding: 8px 16px;
@@ -2487,7 +2601,7 @@ watch(mensajes, async () => {
 .panel-tab--activa {
   background: var(--lc-surface);
   color: var(--lc-text);
-  box-shadow: 0 2px 8px -4px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 8px -4px rgba(23, 33, 27, 0.22);
 }
 
 .panel-tab-cuenta {
@@ -2496,7 +2610,7 @@ watch(mensajes, async () => {
   padding: 0 6px;
   border-radius: 999px;
   background: var(--lc-accent);
-  color: #0d1220;
+  color: var(--lc-ink);
   font-size: 0.72rem;
   font-weight: 700;
   line-height: 20px;
@@ -2588,7 +2702,7 @@ watch(mensajes, async () => {
 .msg-bubble-user {
   max-width: 74%;
   background: var(--lc-accent);
-  color: #0d1220;
+  color: var(--lc-ink);
   padding: 12px 16px;
   border-radius: 16px 16px 4px 16px;
   font-size: 0.95rem;
@@ -2743,7 +2857,7 @@ watch(mensajes, async () => {
   padding: 0 5px;
   border-radius: 5px;
   background: var(--lc-accent);
-  color: #0d1220;
+  color: var(--lc-ink);
   font-size: 0.72rem;
   font-weight: 700;
   flex-shrink: 0;
@@ -2815,7 +2929,7 @@ watch(mensajes, async () => {
   cursor: pointer;
 }
 
-.formatted-message :deep(.cita-ref:hover) { background: var(--lc-accent); color: #0d1220; }
+.formatted-message :deep(.cita-ref:hover) { background: var(--lc-accent); color: var(--lc-ink); }
 .formatted-message :deep(hr) { border: none; border-top: 1px solid var(--lc-border-strong); margin: 12px 0; }
 .formatted-message :deep(h4) { font-family: 'EB Garamond', serif; font-weight: 600; margin: 8px 0 4px; color: var(--lc-text); }
 
@@ -2916,7 +3030,7 @@ watch(mensajes, async () => {
   border: 1px solid var(--lc-border-strong);
   border-radius: 26px;
   padding: 7px 7px 7px 8px;
-  box-shadow: 0 4px 18px -6px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 4px 18px -6px rgba(23, 33, 27, 0.16);
   transition: border-color 0.18s, box-shadow 0.18s;
 }
 
@@ -2972,7 +3086,7 @@ watch(mensajes, async () => {
   height: 36px;
   border-radius: 50%;
   background: var(--lc-accent);
-  color: #0d1220;
+  color: var(--lc-ink);
   border: none;
   cursor: pointer;
   display: flex;
@@ -3076,9 +3190,9 @@ watch(mensajes, async () => {
   white-space: nowrap;
 }
 
-.riesgo-badge--alto { background: rgba(226, 104, 90, 0.18); color: #f3a99e; }
-.riesgo-badge--medio { background: rgba(219, 162, 77, 0.18); color: #e8c48c; }
-.riesgo-badge--bajo { background: rgba(95, 185, 138, 0.18); color: #9adcb9; }
+.riesgo-badge--alto { background: rgba(194, 59, 46, 0.12); color: #C23B2E; }
+.riesgo-badge--medio { background: rgba(185, 121, 30, 0.14); color: #B9791E; }
+.riesgo-badge--bajo { background: rgba(47, 143, 94, 0.14); color: #2F8F5E; }
 .riesgo-badge--cambio { background: var(--lc-accent-soft); color: var(--lc-accent); }
 
 .sugerencia-explicacion {
@@ -3150,6 +3264,24 @@ watch(mensajes, async () => {
 }
 
 .sugerencia-aplicar:hover { background: var(--ink-soft); }
+
+.sugerencia-ver {
+  background: none;
+  border: 1px solid rgba(27, 27, 30, 0.14);
+  color: var(--text-secondary);
+  border-radius: var(--border-radius-small);
+  padding: 6px 12px;
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s;
+}
+
+.sugerencia-ver:hover {
+  border-color: rgba(27, 27, 30, 0.32);
+  color: var(--ink);
+}
 
 .sugerencia-deshacer,
 .sugerencia-reconsiderar {
@@ -3226,7 +3358,7 @@ watch(mensajes, async () => {
 
 .sugerencias-rail .sugerencia-aplicar {
   background: var(--lc-accent);
-  color: #0d1220;
+  color: var(--lc-ink);
   border: none;
   border-radius: var(--border-radius-small);
   padding: 7px 12px;
@@ -3241,7 +3373,7 @@ watch(mensajes, async () => {
 .sugerencias-rail .sugerencia-error {
   margin: 8px 0 0;
   font-size: 0.8rem;
-  color: #f3a99e;
+  color: #C23B2E;
 }
 
 /* Base legal plegada: se abre con un clic, no aparece "de golpe". */
@@ -3273,7 +3405,7 @@ watch(mensajes, async () => {
   padding: 2px 7px;
   border-radius: 5px;
   background: var(--lc-accent);
-  color: #0d1220;
+  color: var(--lc-ink);
   font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -3317,7 +3449,7 @@ watch(mensajes, async () => {
 .sugerencia-aplicada-texto {
   min-width: 0;
   font-size: 0.85rem;
-  color: #9adcb9;
+  color: #2F8F5E;
 }
 
 .sugerencias-rail .sugerencia-deshacer {
@@ -3406,7 +3538,7 @@ watch(mensajes, async () => {
   padding: 10px 22px;
   border-radius: 999px;
   background: var(--lc-accent);
-  color: #0d1220;
+  color: var(--lc-ink);
   font-family: 'Figtree', sans-serif;
   font-size: 0.9rem;
   font-weight: 600;
@@ -3424,7 +3556,7 @@ watch(mensajes, async () => {
   border: 1px solid var(--lc-border);
   border-radius: 18px;
   background: var(--lc-surface);
-  box-shadow: 0 12px 40px -18px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 12px 40px -18px rgba(23, 33, 27, 0.20);
 }
 
 .elegir-archivo {
