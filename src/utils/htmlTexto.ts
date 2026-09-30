@@ -111,6 +111,100 @@ export function reemplazarEnHtml(html: string, textoOriginal: string, textoNuevo
   return { html: contenedor.innerHTML, ok: true }
 }
 
+// Posición en el texto plano → nodos reales (como ubicarRango, pero con la
+// posición ya calculada).
+function ubicarPorPosicion(mapa: EntradaMapa[], idx: number, finIdx: number): Ubicacion | null {
+  const entradaInicio = mapa.find(e => idx >= e.inicioTexto && idx < e.finTexto)
+  const entradaFin = mapa.find(e => (finIdx - 1) >= e.inicioTexto && (finIdx - 1) < e.finTexto)
+  if (!entradaInicio || !entradaFin) return null
+  return {
+    inicio: { nodo: entradaInicio.nodo, offset: idx - entradaInicio.inicioTexto },
+    fin: { nodo: entradaFin.nodo, offset: finIdx - entradaFin.inicioTexto }
+  }
+}
+
+// Patrón tolerante: cualquier espacio en blanco equivale a cualquier otro,
+// y una línea para completar ("……", "_____", "-----") equivale a otra de
+// distinto largo — la IA a veces no copia exacto la cantidad de puntos.
+function fuenteFlexible(texto: string): string {
+  return texto
+    .split(/([.…_\-–]{3,}|\s+)/)
+    .filter(p => p !== '')
+    .map(p => {
+      if (/^\s+$/.test(p)) return '\\s+'
+      if (/^[.…_\-–]{3,}$/.test(p)) return '[.…_\\-–]{2,}'
+      return p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    })
+    .join('')
+}
+
+// Para cambios propuestos por la IA ("Completar con IA" en Contratos):
+// - busca el texto exacto y, si no aparece, con el patrón tolerante (la IA
+//   no siempre copia exacto cada espacio o punto);
+// - reemplaza SOLO el tramo que cambia (sin el prefijo y sufijo comunes),
+//   así el contexto que la IA copia alrededor (tabulaciones, negritas,
+//   otras líneas) queda intacto y el texto nuevo toma el formato del lugar
+//   exacto donde va.
+export function reemplazarEnHtmlFlexible(html: string, textoOriginal: string, textoNuevo: string): ResultadoReemplazo {
+  const buscado = textoOriginal.trim()
+  const nuevo = textoNuevo.trim()
+  if (!buscado) return { html, ok: false }
+  if (buscado === nuevo) return { html, ok: true }
+
+  // Qué cambia, según el propio "antes"/"después" de la IA.
+  let prefijo = 0
+  while (prefijo < buscado.length && prefijo < nuevo.length && buscado[prefijo] === nuevo[prefijo]) prefijo++
+  let sufijo = 0
+  while (
+    sufijo < buscado.length - prefijo &&
+    sufijo < nuevo.length - prefijo &&
+    buscado[buscado.length - 1 - sufijo] === nuevo[nuevo.length - 1 - sufijo]
+  ) sufijo++
+  // Si solo se inserta texto (tramo vacío), se toma un carácter vecino para
+  // tener dónde ubicarlo.
+  if (prefijo + sufijo >= buscado.length) {
+    if (prefijo > 0) prefijo--
+    else sufijo--
+  }
+  const antesDelCambio = buscado.slice(0, prefijo)
+  const tramo = buscado.slice(prefijo, buscado.length - sufijo)
+  const despuesDelCambio = buscado.slice(buscado.length - sufijo)
+
+  // Dónde está ese tramo en el documento: exacto, o con el patrón tolerante.
+  const contenedor = crearContenedor(html)
+  const { texto, mapa } = walkTextoConMapa(contenedor)
+  let inicioTramo: number
+  let finTramo: number
+  let encontrado: string
+  const exacto = texto.indexOf(buscado)
+  if (exacto !== -1) {
+    inicioTramo = exacto + prefijo
+    finTramo = exacto + buscado.length - sufijo
+    encontrado = buscado
+  } else {
+    const flexible = new RegExp(
+      `(${fuenteFlexible(antesDelCambio)})(${fuenteFlexible(tramo)})(${fuenteFlexible(despuesDelCambio)})`
+    ).exec(texto)
+    if (!flexible) return { html, ok: false }
+    inicioTramo = flexible.index + (flexible[1] ?? '').length
+    finTramo = inicioTramo + (flexible[2] ?? '').length
+    encontrado = flexible[0]
+  }
+  // Nunca a través de dos párrafos: unirlos rompería la correspondencia
+  // con el Word original (data-p).
+  if (encontrado.includes('\n\n') || finTramo <= inicioTramo) return { html, ok: false }
+
+  const ubicacion = ubicarPorPosicion(mapa, inicioTramo, finTramo)
+  if (!ubicacion) return { html, ok: false }
+
+  const range = document.createRange()
+  range.setStart(ubicacion.inicio.nodo, ubicacion.inicio.offset)
+  range.setEnd(ubicacion.fin.nodo, ubicacion.fin.offset)
+  range.deleteContents()
+  range.insertNode(document.createTextNode(nuevo.slice(prefijo, nuevo.length - sufijo)))
+  return { html: contenedor.innerHTML, ok: true }
+}
+
 export interface SugerenciaParaResaltar {
   id: string
   textoOriginal: string

@@ -6,7 +6,7 @@
          todo (ver onMessagesScroll). -->
     <div class="page-header" v-show="mensajes.length === 0" :class="{ 'page-header--compact': chatDesplazado }">
       <div class="section-icon-wrap icon-blue">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7EA2F2" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#686A57" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
       </div>
@@ -281,30 +281,30 @@ watch(mensajes, async () => {
 
 <style scoped>
 /* ==============================
-   Paleta oscura azul de esta página — variables propias, con prefijo lc-,
-   definidas solo dentro de .consultas-page. No se tocan las variables
-   globales (--surface, --bg, etc. en src/css/app.scss), así que el resto
-   de la app sigue con el tema claro de siempre. Distinta de la paleta
-   cálida/terracota de Contratos a propósito — un azul noche elegante,
-   con la terracota de marca como acento cálido puntual (ver
-   --lc-accent-warm, usado en detalles chicos, no como color base).
+   Paleta clara verde-bosque/beige (misma familia que LandingPage.vue y
+   Contratos), variables propias con prefijo lc-, definidas solo dentro de
+   .consultas-page. No se tocan las variables globales (--surface, --bg,
+   etc. en src/css/app.scss). Acento en oliva medio, distinto del verde
+   grisáceo de Contratos, para que cada sección se distinga sutilmente
+   dentro de la misma familia de colores.
    ============================== */
 .consultas-page {
-  --lc-bg: #10151f;
-  --lc-surface: #182234;
-  --lc-surface-alt: #131b29;
-  --lc-surface-sunken: #0c111a;
-  --lc-border: rgba(255, 255, 255, 0.08);
-  --lc-border-strong: rgba(255, 255, 255, 0.16);
-  --lc-text: #eef1f7;
-  --lc-text-muted: #a9b4c7;
-  --lc-text-faint: #78839c;
-  --lc-accent: #5B8DEF;
-  --lc-accent-hover: #4874D1;
-  --lc-accent-soft: rgba(91, 141, 239, 0.14);
-  --lc-accent-soft-strong: rgba(91, 141, 239, 0.26);
-  --lc-accent-warm: #D97A4D;
-  --lc-accent-warm-soft: rgba(217, 122, 77, 0.16);
+  --lc-bg: #FFFFFF;
+  --lc-surface: #FFFFFF;
+  --lc-surface-alt: #D9D4C6;
+  --lc-surface-sunken: #BDB59B;
+  --lc-border: rgba(23, 33, 27, 0.10);
+  --lc-border-strong: rgba(23, 33, 27, 0.18);
+  --lc-text: #17211B;
+  --lc-text-muted: #3D473A;
+  --lc-text-faint: #686A57;
+  --lc-accent: #686A57;
+  --lc-accent-hover: #3D473A;
+  --lc-accent-soft: rgba(104, 106, 87, 0.12);
+  --lc-accent-soft-strong: rgba(104, 106, 87, 0.24);
+  --lc-accent-warm: #9C9275;
+  --lc-accent-warm-soft: rgba(156, 146, 117, 0.18);
+  --lc-ink: #F8F7F2;
 
   /* El max-width:none real vive en ".q-page.consultas-page" más abajo —
      acá no alcanza, empata en especificidad con la regla global ".q-page"
@@ -459,7 +459,7 @@ watch(mensajes, async () => {
 .msg-bubble-user {
   max-width: 74%;
   background: var(--lc-accent);
-  color: #0d1220;
+  color: var(--lc-ink);
   padding: 12px 16px;
   border-radius: 16px 16px 4px 16px;
   font-size: 0.95rem;
@@ -622,7 +622,7 @@ watch(mensajes, async () => {
   padding: 0 5px;
   border-radius: 5px;
   background: var(--lc-accent);
-  color: #0d1220;
+  color: var(--lc-ink);
   font-size: 0.72rem;
   font-weight: 700;
   flex-shrink: 0;
@@ -706,7 +706,7 @@ watch(mensajes, async () => {
 
 .formatted-message :deep(.cita-ref:hover) {
   background: var(--lc-accent);
-  color: #0d1220;
+  color: var(--lc-ink);
 }
 
 .fuente-doc-name {
@@ -740,7 +740,7 @@ watch(mensajes, async () => {
   border: 1px solid var(--lc-border-strong);
   border-radius: 26px;
   padding: 7px 7px 7px 20px;
-  box-shadow: 0 4px 18px -6px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 4px 18px -6px rgba(23, 33, 27, 0.16);
   transition: border-color 0.18s, box-shadow 0.18s;
 }
 
@@ -778,7 +778,7 @@ watch(mensajes, async () => {
   height: 36px;
   border-radius: 50%;
   background: var(--lc-accent);
-  color: #0d1220;
+  color: var(--lc-ink);
   border: none;
   cursor: pointer;
   display: flex;
