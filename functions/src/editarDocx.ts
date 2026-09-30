@@ -55,9 +55,11 @@ interface EntradaRun {
 // (no tienen entrada en el mapa). Se excluyen códigos de campo, texto
 // borrado con control de cambios (<w:instrText>/<w:delText>) y cuadros de
 // texto anidados (<w:txbxContent>), que son párrafos aparte.
-function mapaDeTextoDelParrafo(parrafo: XmlElement): { texto: string; mapa: EntradaRun[] } {
+function mapaDeTextoDelParrafo(parrafo: XmlElement): { texto: string; mapa: EntradaRun[]; tabs: number[] } {
   let texto = ''
   const mapa: EntradaRun[] = []
+  // Posición (en `texto`) de cada <w:tab>, para aplicarPorTabulaciones.
+  const tabs: number[] = []
   const visitar = (nodo: XmlElement) => {
     for (let hijo = nodo.firstChild; hijo; hijo = hijo.nextSibling) {
       if (hijo.nodeType !== 1) continue
@@ -68,6 +70,7 @@ function mapaDeTextoDelParrafo(parrafo: XmlElement): { texto: string; mapa: Entr
         mapa.push({ nodoTexto: el, texto: contenido, inicio: texto.length, fin: texto.length + contenido.length })
         texto += contenido
       } else if (el.nodeName === 'w:tab' || el.nodeName === 'w:br' || el.nodeName === 'w:cr') {
+        if (el.nodeName === 'w:tab') tabs.push(texto.length)
         texto += ' '
       } else if (el.nodeName !== 'w:txbxContent' && el.nodeName !== 'w:pPr' && el.nodeName !== 'w:rPr') {
         visitar(el)
@@ -75,7 +78,7 @@ function mapaDeTextoDelParrafo(parrafo: XmlElement): { texto: string; mapa: Entr
     }
   }
   visitar(parrafo)
-  return { texto, mapa }
+  return { texto, mapa, tabs }
 }
 
 function fijarTexto(nodoTexto: XmlElement, textoNuevo: string) {
@@ -150,6 +153,55 @@ function normalizarConMapa(texto: string): { normal: string; posiciones: number[
 
 const normalizar = (texto: string) => normalizarConMapa(texto).normal
 
+// Reemplazo de un tramo [inicio, fin) del texto normalizado de `segmento`,
+// que empieza en `base` dentro del texto real del párrafo.
+function reemplazarEnSegmento(parrafo: XmlElement, base: number, segmento: string, antesSeg: string, despuesSeg: string) {
+  const { posiciones } = normalizarConMapa(segmento)
+  let prefijo = 0
+  while (prefijo < antesSeg.length && prefijo < despuesSeg.length && antesSeg[prefijo] === despuesSeg[prefijo]) prefijo++
+  let sufijo = 0
+  while (
+    sufijo < antesSeg.length - prefijo &&
+    sufijo < despuesSeg.length - prefijo &&
+    antesSeg[antesSeg.length - 1 - sufijo] === despuesSeg[despuesSeg.length - 1 - sufijo]
+  ) sufijo++
+  const inicio = base + (posiciones[prefijo] ?? segmento.length)
+  const fin = base + (posiciones[antesSeg.length - sufijo] ?? segmento.length)
+  reemplazarTramo(mapaDeTextoDelParrafo(parrafo).mapa, inicio, fin, despuesSeg.slice(prefijo, despuesSeg.length - sufijo))
+}
+
+// Respaldo para párrafos con tabulaciones que cambian a ambos lados de una
+// (ej. dos líneas de firma "______<tab>______" completadas a la vez): un
+// solo tramo abarcaría la tabulación, que no es editable. La app marca cada
+// tabulación como "\t" (docx-preview la dibuja como un espacio especial),
+// así se sabe con certeza qué texto va entre cuáles tabulaciones — un
+// nombre con espacios no se confunde con la tabulación. Se reemplaza cada
+// tramo entre tabulaciones por separado, del último al primero. Devuelve
+// false si no aplica (sin "\t" o no coinciden con las del párrafo).
+function aplicarPorTabulaciones(parrafo: XmlElement, antes: string, despues: string): boolean {
+  const { texto, tabs } = mapaDeTextoDelParrafo(parrafo)
+  const segAntes = antes.split('\t')
+  const segDespues = despues.split('\t')
+  if (tabs.length === 0 || segAntes.length !== tabs.length + 1 || segDespues.length !== segAntes.length) return false
+
+  const limites = [-1, ...tabs, texto.length]
+  const segmentosReales = segAntes.map((_, i) => ({
+    base: (limites[i] ?? 0) + 1,
+    texto: texto.slice((limites[i] ?? 0) + 1, limites[i + 1] ?? texto.length)
+  }))
+  // Cada tramo de la app debe coincidir con el del Word, o no es el mismo párrafo.
+  if (segmentosReales.some((s, i) => normalizar(s.texto) !== normalizar(segAntes[i] ?? ''))) return false
+
+  for (let i = segAntes.length - 1; i >= 0; i--) {
+    const antesSeg = normalizar(segAntes[i] ?? '')
+    const despuesSeg = normalizar(segDespues[i] ?? '')
+    const real = segmentosReales[i]
+    if (antesSeg === despuesSeg || !real) continue
+    reemplazarEnSegmento(parrafo, real.base, real.texto, antesSeg, despuesSeg)
+  }
+  return true
+}
+
 export async function aplicarCambiosDocx(original: Buffer, cambios: CambioParrafo[]): Promise<ResultadoEdicion> {
   const zip = await JSZip.loadAsync(original)
   const archivo = zip.file('word/document.xml')
@@ -188,7 +240,8 @@ export async function aplicarCambiosDocx(original: Buffer, cambios: CambioParraf
         ? parrafos[cambio.indice]
         : undefined
       let parrafo = porPosicion ?? coincidentes[cambio.ocurrencia ?? 0]
-      if (!parrafo && coincidentes.length === 0) {
+      const conNumeracionAutomatica = !parrafo && coincidentes.length === 0
+      if (conNumeracionAutomatica) {
         // Numeración automática de Word ("Anexo N° 1.- ", "3.1. ", "a) "):
         // la app la muestra como texto, pero en el .docx no está escrita,
         // Word la genera. Se ubica el párrafo cuyo texto es el FINAL del que
@@ -233,7 +286,13 @@ export async function aplicarCambiosDocx(original: Buffer, cambios: CambioParraf
 
       // Comprobación: el párrafo debe quedar exactamente como lo dejó el usuario.
       if (normalizar(mapaDeTextoDelParrafo(parrafo).texto) !== despuesNormal) {
-        throw new Error('el resultado no coincide con el texto editado')
+        // Si el cambio abarcaba una tabulación, se reintenta tramo por tramo
+        // entre tabulaciones (desde el párrafo original).
+        for (const { nodo, texto: t } of respaldo) fijarTexto(nodo, t)
+        const porTabulaciones = !conNumeracionAutomatica && aplicarPorTabulaciones(parrafo, cambio.antes, cambio.despues)
+        if (!porTabulaciones || normalizar(mapaDeTextoDelParrafo(parrafo).texto) !== despuesNormal) {
+          throw new Error('el resultado no coincide con el texto editado')
+        }
       }
       aplicados++
     } catch (err) {

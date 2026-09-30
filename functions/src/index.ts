@@ -27,6 +27,10 @@ export { obtenerUrlFirmadaDocumento } from './documentosTemporales'
 // Resumen del PDF de una norma al abrirla en la Biblioteca Legal.
 export { resumirNormaIA } from './resumenNorma'
 
+// Asistente de Gestión de Contratos: interpreta qué contrato necesita el
+// usuario y recomienda plantillas.
+export { recomendarPlantillaIA } from './recomendarPlantilla'
+
 if (getApps().length === 0) {
   initializeApp()
 }
