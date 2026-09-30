@@ -247,10 +247,49 @@ interface MensajeChatEdicion {
   contenido: string
 }
 
+interface CambioTextoContrato {
+  antes: string
+  despues: string
+}
+
 interface RespuestaChatEdicion {
   tipo: 'pregunta' | 'documento_final'
   mensaje: string
   textoModificado?: string
+  // Solo con formato "cambios" (plantillas Word): en vez del contrato
+  // reescrito, los reemplazos puntuales, para aplicarlos sobre el Word
+  // original sin perder su formato.
+  cambios?: CambioTextoContrato[]
+}
+
+const MAX_CAMBIOS_CHAT_EDICION = 300
+
+// El modo JSON de Gemini no siempre garantiza JSON válido en respuestas
+// largas (sobre todo el modelo de respaldo): a veces deja una coma antes de
+// "]" o "}", o una clave sin comillas. Se reparan esos dos errores típicos
+// antes de dar la respuesta por perdida. Si aun así no es JSON, lanza
+// SyntaxError.
+function parsearJsonTolerante(texto: string): unknown {
+  const inicio = texto.indexOf('{')
+  const fin = texto.lastIndexOf('}')
+  const cuerpo = inicio !== -1 && fin > inicio ? texto.slice(inicio, fin + 1) : texto
+  try {
+    return JSON.parse(cuerpo)
+  } catch {
+    const reparado = cuerpo
+      .replace(/,(\s*[}\]])/g, '$1')
+      .replace(/([{,]\s*)([A-Za-z_][A-Za-z0-9_]*)(\s*:)/g, '$1"$2"$3')
+    return JSON.parse(reparado)
+  }
+}
+
+function normalizarCambios(crudo: unknown): CambioTextoContrato[] {
+  if (!Array.isArray(crudo)) return []
+  return crudo
+    .map(c => (c ?? {}) as Record<string, unknown>)
+    .filter(c => typeof c.antes === 'string' && typeof c.despues === 'string' && c.antes.trim() && c.antes !== c.despues)
+    .slice(0, MAX_CAMBIOS_CHAT_EDICION)
+    .map(c => ({ antes: c.antes as string, despues: c.despues as string }))
 }
 
 export const chatEdicionContratoIA = onRequest(
@@ -265,11 +304,13 @@ export const chatEdicionContratoIA = onRequest(
     if (!uid) return
 
     try {
-      const { textoContrato, historialChat: historialRecibido = [], respuestaUsuario } = req.body as {
+      const { textoContrato, historialChat: historialRecibido = [], respuestaUsuario, formato } = req.body as {
         textoContrato?: string
         historialChat?: MensajeChatEdicion[]
         respuestaUsuario?: string
+        formato?: string
       }
+      const enCambios = formato === 'cambios'
       if (!textoContrato?.trim()) {
         res.status(400).json({ error: 'Falta textoContrato' })
         return
@@ -285,8 +326,12 @@ export const chatEdicionContratoIA = onRequest(
       if (!(await consumirCuotaIA(uid, res))) return
 
       // Solo los últimos mensajes: la conversación completa puede crecer
-      // sin límite y cada turno se reenvía entero a Gemini.
+      // sin límite y cada turno se reenvía entero a Gemini. Gemini exige que
+      // el historial empiece con un turno del usuario: si el recorte (o un
+      // turno que falló antes) lo deja empezando con uno de la IA, se
+      // descartan esos primeros turnos.
       const historialChat = historialRecibido.slice(-MAX_MENSAJES_HISTORIAL)
+      while (historialChat.length > 0 && historialChat[0]?.esIA) historialChat.shift()
 
       const systemInstruction = `
 Eres un asistente legal que ayuda a un usuario a completar o modificar un contrato, conversando paso a paso.
@@ -298,7 +343,21 @@ Tu trabajo:
 1. Analiza el contrato de arriba: identifica qué datos faltan por completar (espacios en blanco, líneas de puntos, placeholders tipo XXXX, campos vacíos) y qué el usuario podría querer modificar.
 2. Pregunta UNA sola cosa a la vez, en lenguaje natural y claro (ej. "¿Cuál es el nombre completo del arrendador?"), nunca varias preguntas juntas.
 3. No repitas una pregunta que ya fue respondida en la conversación.
-4. Cuando ya tengas suficiente información, o el usuario diga que ya terminó, que no quiere completar más, o pida ver el resultado, genera el CONTRATO COMPLETO actualizado con todos los cambios aplicados, conservando el resto del texto, la estructura y las cláusulas originales tal cual.
+${enCambios
+  ? `4. Cuando ya tengas suficiente información, o el usuario diga que ya terminó, que no quiere completar más, o pida ver el resultado, devuelve la LISTA DE CAMBIOS a aplicar sobre el contrato (NO el contrato completo). Cada cambio es un reemplazo dentro de un mismo párrafo:
+   - "antes": fragmento COPIADO EXACTAMENTE del contrato de arriba (mismas palabras, puntos, guiones y espacios), con las palabras de alrededor necesarias para que aparezca UNA sola vez en el contrato. Nunca abarques dos párrafos.
+   - "despues": ese mismo fragmento con el dato completado o la modificación hecha, sin cambiar nada más.
+   Incluye todos los datos que el usuario dio, en todos los lugares del contrato donde correspondan.
+
+Responde SIEMPRE y ÚNICAMENTE en JSON, con esta estructura exacta, sin texto fuera del JSON:
+{
+  "tipo": "pregunta" o "documento_final",
+  "mensaje": "el mensaje conversacional para mostrarle al usuario (la pregunta a hacer, o un breve resumen de que terminaste)",
+  "cambios": [{ "antes": "fragmento exacto del contrato", "despues": "fragmento con el cambio" }]
+}
+("cambios" SOLO si tipo es documento_final; omítelo si tipo es pregunta.)
+`
+  : `4. Cuando ya tengas suficiente información, o el usuario diga que ya terminó, que no quiere completar más, o pida ver el resultado, genera el CONTRATO COMPLETO actualizado con todos los cambios aplicados, conservando el resto del texto, la estructura y las cláusulas originales tal cual.
 
 Responde SIEMPRE y ÚNICAMENTE en JSON, con esta estructura exacta, sin texto fuera del JSON:
 {
@@ -306,24 +365,41 @@ Responde SIEMPRE y ÚNICAMENTE en JSON, con esta estructura exacta, sin texto fu
   "mensaje": "el mensaje conversacional para mostrarle al usuario (la pregunta a hacer, o un breve resumen de que terminaste)",
   "textoModificado": "SOLO si tipo es documento_final: el contrato completo con todos los cambios aplicados, listo para reemplazar al original. Omite este campo si tipo es pregunta."
 }
-`
+`}`
 
       const mensajeUsuario = respuestaUsuario?.trim() ||
         'Analiza el contrato y hazme la primera pregunta para completarlo o modificarlo.'
 
       // El chat se arma dentro del callback: si el modelo principal está
       // saturado, se vuelve a armar con el modelo de respaldo.
-      const result = await conModeloDeRespaldo(model => model.startChat({
-        history: historialChat.map(m => ({
-          role: m.esIA ? 'model' : 'user',
-          parts: [{ text: m.contenido }]
-        })),
-        generationConfig: { maxOutputTokens: 4000, responseMimeType: 'application/json' },
-        systemInstruction: { role: 'user', parts: [{ text: systemInstruction }] }
-      }).sendMessage(mensajeUsuario))
-      const text = result.response.text()
-      const clean = text.replace(/```json|```/g, '').trim()
-      const parsed = JSON.parse(clean) as Partial<RespuestaChatEdicion>
+      const pedirRespuesta = async (): Promise<Partial<RespuestaChatEdicion>> => {
+        const result = await conModeloDeRespaldo(model => model.startChat({
+          history: historialChat.map(m => ({
+            role: m.esIA ? 'model' : 'user',
+            parts: [{ text: m.contenido }]
+          })),
+          // Al final la IA devuelve el contrato COMPLETO: con 4000 tokens una
+          // plantilla de ~29k caracteres (Compra-Venta) salía cortada.
+          generationConfig: { maxOutputTokens: 32_000, responseMimeType: 'application/json' },
+          systemInstruction: { role: 'user', parts: [{ text: systemInstruction }] }
+        }).sendMessage(mensajeUsuario), { json: true })
+        const clean = result.response.text().replace(/```json|```/g, '').trim()
+        // A veces el modelo de respaldo contesta la pregunta en texto plano
+        // en vez de JSON ("Gracias. Ahora, ¿cuál es...?"): eso es una
+        // pregunta válida, no un error.
+        if (clean && !clean.includes('{')) return { tipo: 'pregunta', mensaje: clean }
+        return parsearJsonTolerante(clean) as Partial<RespuestaChatEdicion>
+      }
+
+      // Si el JSON viene tan roto que no se puede reparar, se pide una vez más.
+      let parsed: Partial<RespuestaChatEdicion>
+      try {
+        parsed = await pedirRespuesta()
+      } catch (err) {
+        if (!(err instanceof SyntaxError)) throw err
+        logger.warn('⚠️ chatEdicionContratoIA: JSON inválido de la IA, se reintenta una vez:', err.message)
+        parsed = await pedirRespuesta()
+      }
 
       if (parsed.tipo !== 'pregunta' && parsed.tipo !== 'documento_final') {
         throw new Error('Respuesta de la IA con formato inesperado')
@@ -332,10 +408,12 @@ Responde SIEMPRE y ÚNICAMENTE en JSON, con esta estructura exacta, sin texto fu
         throw new Error('Respuesta de la IA sin mensaje')
       }
 
+      const cambios = enCambios && parsed.tipo === 'documento_final' ? normalizarCambios(parsed.cambios) : []
       const respuesta: RespuestaChatEdicion = {
         tipo: parsed.tipo,
         mensaje: parsed.mensaje,
-        ...(parsed.textoModificado !== undefined ? { textoModificado: parsed.textoModificado } : {})
+        ...(!enCambios && parsed.textoModificado !== undefined ? { textoModificado: parsed.textoModificado } : {}),
+        ...(enCambios && parsed.tipo === 'documento_final' ? { cambios } : {})
       }
       res.json(respuesta)
     } catch (err) {

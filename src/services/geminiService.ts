@@ -1,6 +1,30 @@
 import { postFuncion } from './functionsClient'
 
 // ================================
+// ASISTENTE DE CONTRATOS (Gestión de Contratos)
+// (Cloud Function recomendarPlantillaIA: interpreta lo que el usuario
+// describe y recomienda plantillas reales de contract_templates)
+// ================================
+export interface RespuestaAsistenteContratos {
+  mensaje: string
+  plantillas: string[] // ids de contract_templates, la más adecuada primero
+}
+
+export async function recomendarPlantilla(
+  mensaje: string,
+  historial: { esIA: boolean; contenido: string }[]
+): Promise<RespuestaAsistenteContratos> {
+  const response = await postFuncion('recomendarPlantillaIA', { mensaje, historial })
+
+  const data = await response.json() as Partial<RespuestaAsistenteContratos> & { error?: string }
+  if (!response.ok || !data.mensaje) {
+    throw new Error(data.error ?? 'No se pudo consultar al asistente de contratos')
+  }
+
+  return { mensaje: data.mensaje, plantillas: data.plantillas ?? [] }
+}
+
+// ================================
 // 4. MODIFICAR PLANTILLA
 // (delegado a la Cloud Function modificarPlantillaIA — antes llamaba a
 // Gemini directo desde el navegador con la API key expuesta en el bundle)
@@ -56,14 +80,18 @@ export interface ResultadoChatEdicion {
   tipo: 'pregunta' | 'documento_final'
   mensaje: string
   textoModificado?: string
+  // Con formato "cambios" (plantillas Word): reemplazos puntuales para
+  // aplicar sobre el Word original, en vez del contrato reescrito.
+  cambios?: { antes: string; despues: string }[]
 }
 
 export async function chatEditarContratoIA(
   textoContrato: string,
   historialChat: MensajeChatEdicion[],
-  respuestaUsuario?: string
+  respuestaUsuario?: string,
+  opciones: { formato?: 'cambios' } = {}
 ): Promise<ResultadoChatEdicion> {
-  const response = await postFuncion('chatEdicionContratoIA', { textoContrato, historialChat, respuestaUsuario })
+  const response = await postFuncion('chatEdicionContratoIA', { textoContrato, historialChat, respuestaUsuario, ...opciones })
 
   const data = await response.json() as Partial<ResultadoChatEdicion> & { error?: string }
   if (!response.ok || !data.tipo || !data.mensaje) {
@@ -73,7 +101,8 @@ export async function chatEditarContratoIA(
   return {
     tipo: data.tipo,
     mensaje: data.mensaje,
-    ...(data.textoModificado !== undefined ? { textoModificado: data.textoModificado } : {})
+    ...(data.textoModificado !== undefined ? { textoModificado: data.textoModificado } : {}),
+    ...(Array.isArray(data.cambios) ? { cambios: data.cambios } : {})
   }
 }
 

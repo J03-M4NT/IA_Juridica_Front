@@ -32,13 +32,22 @@ function crearContenedor(html: string): HTMLDivElement {
 // - sin las llamadas a nota al pie/final (docx-preview las dibuja como un
 //   superíndice anidado <sup><sup>1</sup></sup>; en el .docx no son texto),
 // - con los saltos de línea como espacio (igual que el servidor),
+// - con cada tabulación como "\t" (docx-preview la dibuja como un espacio
+//   especial, U+2003): el servidor la trata como cualquier espacio al
+//   comparar, y la usa para ubicar cambios a ambos lados de una tabulación,
 // - sin el texto de párrafos anidados (tienen su propia marca).
+// docx-preview dibuja cada <w:tab> como un "&emsp;" (U+2003).
+const TABULACION = String.fromCharCode(0x2003)
+
 function textoPropio(bloque: Element): string {
   const copia = bloque.cloneNode(true) as Element
   copia.querySelectorAll('[data-p]').forEach(n => n.remove())
   copia.querySelectorAll('sup > sup').forEach(n => n.parentElement?.remove())
   copia.querySelectorAll('br').forEach(n => n.replaceWith(' '))
-  return (copia.textContent ?? '').replace(/\s+/g, ' ').trim()
+  return (copia.textContent ?? '')
+    .split(TABULACION).join('\t')
+    .replace(/[^\S\t]+/g, ' ')
+    .replace(/^ +| +$/g, '')
 }
 
 function textosPorMarca(html: string): Map<string, string> {

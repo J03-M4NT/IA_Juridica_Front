@@ -654,6 +654,14 @@ onMounted(async () => {
   animation: floatUp 0.5s ease-out both;
 }
 
+/* Fondo blanco puro (no el #FAFAF7 cálido por defecto de .q-page en
+   MainLayout.vue) a pedido explícito — mismo truco de especificidad que
+   las demás páginas: selector combinado para ganarle a la regla
+   compartida sin tocarla. */
+.q-page.admin-page {
+  background: #FFFFFF;
+}
+
 @keyframes floatUp {
   from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -712,6 +720,12 @@ onMounted(async () => {
   align-items: center;
   gap: 16px;
   min-width: 200px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-medium);
 }
 
 .stat-icon-wrap {

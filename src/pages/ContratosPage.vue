@@ -4,7 +4,7 @@
     <!-- Section header -->
     <div class="page-header">
       <div class="section-icon-wrap icon-purple">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#D97A4D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3D473A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 7h18"/><path d="M3 7l2-3h14l2 3"/><path d="M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/><path d="M9 12h6"/>
         </svg>
       </div>
@@ -20,7 +20,7 @@
         <div class="lx-card">
           <div class="lx-card-header">
             <div class="lx-card-header-title">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D97A4D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3D473A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                 <path d="M14 2v6h6"/>
               </svg>
@@ -73,11 +73,20 @@
         <div class="lx-card" v-if="!modoEdicion">
           <div class="lx-card-header">
             <div class="lx-card-header-title">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D97A4D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3D473A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>
               </svg>
               Vista Previa del Contrato
             </div>
+            <q-btn
+              v-if="currentTemplate"
+              flat no-caps
+              icon="auto_awesome"
+              label="Buscar otro contrato"
+              color="grey-7"
+              class="q-ml-auto q-mr-sm"
+              @click="volverAlAsistente"
+            />
             <q-btn
               v-if="pdfDoc || (esWordTemplate && textoHtml)"
               color="accent"
@@ -91,11 +100,74 @@
           </div>
 
           <div class="lx-card-body editor-content">
-            <div v-if="!currentTemplate" class="pdf-canvas-container">
-              <q-icon name="touch_app" size="64px" color="grey-6" />
-              <p class="text-grey-6 q-mt-md text-center">
-                Selecciona una plantilla de la lista para ver su contenido
+            <!-- Asistente: el usuario describe con sus palabras el contrato
+                 que necesita y se le ofrecen las plantillas que corresponden.
+                 Al elegir una, sigue el flujo de siempre (vista previa →
+                 Editar Contrato → manual o con IA). -->
+            <div v-if="!currentTemplate" class="chat-edicion-panel asistente-contratos">
+              <p class="chat-edicion-hint">
+                <q-icon name="auto_awesome" class="q-mr-xs" />
+                Asistente de contratos · también puedes elegir una plantilla de la lista
               </p>
+
+              <div ref="asistenteMensajesRef" class="chat-edicion-mensajes q-mb-md">
+                <div
+                  v-for="(msg, idx) in asistenteMensajes"
+                  :key="idx"
+                  :class="['chat-edicion-fila', msg.esIA ? 'chat-edicion-fila--ia' : 'chat-edicion-fila--user']"
+                >
+                  <div v-if="msg.esIA" class="chat-edicion-avatar">
+                    <q-icon name="auto_awesome" size="15px" />
+                  </div>
+                  <div class="asistente-bloque" :class="{ 'asistente-bloque--user': !msg.esIA }">
+                    <div :class="['chat-edicion-burbuja', msg.esIA ? 'chat-edicion-burbuja--ia' : 'chat-edicion-burbuja--user']">
+                      {{ msg.contenido }}
+                    </div>
+                    <div v-if="msg.plantillas?.length" class="asistente-plantillas">
+                      <button
+                        v-for="plantilla in msg.plantillas"
+                        :key="plantilla.id"
+                        type="button"
+                        class="asistente-plantilla"
+                        @click="selectTemplate(plantilla)"
+                      >
+                        <q-icon name="description" size="20px" class="asistente-plantilla-icono" />
+                        <span class="asistente-plantilla-texto">
+                          <span class="asistente-plantilla-nombre">{{ plantilla.name }}</span>
+                          <span v-if="plantilla.description" class="asistente-plantilla-desc">{{ plantilla.description }}</span>
+                        </span>
+                        <span class="asistente-plantilla-accion">Usar esta plantilla</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="asistenteCargando" class="row items-center q-gutter-sm">
+                  <q-spinner-dots color="accent" size="26px" />
+                  <span class="chat-edicion-hint-muted">Buscando el contrato adecuado...</span>
+                </div>
+              </div>
+
+              <div class="row q-gutter-sm items-center">
+                <q-input
+                  v-model="asistenteRespuesta"
+                  outlined
+                  dense
+                  class="col chat-edicion-input"
+                  placeholder="Ej.: quiero alquilar mi departamento"
+                  :disable="asistenteCargando"
+                  maxlength="1000"
+                  @keyup.enter="enviarAsistente"
+                />
+                <q-btn
+                  color="accent"
+                  icon="send"
+                  round
+                  @click="enviarAsistente"
+                  :loading="asistenteCargando"
+                  :disable="!asistenteRespuesta.trim()"
+                />
+              </div>
             </div>
 
             <div v-else-if="loadingPdf" class="pdf-loading row items-center justify-center">
@@ -144,7 +216,7 @@
         <div class="lx-card" v-if="modoEdicion">
           <div class="lx-card-header">
             <div class="lx-card-header-title">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D97A4D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3D473A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                 <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/>
               </svg>
@@ -154,7 +226,7 @@
           </div>
 
           <!-- Tabs: Manual / Chat -->
-          <q-tabs v-model="tabEdicion" color="grey-5" active-color="accent" class="lx-tabs q-px-md q-pt-sm" align="left" no-caps>
+          <q-tabs v-model="tabEdicion" color="grey-8" active-color="accent" class="lx-tabs q-px-md q-pt-sm" align="left" no-caps>
             <q-tab name="manual" icon="edit" label="Editar Manualmente" />
             <q-tab name="chat" icon="chat" label="Completar con IA" />
           </q-tabs>
@@ -186,7 +258,7 @@
                   LexIT AI te va a preguntar los datos que faltan, uno a la vez.
                 </p>
 
-                <div v-if="chatEdicionMensajes.length" class="chat-edicion-mensajes q-mb-md">
+                <div v-if="chatEdicionMensajes.length" ref="chatEdicionMensajesRef" class="chat-edicion-mensajes q-mb-md">
                   <div
                     v-for="(msg, idx) in chatEdicionMensajes"
                     :key="idx"
@@ -205,6 +277,8 @@
                   <q-spinner-dots color="accent" size="26px" />
                   <span class="chat-edicion-hint-muted">LexIT AI está pensando...</span>
                 </div>
+                <!-- Punto final del chat: se mantiene a la vista mientras la IA responde -->
+                <div ref="chatEdicionFinRef"></div>
 
                 <q-btn
                   v-if="!chatEdicionIniciado"
@@ -221,7 +295,6 @@
                 <div v-else-if="!chatEdicionTerminado" class="row q-gutter-sm items-center">
                   <q-input
                     v-model="chatEdicionRespuesta"
-                    dark
                     outlined
                     dense
                     class="col chat-edicion-input"
@@ -246,6 +319,7 @@
                   El contrato fue actualizado con tus respuestas. Revísalo en la pestaña "Editar Manualmente" o descárgalo abajo.
                 </q-banner>
 
+                <p v-if="avisoChatEdicion" class="download-aviso q-mt-sm q-mb-none">{{ avisoChatEdicion }}</p>
                 <p v-if="errorChatEdicion" class="text-negative text-caption q-mt-sm q-mb-none">{{ errorChatEdicion }}</p>
               </div>
             </div>
@@ -298,20 +372,22 @@ import {
   ref,
   shallowRef,
   computed,
-  watch
+  watch,
+  nextTick
 } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useContratosStore } from '../stores/contratos-store'
 import { useAuthStore } from '../stores/auth'
 import type { ContractTemplate } from '../stores/contratos-store'
 import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy } from 'pdfjs-dist'
-import { chatEditarContratoIA, type MensajeChatEdicion } from '../services/geminiService'
+import { chatEditarContratoIA, recomendarPlantilla, type MensajeChatEdicion, type ResultadoChatEdicion } from '../services/geminiService'
+import { buscarPlantillasLocal } from '../utils/buscarPlantilla'
 import { exportToWordConMarcaDeAgua } from '../utils/documentExport'
 import { extraerHtmlWord } from '../utils/mammothExtractor'
 import { subirDocumentoTemporal, descargarWordEditado } from '../services/documentosTemporalesService'
 import { renderizarWord } from '../utils/vistaWord'
 import { calcularCambios } from '../utils/edicionWord'
-import { extraerTextoVisibleDeHtml } from '../utils/htmlTexto'
+import { extraerTextoVisibleDeHtml, reemplazarEnHtmlFlexible } from '../utils/htmlTexto'
 import EditorContrato from '../components/EditorContrato.vue'
 import VistaWord from '../components/VistaWord.vue'
 
@@ -362,6 +438,25 @@ const chatEdicionTerminado = ref(false)
 const chatEdicionCargando = ref(false)
 const chatEdicionRespuesta = ref('')
 const errorChatEdicion = ref('')
+// Resultado de aplicar los cambios de la IA sobre el Word (si alguno no se
+// pudo ubicar en el documento).
+const avisoChatEdicion = ref('')
+
+// El chat baja solo al último mensaje (y al "está pensando...") cada vez
+// que llega un mensaje o la IA empieza a responder, para que el usuario no
+// tenga que desplazarse a mano.
+const chatEdicionMensajesRef = ref<HTMLElement | null>(null)
+const chatEdicionFinRef = ref<HTMLElement | null>(null)
+
+function bajarChatEdicion() {
+  void nextTick(() => {
+    const lista = chatEdicionMensajesRef.value
+    if (lista) lista.scrollTo({ top: lista.scrollHeight, behavior: 'smooth' })
+    chatEdicionFinRef.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  })
+}
+
+watch(() => [chatEdicionMensajes.value.length, chatEdicionCargando.value], bajarChatEdicion)
 const stripHtml = (html: string): string => {
   const tmp = document.createElement('div')
   tmp.innerHTML = html
@@ -403,6 +498,83 @@ const selectTemplate = (template: ContractTemplate) => {
   plantillaFuenteDetectada.value = undefined
   reiniciarVistaWord()
   reiniciarChatEdicion()
+}
+
+// =========================
+// ASISTENTE DE CONTRATOS
+// El usuario describe el contrato con sus palabras ("alquilar mi depa") y
+// la IA (Cloud Function recomendarPlantillaIA) ofrece las plantillas que
+// corresponden. Si la IA no responde, se busca por palabras clave
+// (utils/buscarPlantilla.ts) para no dejar al usuario sin opciones.
+// =========================
+interface MensajeAsistente {
+  esIA: boolean
+  contenido: string
+  plantillas?: ContractTemplate[]
+}
+
+const SALUDO_ASISTENTE = '¿Qué tipo de contrato necesitas? Descríbelo con tus palabras, por ejemplo: "alquilar un local", "vender mi auto" o "prestarle algo a un amigo".'
+
+const asistenteMensajes = ref<MensajeAsistente[]>([{ esIA: true, contenido: SALUDO_ASISTENTE }])
+const asistenteRespuesta = ref('')
+const asistenteCargando = ref(false)
+const asistenteMensajesRef = ref<HTMLElement | null>(null)
+
+function bajarAsistente() {
+  void nextTick(() => {
+    const el = asistenteMensajesRef.value
+    if (el) el.scrollTop = el.scrollHeight
+  })
+}
+
+async function enviarAsistente() {
+  const mensaje = asistenteRespuesta.value.trim()
+  if (!mensaje || asistenteCargando.value) return
+
+  const historial = asistenteMensajes.value.map(m => ({ esIA: m.esIA, contenido: m.contenido }))
+  asistenteMensajes.value.push({ esIA: false, contenido: mensaje })
+  asistenteRespuesta.value = ''
+  asistenteCargando.value = true
+  bajarAsistente()
+
+  try {
+    if (templates.value.length === 0) await store.fetchTemplates()
+    const resultado = await recomendarPlantilla(mensaje, historial)
+    // El servidor lee las plantillas de Firestore en cada mensaje: si
+    // recomienda una que esta página aún no tiene (el admin la subió
+    // después de abrirla), se vuelve a cargar la lista.
+    if (resultado.plantillas.some(id => !templates.value.some(t => t.id === id))) {
+      await store.fetchTemplates()
+    }
+    const plantillas = resultado.plantillas
+      .map(id => templates.value.find(t => t.id === id))
+      .filter((t): t is ContractTemplate => !!t)
+    asistenteMensajes.value.push({ esIA: true, contenido: resultado.mensaje, plantillas })
+  } catch (err) {
+    console.error('Error en el asistente de contratos:', err)
+    // Respaldo con la lista más reciente de plantillas.
+    await store.fetchTemplates()
+    const encontradas = buscarPlantillasLocal(mensaje, templates.value)
+    asistenteMensajes.value.push(encontradas.length
+      ? { esIA: true, contenido: 'No pude consultar a la IA en este momento, pero estas plantillas coinciden con lo que escribiste:', plantillas: encontradas }
+      : { esIA: true, contenido: 'No pude consultar a la IA en este momento. Puedes elegir una plantilla de la lista o intentarlo de nuevo en unos segundos.' })
+  } finally {
+    asistenteCargando.value = false
+    bajarAsistente()
+  }
+}
+
+// Vuelve al asistente para buscar otro contrato (la conversación se conserva).
+function volverAlAsistente() {
+  store.setCurrentTemplate(null)
+  modoEdicion.value = false
+  textoEditado.value = ''
+  textoHtml.value = ''
+  pdfError.value = null
+  plantillaFuenteDetectada.value = undefined
+  reiniciarVistaWord()
+  reiniciarChatEdicion()
+  bajarAsistente()
 }
 
 // =========================
@@ -714,6 +886,7 @@ const reiniciarChatEdicion = () => {
   chatEdicionCargando.value = false
   chatEdicionRespuesta.value = ''
   errorChatEdicion.value = ''
+  avisoChatEdicion.value = ''
 }
 
 const aplicarResultadoChatEdicion = (textoModificado: string) => {
@@ -725,19 +898,65 @@ const aplicarResultadoChatEdicion = (textoModificado: string) => {
   usandoResultadoIA.value = true
 }
 
+// Plantilla Word con vista fiel: la IA ve el texto de esa misma vista y al
+// final devuelve reemplazos puntuales ("cambios"), que se aplican sobre el
+// Word mostrado — igual que "Aplicar al documento" en Análisis. Así el
+// contrato se sigue viendo y descargando idéntico al original (con el
+// membrete), solo con los datos completados. PDF: como siempre.
+const textoParaChatIA = (): string =>
+  modoWordFiel.value ? textoDelCuerpo(htmlVistaWordEditado.value || htmlVistaWord.value) : textoEditado.value
+
+const opcionesChatIA = (): { formato?: 'cambios' } =>
+  modoWordFiel.value ? { formato: 'cambios' } : {}
+
+const aplicarCambiosIAEnWord = (cambios: { antes: string; despues: string }[]) => {
+  let html = htmlVistaWordEditado.value || htmlVistaWord.value
+  const fallidos: string[] = []
+  for (const cambio of cambios) {
+    // Un cambio nunca debe abarcar dos párrafos (rompería la
+    // correspondencia con el Word original).
+    const resultado = cambio.antes.includes('\n')
+      ? { html, ok: false }
+      : reemplazarEnHtmlFlexible(html, cambio.antes, cambio.despues)
+    if (resultado.ok) html = resultado.html
+    else fallidos.push(cambio.antes)
+  }
+  htmlVistaWordEditado.value = html
+  textoEditado.value = textoDelCuerpo(html)
+  chatEdicionTerminado.value = true
+
+  const aplicados = cambios.length - fallidos.length
+  if (cambios.length === 0) {
+    avisoChatEdicion.value = 'La IA no propuso cambios al documento.'
+  } else if (fallidos.length > 0) {
+    const ejemplos = fallidos.slice(0, 3).map(t => `"${t.length > 60 ? `${t.slice(0, 60)}…` : t}"`).join(', ')
+    avisoChatEdicion.value = `Se aplicaron ${aplicados} de ${cambios.length} cambios. ` +
+      `${fallidos.length} no se encontraron en el documento (${ejemplos}); complétalos en "Editar Manualmente".`
+  } else {
+    avisoChatEdicion.value = ''
+  }
+}
+
+const procesarResultadoChatEdicion = (resultado: ResultadoChatEdicion) => {
+  if (resultado.tipo !== 'documento_final') return
+  if (resultado.cambios && modoWordFiel.value) {
+    aplicarCambiosIAEnWord(resultado.cambios)
+  } else if (resultado.textoModificado) {
+    aplicarResultadoChatEdicion(resultado.textoModificado)
+  }
+}
+
 const iniciarChatEdicion = async () => {
   if (!textoEditado.value) return
   chatEdicionCargando.value = true
   errorChatEdicion.value = ''
   try {
-    const resultado = await chatEditarContratoIA(textoEditado.value, [])
+    const resultado = await chatEditarContratoIA(textoParaChatIA(), [], undefined, opcionesChatIA())
     chatEdicionIniciado.value = true
     chatEdicionMensajes.value.push({ esIA: true, contenido: resultado.mensaje })
     chatEdicionHistorialIA.value.push({ esIA: false, contenido: MENSAJE_INICIAL_CHAT_EDICION })
     chatEdicionHistorialIA.value.push({ esIA: true, contenido: resultado.mensaje })
-    if (resultado.tipo === 'documento_final' && resultado.textoModificado) {
-      aplicarResultadoChatEdicion(resultado.textoModificado)
-    }
+    procesarResultadoChatEdicion(resultado)
   } catch (err) {
     console.error('Error al iniciar chat de edición:', err)
     errorChatEdicion.value = err instanceof Error ? err.message : 'No se pudo iniciar la conversación con la IA.'
@@ -757,15 +976,19 @@ const enviarRespuestaChatEdicion = async () => {
   chatEdicionCargando.value = true
   errorChatEdicion.value = ''
   try {
-    const resultado = await chatEditarContratoIA(textoEditado.value, historialPrevio, respuesta)
+    const resultado = await chatEditarContratoIA(textoParaChatIA(), historialPrevio, respuesta, opcionesChatIA())
     chatEdicionMensajes.value.push({ esIA: true, contenido: resultado.mensaje })
     chatEdicionHistorialIA.value.push({ esIA: true, contenido: resultado.mensaje })
-    if (resultado.tipo === 'documento_final' && resultado.textoModificado) {
-      aplicarResultadoChatEdicion(resultado.textoModificado)
-    }
+    procesarResultadoChatEdicion(resultado)
   } catch (err) {
     console.error('Error al continuar chat de edición:', err)
     errorChatEdicion.value = err instanceof Error ? err.message : 'No se pudo continuar la conversación con la IA.'
+    // El mensaje no tuvo respuesta: se saca del historial (si quedara,
+    // los siguientes envíos lo mandarían sin su respuesta) y se devuelve
+    // al campo de texto para reenviarlo.
+    chatEdicionHistorialIA.value = historialPrevio
+    chatEdicionMensajes.value.pop()
+    chatEdicionRespuesta.value = respuesta
   } finally {
     chatEdicionCargando.value = false
   }
@@ -831,24 +1054,26 @@ watch(currentTemplate, async (newTemplate) => {
 
 <style scoped>
 /* ==============================
-   Paleta oscura de esta página — variables propias, con prefijo lx-,
-   definidas solo dentro de .contratos-page. No se tocan las variables
-   globales (--surface, --bg, etc. en src/css/app.scss), así que el resto
-   de la app (Consultas, Normas, Admin) sigue con el tema claro de siempre.
+   Paleta clara verde-bosque/beige (misma familia que LandingPage.vue),
+   variables propias con prefijo lx-, definidas solo dentro de
+   .contratos-page. No se tocan las variables globales (--surface, --bg,
+   etc. en src/css/app.scss).
    ============================== */
 .contratos-page {
-  --lx-bg: #17140f;
-  --lx-surface: #201b16;
-  --lx-surface-alt: #1a1611;
-  --lx-surface-sunken: #14110d;
-  --lx-border: rgba(255, 255, 255, 0.08);
-  --lx-border-strong: rgba(255, 255, 255, 0.14);
-  --lx-text: #f2ece1;
-  --lx-text-muted: #b7ab9a;
-  --lx-text-faint: #8a8072;
-  --lx-accent: #D97A4D;
-  --lx-accent-soft: rgba(217, 122, 77, 0.14);
-  --lx-accent-soft-strong: rgba(217, 122, 77, 0.24);
+  --lx-bg: #FFFFFF;
+  --lx-surface: #FFFFFF;
+  --lx-surface-alt: #D9D4C6;
+  --lx-surface-sunken: #BDB59B;
+  --lx-border: rgba(23, 33, 27, 0.10);
+  --lx-border-strong: rgba(23, 33, 27, 0.18);
+  --lx-text: #17211B;
+  --lx-text-muted: #3D473A;
+  --lx-text-faint: #686A57;
+  --lx-accent: #3D473A;
+  --lx-accent-hover: #17211B;
+  --lx-accent-soft: rgba(61, 71, 58, 0.10);
+  --lx-accent-soft-strong: rgba(61, 71, 58, 0.20);
+  --lx-ink: #F8F7F2;
 
   animation: floatUp 0.5s ease-out both;
 }
@@ -917,7 +1142,7 @@ watch(currentTemplate, async (newTemplate) => {
   background: var(--lx-surface);
   border: 1px solid var(--lx-border);
   border-radius: 16px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 12px 32px -14px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 1px 2px rgba(23, 33, 27, 0.06), 0 12px 32px -16px rgba(23, 33, 27, 0.18);
   overflow: hidden;
 }
 
@@ -992,7 +1217,7 @@ watch(currentTemplate, async (newTemplate) => {
   color: var(--lx-text-faint);
 }
 
-.template-item:hover { background: rgba(255, 255, 255, 0.04); }
+.template-item:hover { background: rgba(23, 33, 27, 0.05); }
 
 .template-item.q-item--active {
   background: var(--lx-accent-soft);
@@ -1033,13 +1258,15 @@ watch(currentTemplate, async (newTemplate) => {
   max-width: 100%;
   max-height: 600px;
   border-radius: var(--border-radius-small);
-  box-shadow: 0 12px 28px -10px rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--lx-border);
+  box-shadow: 0 12px 28px -10px rgba(23, 33, 27, 0.35);
   background: white !important;
 }
 
 canvas {
   max-width: 100%;
   border-radius: var(--border-radius-small);
+  border: 1px solid var(--lx-border);
   box-shadow: var(--shadow-light);
   background: white !important;
 }
@@ -1057,18 +1284,19 @@ canvas {
 .vista-word-ayuda {
   margin: 0 0 10px;
   font-size: 0.85rem;
-  color: var(--lx-text-muted, #a9a9b0);
+  color: var(--lx-text-muted);
 }
 
 .download-aviso {
   font-size: 0.8rem;
-  color: #e8c48c;
+  color: var(--lx-text-muted);
 }
 
 .word-preview-container {
   background: white;
+  border: 1px solid var(--lx-border);
   border-radius: var(--border-radius-small);
-  box-shadow: 0 12px 28px -10px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 12px 28px -10px rgba(23, 33, 27, 0.35);
   padding: 2.5rem 3rem;
   max-height: 640px;
   overflow-y: auto;
@@ -1097,6 +1325,21 @@ canvas {
   margin-right: 22px;
 }
 
+/* Colores fijos (no los de Quasar): la pestaña activa se veía sin contraste. */
+.lx-tabs :deep(.q-tab) {
+  color: var(--lx-text-muted) !important;
+  border-radius: 8px 8px 0 0;
+}
+
+.lx-tabs :deep(.q-tab--active) {
+  color: var(--lx-text) !important;
+  background: var(--lx-accent-soft);
+}
+
+.lx-tabs :deep(.q-tab__indicator) {
+  color: var(--lx-accent);
+}
+
 .lx-tabs :deep(.q-tab__indicator) {
   height: 3px;
   border-radius: 3px 3px 0 0;
@@ -1106,7 +1349,9 @@ canvas {
    Chat de edición con IA
    ============================== */
 .chat-edicion-panel {
-  background: linear-gradient(165deg, var(--lx-surface-alt), var(--lx-surface-sunken));
+  /* Beige claro (no el #BDB59B de --lx-surface-sunken): sobre ese fondo
+     oscuro los textos del chat casi no se leían. */
+  background: linear-gradient(165deg, #F8F7F2, var(--lx-surface-alt));
   border: 1px solid var(--lx-border);
   border-radius: 16px;
   padding: 1.6rem;
@@ -1126,7 +1371,7 @@ canvas {
 }
 
 .chat-edicion-hint-muted {
-  color: var(--lx-text-faint);
+  color: var(--lx-text-muted);
   font-size: 0.85rem;
 }
 
@@ -1154,7 +1399,7 @@ canvas {
   height: 26px;
   border-radius: 50%;
   background: var(--lx-accent);
-  color: #1a1310;
+  color: var(--lx-ink);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1167,7 +1412,7 @@ canvas {
   line-height: 1.55;
   max-width: 78%;
   white-space: pre-wrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 2px 8px rgba(23, 33, 27, 0.10);
 }
 
 .chat-edicion-burbuja--ia {
@@ -1179,7 +1424,7 @@ canvas {
 
 .chat-edicion-burbuja--user {
   background: var(--lx-accent);
-  color: #1a1310;
+  color: var(--lx-ink);
   font-weight: 500;
   border-bottom-right-radius: 4px;
 }
@@ -1193,7 +1438,7 @@ canvas {
 
 .chat-edicion-input :deep(.q-field__control) {
   border-radius: 10px;
-  background: var(--lx-surface-sunken);
+  background: var(--lx-surface);
 }
 
 .chat-edicion-input :deep(.q-field__native) {
@@ -1204,6 +1449,94 @@ canvas {
   background: rgba(47, 143, 91, 0.14) !important;
   color: var(--lx-text) !important;
   border: 1px solid rgba(47, 143, 91, 0.35);
+}
+
+/* ==============================
+   Asistente de contratos (vista sin plantilla elegida)
+   ============================== */
+.asistente-contratos .chat-edicion-mensajes {
+  max-height: 440px;
+}
+
+.asistente-bloque {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 85%;
+}
+
+.asistente-bloque--user {
+  align-items: flex-end;
+}
+
+.asistente-bloque .chat-edicion-burbuja {
+  max-width: 100%;
+}
+
+.asistente-plantillas {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.asistente-plantilla {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--lx-surface);
+  border: 1px solid var(--lx-border-strong);
+  border-radius: 12px;
+  font: inherit;
+  color: var(--lx-text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
+}
+
+.asistente-plantilla:hover,
+.asistente-plantilla:focus-visible {
+  border-color: var(--lx-accent);
+  box-shadow: 0 6px 16px -8px rgba(23, 33, 27, 0.35);
+  transform: translateY(-1px);
+}
+
+.asistente-plantilla-icono {
+  color: var(--lx-accent);
+  flex-shrink: 0;
+}
+
+.asistente-plantilla-texto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.asistente-plantilla-nombre {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.asistente-plantilla-desc {
+  font-size: 0.8rem;
+  color: var(--lx-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asistente-plantilla-accion {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--lx-accent);
+}
+
+@media (max-width: 600px) {
+  .asistente-bloque { max-width: 100%; }
+  .asistente-plantilla-accion { display: none; }
 }
 
 /* ==============================
@@ -1242,7 +1575,7 @@ canvas {
 }
 
 .download-btn--primary {
-  box-shadow: 0 4px 14px -4px rgba(217, 122, 77, 0.5);
+  box-shadow: 0 4px 14px -4px rgba(61, 71, 58, 0.45);
 }
 
 /* ==============================
