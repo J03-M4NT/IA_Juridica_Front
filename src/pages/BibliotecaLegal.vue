@@ -12,7 +12,7 @@
     <!-- Section header -->
     <div class="page-header">
       <div class="section-icon-wrap icon-orange">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#5FBF8F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
         </svg>
@@ -69,9 +69,11 @@
       <!-- Resumen con IA -->
       <div v-if="resumenCargando || resumen" class="resumen-card">
         <div class="resumen-header">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/>
-          </svg>
+          <span class="resumen-icon-wrap">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/>
+            </svg>
+          </span>
           <h2 class="resumen-title">Resumen del día con IA</h2>
         </div>
 
@@ -125,7 +127,10 @@
             <span class="norma-fecha">{{ norma.fecha }}</span>
           </div>
           <button type="button" class="norma-titulo" @click="verPdf(norma)">
-            {{ norma.titulo }}
+            <span>{{ norma.titulo }}</span>
+            <svg class="norma-titulo-flecha" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 12h14M13 6l6 6-6 6"/>
+            </svg>
           </button>
           <p v-if="norma.sumilla" class="norma-sumilla">{{ norma.sumilla }}</p>
         </article>
@@ -412,27 +417,28 @@ onMounted(() => {
 
 <style scoped>
 /* ==============================
-   Paleta oscura verde esmeralda de esta página — variables propias, con
-   prefijo ln-, definidas solo dentro de .normas-page. No se tocan las
-   variables globales (--surface, --bg, etc. en src/css/app.scss), así que
-   el resto de la app sigue con el tema claro de siempre. Un tercer color
-   distinto (Contratos: terracota, Consultas: azul, Normas: verde) para
-   que cada sección se distinga a simple vista.
+   Paleta clara verde-bosque/beige (misma familia que LandingPage.vue,
+   Contratos, Consultas y Análisis), variables propias con prefijo ln-,
+   definidas solo dentro de .normas-page. No se tocan las variables
+   globales (--surface, --bg, etc. en src/css/app.scss). Acento en verde
+   bosque profundo — el tono más oscuro de la paleta — para transmitir la
+   seriedad de "normas oficiales", distinto del resto de secciones.
    ============================== */
 .normas-page {
-  --ln-bg: #0f1712;
-  --ln-surface: #16211a;
-  --ln-surface-alt: #121b15;
-  --ln-surface-sunken: #0b110d;
-  --ln-border: rgba(255, 255, 255, 0.08);
-  --ln-border-strong: rgba(255, 255, 255, 0.16);
-  --ln-text: #eef2ec;
-  --ln-text-muted: #a9bcae;
-  --ln-text-faint: #7e9084;
-  --ln-accent: #4FAE7D;
-  --ln-accent-hover: #3E9268;
-  --ln-accent-soft: rgba(79, 174, 125, 0.14);
-  --ln-accent-soft-strong: rgba(79, 174, 125, 0.26);
+  --ln-bg: #FFFFFF;
+  --ln-surface: #FFFFFF;
+  --ln-surface-alt: #D9D4C6;
+  --ln-surface-sunken: #BDB59B;
+  --ln-border: rgba(23, 33, 27, 0.10);
+  --ln-border-strong: rgba(23, 33, 27, 0.18);
+  --ln-text: #17211B;
+  --ln-text-muted: #3D473A;
+  --ln-text-faint: #686A57;
+  --ln-accent: #17211B;
+  --ln-accent-hover: #3D473A;
+  --ln-accent-soft: rgba(23, 33, 27, 0.08);
+  --ln-accent-soft-strong: rgba(23, 33, 27, 0.18);
+  --ln-ink: #F8F7F2;
 
   animation: floatUp 0.5s ease-out both;
 }
@@ -457,7 +463,7 @@ onMounted(() => {
 }
 
 .normas-content--split {
-  max-width: 1360px;
+  max-width: 1600px;
 }
 
 @keyframes floatUp {
@@ -478,7 +484,8 @@ onMounted(() => {
 }
 
 .normas-layout--split .normas-col {
-  max-width: 560px;
+  flex: 0 0 400px;
+  max-width: 400px;
 }
 
 .pdf-panel {
@@ -486,14 +493,19 @@ onMounted(() => {
   min-width: 0;
   position: sticky;
   top: 16px;
-  height: calc(100vh - 140px);
+  height: calc(100vh - 108px);
   display: flex;
   flex-direction: column;
   background: var(--ln-surface);
   border: 1px solid var(--ln-border);
   border-radius: var(--border-radius);
-  box-shadow: 0 12px 32px -14px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 16px 40px -18px rgba(23, 33, 27, 0.22), 0 0 0 1px rgba(23, 33, 27, 0.05);
   overflow: hidden;
+  transition: box-shadow 0.25s ease;
+}
+
+.pdf-panel:hover {
+  box-shadow: 0 20px 48px -18px rgba(23, 33, 27, 0.26), 0 0 0 1px rgba(23, 33, 27, 0.08);
 }
 
 .pdf-panel-header {
@@ -501,8 +513,9 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--ln-border);
+  padding: 14px 18px;
+  background: linear-gradient(180deg, var(--ln-surface-alt), var(--ln-surface));
+  border-bottom: 1px solid var(--ln-border-strong);
   flex-shrink: 0;
 }
 
@@ -534,12 +547,13 @@ onMounted(() => {
   background: none;
   color: var(--ln-text-muted);
   cursor: pointer;
-  transition: background-color 0.18s, color 0.18s;
+  transition: background-color 0.18s, color 0.18s, transform 0.18s;
 }
 
 .pdf-panel-boton:hover {
-  background: var(--ln-surface-alt);
-  color: var(--ln-text);
+  background: var(--ln-accent-soft);
+  color: var(--ln-accent);
+  transform: scale(1.08);
 }
 
 /* Resumen de la norma, entre la cabecera y el PDF. Alto acotado con
@@ -566,6 +580,11 @@ onMounted(() => {
   letter-spacing: 0.03em;
   text-transform: uppercase;
   text-align: left;
+  transition: background-color 0.18s;
+}
+
+.norma-resumen-toggle:hover {
+  background: var(--ln-accent-soft);
 }
 
 .norma-resumen-toggle span {
@@ -630,7 +649,7 @@ onMounted(() => {
   justify-content: space-between;
   gap: 10px;
   font-size: 0.86rem;
-  color: #e2685a;
+  color: #C23B2E;
 }
 
 .norma-resumen-reintentar {
@@ -683,7 +702,7 @@ onMounted(() => {
   }
   .pdf-panel {
     position: static;
-    height: 80vh;
+    height: 85vh;
     width: 100%;
   }
 }
@@ -732,7 +751,7 @@ onMounted(() => {
 }
 
 .refresh-error {
-  color: #e2685a;
+  color: #C23B2E;
   font-size: 0.86rem;
   margin: -14px 0 20px;
 }
@@ -740,11 +759,12 @@ onMounted(() => {
 .section-icon-wrap {
   width: 52px;
   height: 52px;
-  border-radius: var(--border-radius-small);
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(23, 33, 27, 0.12), 0 8px 20px -10px rgba(23, 33, 27, 0.28);
 }
 
 .icon-orange { background: var(--ln-accent-soft); }
@@ -768,7 +788,7 @@ onMounted(() => {
   background: var(--ln-surface);
   border: 1px solid var(--ln-border);
   border-radius: var(--border-radius);
-  box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 24px -14px rgba(23, 33, 27, 0.18);
   padding: 40px 28px;
   text-align: center;
   color: var(--ln-text-muted);
@@ -803,18 +823,24 @@ onMounted(() => {
   font-size: 0.7rem;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.18s, background-color 0.18s, color 0.18s;
+  transition: border-color 0.18s, background-color 0.18s, color 0.18s, transform 0.18s;
 }
 
 .sector-chip:hover {
   border-color: var(--ln-border-strong);
   background: var(--ln-surface-alt);
+  transform: translateY(-1px);
 }
 
 .sector-chip--activo {
   background: var(--ln-accent);
   border-color: var(--ln-accent);
-  color: #0d1712;
+  color: var(--ln-ink);
+  box-shadow: 0 4px 14px -4px rgba(23, 33, 27, 0.35);
+}
+
+.sector-chip--activo:hover {
+  transform: none;
 }
 
 .estado-titulo {
@@ -850,13 +876,13 @@ onMounted(() => {
   gap: 8px;
   padding: 11px 20px;
   background: var(--ln-accent);
-  color: #0d1712;
+  color: var(--ln-ink);
   border-radius: var(--border-radius-small);
   font-family: 'Figtree', sans-serif;
   font-size: 0.92rem;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 14px -4px rgba(79, 174, 125, 0.45);
+  box-shadow: 0 4px 14px -4px rgba(23, 33, 27, 0.32);
   text-decoration: none;
   transition: background-color 0.18s, box-shadow 0.18s;
 }
@@ -868,20 +894,32 @@ onMounted(() => {
 
 /* Resumen con IA */
 .resumen-card {
-  background: var(--ln-surface);
+  background: linear-gradient(165deg, var(--ln-surface) 0%, var(--ln-surface-alt) 130%);
   border: 1px solid var(--ln-accent-soft-strong);
   border-radius: var(--border-radius);
-  box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.5);
-  padding: 22px 24px;
-  margin-bottom: 18px;
+  box-shadow: 0 8px 24px -14px rgba(23, 33, 27, 0.20), 0 0 0 1px rgba(23, 33, 27, 0.04);
+  padding: 24px 26px;
+  margin-bottom: 20px;
 }
 
 .resumen-header {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 11px;
   color: var(--ln-accent);
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+}
+
+.resumen-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--ln-accent-soft);
+  color: var(--ln-accent);
 }
 
 .resumen-title {
@@ -929,6 +967,13 @@ onMounted(() => {
   background: var(--ln-accent-soft);
   border-radius: var(--border-radius-small);
   margin-bottom: 8px;
+  border-left: 2px solid transparent;
+  transition: border-color 0.18s, background-color 0.18s;
+}
+
+.destacada-item:hover {
+  border-left-color: var(--ln-accent);
+  background: var(--ln-accent-soft-strong);
 }
 
 .destacada-item:last-child {
@@ -956,22 +1001,47 @@ onMounted(() => {
 }
 
 .norma-card {
+  position: relative;
   background: var(--ln-surface);
   border: 1px solid var(--ln-border);
   border-radius: var(--border-radius);
-  box-shadow: 0 6px 18px -10px rgba(0, 0, 0, 0.5);
-  padding: 18px 22px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 6px 18px -12px rgba(23, 33, 27, 0.16);
+  padding: 18px 22px 18px 25px;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  overflow: hidden;
+}
+
+.norma-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--ln-accent);
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform 0.22s ease;
 }
 
 .norma-card:hover {
   border-color: var(--ln-border-strong);
-  box-shadow: 0 10px 26px -12px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 14px 30px -16px rgba(23, 33, 27, 0.22);
+  transform: translateY(-2px);
+}
+
+.norma-card:hover::before {
+  transform: scaleY(1);
 }
 
 .norma-card--activa {
   border-color: var(--ln-accent);
-  box-shadow: 0 10px 26px -12px rgba(0, 0, 0, 0.6);
+  background: var(--ln-accent-soft);
+  box-shadow: 0 14px 30px -16px rgba(23, 33, 27, 0.22);
+}
+
+.norma-card--activa::before {
+  transform: scaleY(1);
 }
 
 .norma-card-head {
@@ -1001,7 +1071,9 @@ onMounted(() => {
 }
 
 .norma-titulo {
-  display: block;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   width: 100%;
   text-align: left;
   background: none;
@@ -1016,9 +1088,25 @@ onMounted(() => {
   margin-bottom: 6px;
 }
 
+.norma-titulo span {
+  flex: 1;
+}
+
+.norma-titulo-flecha {
+  flex-shrink: 0;
+  color: var(--ln-accent);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+
 .norma-titulo:hover {
   color: var(--ln-accent);
-  text-decoration: underline;
+}
+
+.norma-titulo:hover .norma-titulo-flecha {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .norma-sumilla {

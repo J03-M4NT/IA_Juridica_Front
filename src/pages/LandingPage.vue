@@ -37,8 +37,8 @@
           <span class="hero-badge">IA jurídica especializada en derecho peruano</span>
 
           <h1 class="hero-title">
-            Todo tu trabajo legal.<br />
-            <em>Una sola plataforma.</em>
+            El derecho peruano,<br />
+            <em>al alcance de tu práctica.</em>
           </h1>
 
           <p class="hero-description">
@@ -652,8 +652,8 @@ onUnmounted(() => {
    de ser el texto a ser la superficie. Mismos 8 tonos, otra jerarquía.
    ============================== */
 .landing-page {
-  --sp-canvas: #F8F7F2;          /* Blanco Cálido */
-  --sp-surface: #FFFFFF;         /* blanco puro — un paso "arriba" del canvas para las tarjetas */
+  --sp-canvas: #FFFFFF;          /* blanco puro, a pedido explícito ("eso es color crema") */
+  --sp-surface: #FFFFFF;
   --sp-surface-alt: #D9D4C6;     /* Marfil Claro — hover de tarjetas */
   --sp-border: rgba(23, 33, 27, 0.10);
   --sp-border-strong: rgba(23, 33, 27, 0.18);
