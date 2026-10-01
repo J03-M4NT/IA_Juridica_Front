@@ -1122,7 +1122,7 @@ watch(currentTemplate, async (newTemplate) => {
 .icon-purple { background: var(--lx-accent-soft); }
 
 .page-title {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'EB Garamond', serif;
   font-size: 2rem;
   font-weight: 600;
   margin: 0;
@@ -1158,7 +1158,7 @@ watch(currentTemplate, async (newTemplate) => {
 }
 
 .lx-card-header-title {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'EB Garamond', serif;
   font-size: 1.15rem;
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -1173,7 +1173,7 @@ watch(currentTemplate, async (newTemplate) => {
 }
 
 .lx-action-btn {
-  font-family: 'Figtree', sans-serif !important;
+  font-family: 'Baskervville', 'Figtree', sans-serif !important;
   border-radius: 10px !important;
 }
 
@@ -1317,7 +1317,7 @@ canvas {
 }
 
 .lx-tabs :deep(.q-tab) {
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-weight: 600;
   font-size: 0.88rem;
   min-height: 44px;
@@ -1432,7 +1432,7 @@ canvas {
 .chat-edicion-start-btn {
   border-radius: 12px !important;
   padding: 10px 0 !important;
-  font-family: 'Figtree', sans-serif !important;
+  font-family: 'Baskervville', 'Figtree', sans-serif !important;
   font-weight: 600 !important;
 }
 
@@ -1552,7 +1552,7 @@ canvas {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -1569,7 +1569,7 @@ canvas {
 
 .download-btn {
   border-radius: 10px !important;
-  font-family: 'Figtree', sans-serif !important;
+  font-family: 'Baskervville', 'Figtree', sans-serif !important;
   font-weight: 600 !important;
   padding: 0 18px !important;
 }
