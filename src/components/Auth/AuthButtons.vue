@@ -533,7 +533,14 @@ const handleLogout = async () => {
   background: #fff;
   border-radius: 20px;
   box-shadow: 0 30px 70px rgba(22, 22, 26, 0.28);
-  overflow: hidden;
+  /* Nunca más alta que la pantalla: si no entra (ventana no maximizada o
+     celular), se desplaza adentro y se llega a las consideraciones y a los
+     Términos y condiciones. Antes se cortaba (overflow: hidden). */
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   animation: floatUp 0.25s ease-out both;
   font-family: 'Baskervville', 'Figtree', -apple-system, BlinkMacSystemFont, sans-serif;
 }
@@ -786,5 +793,18 @@ const handleLogout = async () => {
 
 :deep(.q-avatar) {
   background: var(--q-primary);
+}
+
+/* Pantallas bajas (ventana no maximizada, celular): ventana más compacta
+   para que en la mayoría de casos todo entre sin desplazarse. */
+@media (max-height: 760px), (max-width: 600px) {
+  .dialog-header { padding: 22px 22px 10px; }
+  .dialog-body { padding: 14px 22px 20px; }
+  .dialog-divider { margin: 12px 0; }
+  .custom-input { padding: 10px 12px; }
+  .submit-btn { margin-top: 12px; padding: 11px; }
+  .switch-text { margin-top: 12px; }
+  .consideraciones { margin-top: 12px; padding: 8px 10px; }
+  .terminos-text { margin-top: 10px; padding-top: 10px; }
 }
 </style>
