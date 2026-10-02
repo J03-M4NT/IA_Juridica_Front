@@ -392,7 +392,7 @@ watch(mensajes, async () => {
 .icon-blue { background: var(--lc-accent-soft); }
 
 .page-title {
-  font-family: 'Fraunces', 'EB Garamond', serif;
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
   font-optical-sizing: auto;
   font-size: 1.7rem;
   font-weight: 600;
@@ -472,7 +472,7 @@ watch(mensajes, async () => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: 'Fraunces', 'EB Garamond', serif;
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
   font-size: 0.74rem;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -497,7 +497,7 @@ watch(mensajes, async () => {
 .formatted-message :deep(h2),
 .formatted-message :deep(h3),
 .formatted-message :deep(h4) {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'EB Garamond', serif;
   font-weight: 600;
   margin: 8px 0 4px;
   color: var(--lc-text);
@@ -569,7 +569,7 @@ watch(mensajes, async () => {
   border: 1px solid var(--lc-accent-soft-strong);
   padding: 6px 11px;
   border-radius: var(--border-radius-small);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
 }
 
 /* Citas: cuadros pequeños y cerrados; el texto se abre al hacer clic. */
@@ -590,7 +590,7 @@ watch(mensajes, async () => {
   border: 1px solid var(--lc-border-strong);
   border-radius: 8px;
   color: var(--lc-text-muted);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
@@ -695,7 +695,7 @@ watch(mensajes, async () => {
   border-radius: 4px;
   background: var(--lc-accent-soft);
   color: var(--lc-accent);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.7rem;
   font-weight: 700;
   line-height: 1;
@@ -759,7 +759,7 @@ watch(mensajes, async () => {
 
 :deep(.composer-textarea-pill .q-field__native) {
   color: var(--lc-text) !important;
-  font-family: 'Figtree', sans-serif !important;
+  font-family: 'Baskervville', 'Figtree', sans-serif !important;
   font-size: 1rem !important;
   padding: 7px 0 !important;
   line-height: 1.45 !important;
@@ -800,7 +800,7 @@ watch(mensajes, async () => {
   border: none;
   border-radius: var(--border-radius-small);
   padding: 6px 9px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -820,7 +820,7 @@ watch(mensajes, async () => {
   border: none;
   border-radius: 999px;
   padding: 9px 20px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;

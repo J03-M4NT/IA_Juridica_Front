@@ -255,7 +255,7 @@ function closeDialog() {
   border-radius: var(--border-radius);
   box-shadow: var(--shadow-heavy);
   padding: 28px 28px 26px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
 }
 
 /* ==============================
@@ -269,7 +269,7 @@ function closeDialog() {
 }
 
 .pd-title {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'EB Garamond', serif;
   font-size: 1.45rem;
   font-weight: 600;
   color: var(--ink);
@@ -343,7 +343,7 @@ function closeDialog() {
   padding: 8px 14px;
   border-radius: var(--border-radius-small);
   cursor: pointer;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   transition: background 0.15s;
 }
 
@@ -375,7 +375,7 @@ function closeDialog() {
   width: 100%;
   padding: 11px 14px;
   font-size: 0.95rem;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   color: var(--ink);
   background: var(--bg);
   border: 1px solid var(--border-color-strong);
@@ -420,7 +420,7 @@ function closeDialog() {
   border: 1px solid var(--border-color-strong);
   border-radius: var(--border-radius-small);
   cursor: pointer;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   transition: background 0.15s;
 }
 
@@ -436,7 +436,7 @@ function closeDialog() {
   border: none;
   border-radius: var(--border-radius-small);
   cursor: pointer;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   min-width: 130px;
   display: flex;
   align-items: center;

@@ -17,7 +17,11 @@
           <a href="#como-funciona" class="header-nav-link" @click.prevent="scrollToSection('como-funciona')">Cómo funciona</a>
           <a href="#nosotros" class="header-nav-link" @click.prevent="scrollToSection('nosotros')">Nosotros</a>
         </nav>
-        <auth-buttons ref="authButtonsRef" />
+        <!-- El clic en "Iniciar Sesión" se intercepta aquí (fase de captura)
+             para mostrar antes las consideraciones; AuthButtons no cambia. -->
+        <div class="auth-wrap" @click.capture="interceptarInicioSesion">
+          <auth-buttons ref="authButtonsRef" />
+        </div>
       </div>
     </header>
 
@@ -132,7 +136,7 @@
       <section class="fuentes-section">
         <div class="section-header reveal">
           <span class="section-label">Base legal</span>
-          <h2 class="section-title">Respaldado por los códigos del Perú</h2>
+          <h2 class="section-title">Respaldado por la normativa peruana</h2>
           <p class="fuentes-subtitle">
             Las respuestas que citan artículos se basan en una base jurídica indexada por
             código y por número de artículo — no en un resumen genérico — para que la cita
@@ -312,6 +316,33 @@
       </div>
     </footer>
 
+    <!-- Consideraciones antes de iniciar sesión -->
+    <q-dialog v-model="mostrarConsideraciones">
+      <div class="consideraciones-card" role="dialog" aria-labelledby="consideraciones-titulo">
+        <div class="consideraciones-cabecera">
+          <span class="consideraciones-sello">
+            <q-icon name="verified_user" size="26px" />
+          </span>
+          <span class="consideraciones-marca">LexIT</span>
+          <p id="consideraciones-titulo" class="consideraciones-titulo">Antes de iniciar</p>
+          <p class="consideraciones-subtitulo">ten en cuenta las siguientes consideraciones:</p>
+        </div>
+
+        <ol class="consideraciones-lista">
+          <li v-for="(item, idx) in CONSIDERACIONES" :key="idx" class="consideraciones-item">
+            <span class="consideraciones-numero">{{ idx + 1 }}</span>
+            <span class="consideraciones-texto">{{ item.texto }}</span>
+            <q-icon :name="item.icono" size="20px" class="consideraciones-icono" />
+          </li>
+        </ol>
+
+        <button type="button" class="consideraciones-boton" @click="continuarInicioSesion">
+          Entendido, {{ accionPendiente === 'registro' ? 'crear mi cuenta' : 'iniciar sesión' }}
+          <q-icon name="arrow_forward" size="18px" />
+        </button>
+      </div>
+    </q-dialog>
+
   </div>
 </template>
 
@@ -351,8 +382,39 @@ const scrollTriggers: ScrollTrigger[] = []
 
 const authButtonsRef = ref<InstanceType<typeof AuthButtons> | null>(null)
 
+// Consideraciones que se muestran antes de abrir el inicio de sesión o el
+// registro; al aceptarlas se abre la ventana que el usuario eligió.
+const mostrarConsideraciones = ref(false)
+const accionPendiente = ref<'login' | 'registro'>('login')
+
+const CONSIDERACIONES = [
+  { icono: 'lock', texto: '¡No guardamos tus contratos!' },
+  { icono: 'description', texto: '¡No guardamos una copia de los contratos generados!' },
+  { icono: 'schedule', texto: '¡Las consultas se eliminan automáticamente en 7 días!' },
+  { icono: 'auto_awesome', texto: '¡Disfruta de LexIT!' }
+]
+
+function pedirConsideraciones(accion: 'login' | 'registro') {
+  accionPendiente.value = accion
+  mostrarConsideraciones.value = true
+}
+
 function abrirAuth() {
-  authButtonsRef.value?.abrirLogin()
+  pedirConsideraciones('login')
+}
+
+function interceptarInicioSesion(event: MouseEvent) {
+  const boton = (event.target as HTMLElement).closest('.login-btn, .register-btn')
+  if (!boton) return
+  event.stopPropagation()
+  event.preventDefault()
+  pedirConsideraciones(boton.classList.contains('register-btn') ? 'registro' : 'login')
+}
+
+function continuarInicioSesion() {
+  mostrarConsideraciones.value = false
+  if (accionPendiente.value === 'registro') authButtonsRef.value?.abrirRegistro()
+  else authButtonsRef.value?.abrirLogin()
 }
 
 // El router usa modo hash (#/ruta) — un <a href="#producto"> normal lo
@@ -1712,5 +1774,156 @@ onUnmounted(() => {
   .hero-description {
     font-size: 1.02rem;
   }
+}
+
+/* Envoltorio de AuthButtons: sin efecto en el diseño del encabezado. */
+.auth-wrap {
+  display: contents;
+}
+
+/* Cuadro de consideraciones antes de iniciar sesión o registrarse. El
+   diálogo se dibuja fuera de .landing-page, por eso usa los colores de la
+   paleta directo y no las variables --sp-*. */
+.consideraciones-card {
+  position: relative;
+  width: min(460px, calc(100vw - 32px));
+  background: #FFFFFF;
+  color: #17211B;
+  border-radius: 20px;
+  box-shadow: 0 30px 70px -24px rgba(23, 33, 27, 0.55), 0 0 0 1px rgba(23, 33, 27, 0.06);
+  overflow: hidden;
+  font-family: 'Baskervville', 'EB Garamond', Georgia, serif;
+  animation: consideracionesEntrada 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes consideracionesEntrada {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+.consideraciones-cabecera {
+  position: relative;
+  text-align: center;
+  padding: 30px 28px 26px;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(156, 146, 117, 0.35), transparent 55%),
+    radial-gradient(circle at 90% 110%, rgba(104, 106, 87, 0.45), transparent 60%),
+    linear-gradient(160deg, #2B352B, #17211B);
+  color: #F8F7F2;
+}
+
+.consideraciones-sello {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: rgba(248, 247, 242, 0.12);
+  border: 1px solid rgba(248, 247, 242, 0.28);
+  margin-bottom: 10px;
+}
+
+.consideraciones-marca {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: #BDB59B;
+  margin-bottom: 6px;
+}
+
+.consideraciones-titulo {
+  font-size: 1.7rem;
+  font-weight: 600;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.consideraciones-subtitulo {
+  font-style: italic;
+  font-size: 1.02rem;
+  color: #D9D4C6;
+  margin: 4px 0 0;
+}
+
+.consideraciones-lista {
+  list-style: none;
+  margin: 0;
+  padding: 22px 24px 8px;
+}
+
+.consideraciones-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #F8F7F2;
+  border: 1px solid rgba(23, 33, 27, 0.07);
+  margin-bottom: 10px;
+  animation: consideracionesEntrada 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.consideraciones-item:nth-child(2) { animation-delay: 0.06s; }
+.consideraciones-item:nth-child(3) { animation-delay: 0.12s; }
+.consideraciones-item:nth-child(4) { animation-delay: 0.18s; }
+
+.consideraciones-numero {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #3D473A;
+  color: #F8F7F2;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.consideraciones-texto {
+  flex: 1;
+  font-size: 1.04rem;
+  line-height: 1.4;
+  color: #17211B;
+}
+
+.consideraciones-icono {
+  flex-shrink: 0;
+  color: #686A57;
+}
+
+.consideraciones-boton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: calc(100% - 48px);
+  margin: 10px 24px 24px;
+  padding: 13px 18px;
+  background: #3D473A;
+  color: #F8F7F2;
+  border: none;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 1.02rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 10px 22px -12px rgba(23, 33, 27, 0.7);
+  transition: background-color 0.18s, transform 0.18s;
+}
+
+.consideraciones-boton:hover,
+.consideraciones-boton:focus-visible {
+  background: #17211B;
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .consideraciones-card,
+  .consideraciones-item { animation: none; }
 }
 </style>

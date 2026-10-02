@@ -198,7 +198,7 @@ const getErrorMessage = (errorCode: string): string => {
   margin: 0;
   letter-spacing: -0.01em;
   font-weight: 600;
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'EB Garamond', serif;
 }
 
 .brand-subtitle {
