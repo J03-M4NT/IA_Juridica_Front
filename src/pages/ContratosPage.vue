@@ -387,7 +387,7 @@ import { extraerHtmlWord } from '../utils/mammothExtractor'
 import { subirDocumentoTemporal, descargarWordEditado } from '../services/documentosTemporalesService'
 import { renderizarWord } from '../utils/vistaWord'
 import { calcularCambios } from '../utils/edicionWord'
-import { extraerTextoVisibleDeHtml, reemplazarEnHtmlFlexible } from '../utils/htmlTexto'
+import { extraerTextoVisibleDeHtml, aplicarCambiosIAEnHtml } from '../utils/htmlTexto'
 import EditorContrato from '../components/EditorContrato.vue'
 import VistaWord from '../components/VistaWord.vue'
 
@@ -910,17 +910,7 @@ const opcionesChatIA = (): { formato?: 'cambios' } =>
   modoWordFiel.value ? { formato: 'cambios' } : {}
 
 const aplicarCambiosIAEnWord = (cambios: { antes: string; despues: string }[]) => {
-  let html = htmlVistaWordEditado.value || htmlVistaWord.value
-  const fallidos: string[] = []
-  for (const cambio of cambios) {
-    // Un cambio nunca debe abarcar dos párrafos (rompería la
-    // correspondencia con el Word original).
-    const resultado = cambio.antes.includes('\n')
-      ? { html, ok: false }
-      : reemplazarEnHtmlFlexible(html, cambio.antes, cambio.despues)
-    if (resultado.ok) html = resultado.html
-    else fallidos.push(cambio.antes)
-  }
+  const { html, fallidos } = aplicarCambiosIAEnHtml(htmlVistaWordEditado.value || htmlVistaWord.value, cambios)
   htmlVistaWordEditado.value = html
   textoEditado.value = textoDelCuerpo(html)
   chatEdicionTerminado.value = true
