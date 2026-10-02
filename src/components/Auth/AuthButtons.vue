@@ -123,6 +123,14 @@
               <a class="switch-link" @click="showLoginDialog = false; showRegisterDialog = true">Regístrate</a>
             </p>
 
+            <!-- Consideraciones (compactas, sin ventana aparte) -->
+            <ul class="consideraciones">
+              <li v-for="(item, idx) in CONSIDERACIONES" :key="idx">
+                <q-icon :name="item.icono" size="15px" class="consideraciones-icono" />
+                <span>{{ item.texto }}</span>
+              </li>
+            </ul>
+
             <p class="terminos-text">
               Al continuar, aceptas los
               <a :href="URL_TERMINOS" target="_blank" rel="noopener" class="terminos-link">Términos y condiciones</a>
@@ -192,6 +200,14 @@
               <a class="switch-link" @click="showRegisterDialog = false; showLoginDialog = true">Inicia sesión</a>
             </p>
 
+            <!-- Consideraciones (compactas, sin ventana aparte) -->
+            <ul class="consideraciones">
+              <li v-for="(item, idx) in CONSIDERACIONES" :key="idx">
+                <q-icon :name="item.icono" size="15px" class="consideraciones-icono" />
+                <span>{{ item.texto }}</span>
+              </li>
+            </ul>
+
             <p class="terminos-text">
               Al registrarte, aceptas los
               <a :href="URL_TERMINOS" target="_blank" rel="noopener" class="terminos-link">Términos y condiciones</a>
@@ -251,6 +267,15 @@ const showProfileDialog = ref(false);
 // PDF de Términos y condiciones (public/terminos-y-condiciones.pdf). Con
 // BASE_URL funciona igual en desarrollo (/) y en GitHub Pages
 // (/IA_Juridica_Front/).
+// Se muestran en las ventanas de inicio de sesión y registro, junto a los
+// Términos y condiciones.
+const CONSIDERACIONES = [
+  { icono: 'lock', texto: 'No guardamos tus contratos.' },
+  { icono: 'description', texto: 'No guardamos una copia de los contratos generados.' },
+  { icono: 'schedule', texto: 'Las consultas se eliminan automáticamente en 7 días.' },
+  { icono: 'auto_awesome', texto: '¡Disfruta de LexIT!' }
+];
+
 const URL_TERMINOS = `${import.meta.env.BASE_URL}terminos-y-condiciones.pdf`;
 const cargandoGoogle = ref(false);
 
@@ -706,6 +731,32 @@ const handleLogout = async () => {
 
 .switch-link:hover {
   color: var(--accent-hover);
+}
+
+.consideraciones {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  background: #F8F7F2;
+  border: 1px solid rgba(23, 33, 27, 0.08);
+  border-radius: 10px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #3D473A;
+  text-align: left;
+}
+
+.consideraciones li {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 2px 0;
+}
+
+.consideraciones-icono {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #686A57;
 }
 
 .terminos-text {
