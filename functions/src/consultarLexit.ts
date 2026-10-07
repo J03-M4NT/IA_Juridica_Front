@@ -13,6 +13,7 @@ import {
   excede
 } from './seguridad'
 import { dividirEnSecciones, seleccionarSecciones } from './seccionesContrato'
+import { type Area, esArea, NOMBRE_AREA, filtroDeArea, normaEnPregunta } from './especialidades'
 
 export const PINECONE_INDEX = 'lexit'
 export const PINECONE_HOST = 'https://lexit-rv6se0q.svc.aped-4627-b74a.pinecone.io'
@@ -63,6 +64,9 @@ interface ConsultarLexitRequest {
   textoDocumentoAdjunto?: string
   nombreDocumentoAdjunto?: string
   esSolicitudAnalisis?: boolean
+  // Especialización elegida en Consultas (derecho-penal, -civil,
+  // -tributario, -comercial). Sin ella, se busca en toda la base.
+  especialidad?: string
 }
 
 interface ConsultarLexitResponse {
@@ -110,15 +114,27 @@ export function dedupeFragmentos(fragmentos: FragmentoResultado[]): FragmentoRes
 // =========================
 // BÚSQUEDA EN PINECONE (fuente primaria primero)
 // =========================
+export interface AlcanceBusqueda {
+  // Solo esta norma (la pregunta la nombra: "Ley de Conciliación").
+  documentoId?: string
+  // Solo esta especialización (elegida en Consultas).
+  area?: Area
+}
+
 export async function buscarEnPineconeInterno(
   idx: ReturnType<Pinecone['index']>,
   consulta: string,
   topK = 5,
   numeroArticulo?: number,
-  tipoDocumento?: string
+  tipoDocumento?: string,
+  alcance: AlcanceBusqueda = {}
 ): Promise<FragmentoResultado[]> {
+  // Filtros fijos de esta búsqueda (se suman a los de cada intento).
+  const filtrosDelAlcance: Record<string, unknown> = alcance.documentoId
+    ? { documentoId: { $eq: alcance.documentoId } }
+    : alcance.area ? filtroDeArea(alcance.area) : {}
   const buscar = async (soloFuentePrimaria: boolean, articulo?: number, tipo?: string, k = topK): Promise<FragmentoResultado[]> => {
-    const filtros: Record<string, unknown> = {}
+    const filtros: Record<string, unknown> = { ...filtrosDelAlcance }
     if (soloFuentePrimaria) filtros.esFuentePrimaria = { $eq: true }
     if (articulo !== undefined) filtros.numeroArticulo = { $eq: articulo }
     if (tipo !== undefined) filtros.tipoDocumento = { $eq: tipo }
@@ -376,8 +392,11 @@ export const consultarLexit = onRequest(
         historialMensajes: historialRecibido = [],
         textoDocumentoAdjunto,
         nombreDocumentoAdjunto,
-        esSolicitudAnalisis = false
+        esSolicitudAnalisis = false,
+        especialidad: especialidadRecibida
       } = req.body as ConsultarLexitRequest
+      // Solo en Consultas (sin documento adjunto) y solo valores conocidos.
+      const especialidad: Area | undefined = !textoDocumentoAdjunto && esArea(especialidadRecibida) ? especialidadRecibida : undefined
 
       if (!pregunta?.trim()) {
         res.status(400).json({ error: 'Falta la pregunta' })
@@ -455,7 +474,19 @@ export const consultarLexit = onRequest(
 
           const articuloPedido = modoConsulta ? numeroArticuloEnPregunta(pregunta) : undefined
 
-          const tipoPedido = articuloPedido !== undefined ? tipoDocumentoEnPregunta(pregunta) : undefined
+          const tipoPedidoPorNombre = articuloPedido !== undefined ? tipoDocumentoEnPregunta(pregunta) : undefined
+
+          // Norma nombrada en la pregunta ("Ley de Conciliación", "Ley 29571"):
+          // se busca solo en ella. Si no, en la especialización elegida.
+          const normaNombrada = modoConsulta && !tipoPedidoPorNombre ? await normaEnPregunta(pregunta) : undefined
+          const alcance = normaNombrada
+            ? { documentoId: normaNombrada.documentoId }
+            : especialidad ? { area: especialidad } : {}
+          if (normaNombrada) logger.info(`📘 Norma nombrada: "${normaNombrada.nombre}"`)
+          if (especialidad && !normaNombrada) logger.info(`🎓 Especialización: ${especialidad}`)
+          // Con una norma concreta, el "código" que adivine Gemini no aplica.
+          const tipoPedido = normaNombrada ? undefined : tipoPedidoPorNombre
+          const codigoDecidido = normaNombrada ? undefined : decision?.codigo
 
           // En Consultas se piden más resultados para poder descartar el
           // índice del PDF y dar prioridad a los artículos sobre los
@@ -467,7 +498,7 @@ export const consultarLexit = onRequest(
             // resultados (1º de cada subtema, luego 2º...) para que ningún
             // subtema se quede sin representación.
             const listas = await Promise.all(subconsultas.map(c =>
-              buscarEnPineconeInterno(idx, c, 5, undefined, decision?.codigo)))
+              buscarEnPineconeInterno(idx, c, 5, undefined, codigoDecidido, alcance)))
             const intercalados: FragmentoResultado[] = []
             for (let i = 0; i < Math.max(...listas.map(l => l.length)); i++) {
               for (const lista of listas) {
@@ -478,7 +509,7 @@ export const consultarLexit = onRequest(
             fragmentosEncontrados = dedupeFragmentos(intercalados)
           } else {
             const topK = modoConsulta && articuloPedido === undefined ? 10 : 5
-            fragmentosEncontrados = dedupeFragmentos(await buscarEnPineconeInterno(idx, queryBusqueda, topK, articuloPedido, tipoPedido ?? decision?.codigo))
+            fragmentosEncontrados = dedupeFragmentos(await buscarEnPineconeInterno(idx, queryBusqueda, topK, articuloPedido, tipoPedido ?? codigoDecidido, alcance))
           }
           if (modoConsulta) {
             fragmentosEncontrados = fragmentosEncontrados.filter(f => !esIndiceDelDocumento(f.texto))
@@ -670,7 +701,7 @@ export const consultarLexit = onRequest(
           role: 'user',
           parts: [{
             text: [
-              'Eres LEXIT AI, una IA jurídica especializada en derecho peruano.',
+              'Eres LexIT, una IA jurídica especializada en derecho peruano. Tu nombre es solo "LexIT" (escrito así): nunca te llames "LEXIT AI" ni "LexIT AI".',
               '- Respondes consultas legales de manera clara y precisa.',
               '- Citas artículos y normas legales peruanas cuando es relevante.',
               '- Si no sabes algo, lo dices honestamente.',
@@ -678,6 +709,9 @@ export const consultarLexit = onRequest(
               '- Siempre recomiendas consultar un abogado para casos complejos.',
               '- Respondes en formato markdown cuando sea útil (listas, negritas).',
               '- No te presentes ni saludes al inicio de cada respuesta; hazlo solo si el usuario te saluda.',
+              ...(especialidad
+                ? [`- El usuario eligió la especialización ${NOMBRE_AREA[especialidad]}: responde SOLO preguntas de esa rama del derecho peruano. Si la pregunta es claramente de otra rama, no la desarrolles: dilo en una o dos frases y sugiere elegir la especialización que corresponda (o "General"). Saludos y preguntas cotidianas se responden breve, como siempre.`]
+                : []),
               ...(modoConsulta
                 ? ['- En preguntas jurídicas, desarrolla la respuesta con profundidad, como lo haría un buen profesor de derecho: concepto, finalidad de la figura, requisitos o elementos, un ejemplo práctico concreto, consecuencias de su incumplimiento y relación con otras figuras o normas cuando corresponda. No te limites a repetir el texto del artículo. En preguntas cotidianas o simples, responde directo sin alargar.',
                   '- La profundidad sale de tu conocimiento jurídico, no de citar más normas: cita un artículo solo si responde directamente a lo preguntado. Mencionar de paso una norma que solo comparte una palabra con la pregunta (ej. citar el requisito de "ser abogado" del Defensor del Pueblo cuando preguntan qué hace un abogado) es un error.']
@@ -696,10 +730,12 @@ export const consultarLexit = onRequest(
       // Consultas: solo cuentan como fuentes los fragmentos que Gemini citó
       // con [n]; una pregunta común queda sin fuentes y sin pie de aviso.
       // Con documento adjunto se mantiene el comportamiento anterior.
-      let textoRespuesta = respuestaCompleta
+      // El nombre de la plataforma es solo "LexIT": si la IA igual escribe
+      // "LEXIT AI" / "LexIT AI" (por ejemplo al saludar), se corrige.
+      let textoRespuesta = respuestaCompleta.replace(/\bLEXIT\s+AI\b/gi, 'LexIT')
       let fragmentosDevueltos = fragmentosEncontrados
       if (modoConsulta && !tratarComoTrivial && fragmentosEncontrados.length > 0) {
-        const filtrado = filtrarFragmentosCitados(respuestaCompleta, fragmentosEncontrados)
+        const filtrado = filtrarFragmentosCitados(textoRespuesta, fragmentosEncontrados)
         textoRespuesta = filtrado.respuesta
         fragmentosDevueltos = filtrado.citados
         logger.info(`📌 Fragmentos citados: ${fragmentosDevueltos.length} de ${fragmentosEncontrados.length}`)

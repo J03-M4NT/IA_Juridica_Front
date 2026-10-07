@@ -20,6 +20,7 @@
     "postinstall": "quasar prepare"
   },
   "dependencies": {
+    "@fontsource/geist": "^5.3.0",
     "@google/generative-ai": "^0.24.1",
     "@quasar/extras": "^1.16.4",
     "@supabase/supabase-js": "^2.112.3",

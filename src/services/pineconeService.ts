@@ -16,6 +16,11 @@ const TIPOS_FUENTE_PRIMARIA = [
   'constitucion'
 ]
 
+// Tipos que nunca se cortan por artículo aunque citen artículos.
+const TIPOS_SIN_ARTICULOS = ['jurisprudencia', 'contrato']
+// Mínimo de artículos para tratar un documento como norma con artículos.
+const MIN_ARTICULOS_PARA_CORTE = 3
+
 function esTipoFuentePrimaria(tipoDocumento: string): boolean {
   return TIPOS_FUENTE_PRIMARIA.includes(tipoDocumento)
 }
@@ -64,6 +69,19 @@ const MAX_LONGITUD_ARTICULO = 2000
 // "Artículo 140 º .-", "Artículo 3.-"). Así no se corta en referencias
 // dentro del texto como "Artículo 2 de la Ley Nº 27365".
 const ENCABEZADO_ARTICULO_REGEX = /Art[íi]culo\s+(\d+)\s*[°º]?\s*(?:-\s*([A-Z])\s*)?\.\s*-/gi
+
+// Otro formato (ej. Nuevo Código Procesal Penal, ediciones de SPIJ): la
+// sumilla va ENTRE el número y el ".-" ("Artículo 1 Acción penal.- La
+// acción...") o el número termina en punto seguido de la sumilla
+// ("Artículo 268. Presupuestos materiales"). Exige que la sumilla empiece
+// en mayúscula, así no confunde referencias como "Artículo 2 de la Ley".
+// La sumilla puede seguir en la línea siguiente (el PDF a veces la corta) y
+// a veces termina solo en punto y salto de línea ("Artículo 129 Citaciones .");
+// o tiene puntos internos si cierra con ".-" en la misma línea ("Artículo 224
+// Incautación de documentos no privados. Deber de exhibición . Secretos .-").
+// Solo se usa si con él salen claramente más artículos (ver
+// dividirEnArticulos): los códigos con el formato clásico no cambian.
+const ENCABEZADO_ARTICULO_CON_SUMILLA_REGEX = /Art[íi]culo\s+(\d+)\s*[°º]?\s*(?:-\s*([A-Z])\s*)?(?:\.\s*-|\.\s+(?=[A-ZÁÉÍÓÚÑ])|\s+(?=[A-ZÁÉÍÓÚÑ][^.]{2,160}?\s*\.(?:\s*-|[ \t]*\n))|\s+(?=[A-ZÁÉÍÓÚÑ][^\n]{2,200}?\.\s*-))/g
 
 // Encabezados/pies de página de las ediciones oficiales del MINJUS, que la
 // extracción deja con letras sueltas por el tipo de letra decorativo, ej.
@@ -123,7 +141,30 @@ const INICIO_COMENTARIO_REGEX = /\[\s*LIBRO\s+[IVXL]+\s*\]|\bSumario\s*:/i
 // Generales Definición"), pertenece a ESE artículo, no al anterior.
 const MAX_LONGITUD_SUMILLA = 250
 
+// Encabezado de las disposiciones finales de una norma (en mayúsculas, como
+// lo imprime SPIJ/El Peruano). Ver la zona de citas en dividirEnArticulos.
+const DISPOSICIONES_FINALES_REGEX = /\bDISPOSICI[OÓ]N(?:ES)?\s+(?:COMPLEMENTARIAS?|FINAL(?:ES)?|TRANSITORIAS?|MODIFICATORIAS?|DEROGATORIAS?)\b/g
+
+// Cuántos artículos forman la numeración propia de la norma: números
+// distintos que caen dentro de su rango (1 … ~cantidad de artículos). Los
+// números citados de otra norma ("Artículo 317.-" del Código Penal dentro
+// de una ley de 40 artículos) quedan fuera de ese rango y no cuentan.
+function coberturaDeArticulos(unidades: UnidadArticulo[]): number {
+  const numeros = new Set(unidades.filter(u => u.numeroArticulo !== undefined && !u.esComentario).map(u => u.numeroArticulo!))
+  const tope = numeros.size * 1.2 + 5
+  return [...numeros].filter(n => n <= tope).length
+}
+
 function dividirEnArticulos(textoOriginal: string): UnidadArticulo[] {
+  const clasico = dividirEnArticulosCon(textoOriginal, ENCABEZADO_ARTICULO_REGEX)
+  const conSumilla = dividirEnArticulosCon(textoOriginal, ENCABEZADO_ARTICULO_CON_SUMILLA_REGEX)
+  // El formato con sumilla solo reemplaza al clásico si reconoce claramente
+  // más artículos propios de la norma; si no, queda el clásico (los códigos
+  // ya subidos se cortan exactamente igual que antes).
+  return coberturaDeArticulos(conSumilla) > coberturaDeArticulos(clasico) * 1.25 ? conSumilla : clasico
+}
+
+function dividirEnArticulosCon(textoOriginal: string, regexEncabezado: RegExp): UnidadArticulo[] {
   const texto = limpiarRuidoDeCodigo(textoOriginal)
 
   // Solo encabezados en orden creciente: un "Artículo 696.-" citado dentro
@@ -133,7 +174,7 @@ function dividirEnArticulos(textoOriginal: string): UnidadArticulo[] {
   // acepta si el encabezado siguiente continúa la numeración desde ahí:
   // así un número citado fuera de lugar no bloquea el resto del código.
   // El orden se compara por (número, letra): 108 < 108-A < 108-B < 109.
-  const candidatos = [...texto.matchAll(ENCABEZADO_ARTICULO_REGEX)].map(m => {
+  const candidatos = [...texto.matchAll(regexEncabezado)].map(m => {
     const numero = Number(m[1])
     const letra = m[2]?.toUpperCase()
     return {
@@ -175,6 +216,32 @@ function dividirEnArticulos(textoOriginal: string): UnidadArticulo[] {
 
   if (encabezados.length === 0) return []
 
+  // Artículos de OTRA norma citados en las disposiciones finales (ej. el
+  // Código Procesal Civil modifica artículos del Código Civil: "Artículo
+  // 1251.- El deudor queda libre..."). Después del encabezado de
+  // disposiciones complementarias/modificatorias del cuerpo de la norma, un
+  // encabezado que rompe la numeración (salta más de 3) abre la zona de
+  // citas: desde ahí todo se guarda como nota, no como artículo de esta
+  // norma. Los artículos finales reales que siguen la numeración (ej. el
+  // Título Final del Código Civil) no se tocan.
+  const medio = encabezados[Math.floor(encabezados.length / 2)]!.indice
+  const inicioDisposiciones = [...texto.matchAll(DISPOSICIONES_FINALES_REGEX)]
+    .map(m => m.index ?? 0)
+    .find(i => i > medio)
+  const citados = new Set<Candidato>()
+  if (inicioDisposiciones !== undefined) {
+    let ultimoReal: Candidato | undefined
+    let enCitas = false
+    for (const e of encabezados) {
+      if (e.indice > inicioDisposiciones && (enCitas || (ultimoReal && e.numero - ultimoReal.numero > 3))) {
+        enCitas = true
+        citados.add(e)
+      } else {
+        ultimoReal = e
+      }
+    }
+  }
+
   // Inicio de cada artículo, retrocediendo hasta incluir su sumilla.
   const inicios = encabezados.map((e, i) => {
     const desde = i === 0 ? 0 : encabezados[i - 1]!.fin
@@ -205,6 +272,15 @@ function dividirEnArticulos(textoOriginal: string): UnidadArticulo[] {
       const corte = puntoPrevio !== -1 && marca - puntoPrevio <= 80 ? puntoPrevio + 1 : marca
       comentario = cuerpo.slice(corte).trim()
       cuerpo = cuerpo.slice(0, corte).trim()
+    }
+
+    // Artículo de otra norma citado en las disposiciones finales: se guarda
+    // como nota (no se cita como artículo de esta norma).
+    if (citados.has(e)) {
+      for (const trozo of partirSinPerderTexto(`${cuerpo} ${comentario}`.trim(), MAX_LONGITUD_ARTICULO)) {
+        if (trozo.trim().length > 40) partes.push({ texto: trozo.trim(), esComentario: true })
+      }
+      return
     }
 
     // Artículos muy cortos (ej. solo el título sin contenido): ruido.
@@ -287,6 +363,7 @@ interface RecordPinecone {
   esFuentePrimaria: boolean
   numeroArticulo?: number
   esComentario?: boolean
+  area?: string
 }
 
 async function subirLoteConReintentos(records: RecordPinecone[], intento = 1): Promise<void> {
@@ -314,17 +391,25 @@ export async function guardarDocumentoEnPinecone(
   nombreDocumento: string,
   textoCompleto: string,
   tipoDocumento: string,
-  onProgress?: (loteActual: number, totalLotes: number) => void
-): Promise<{ exito: boolean; chunksGuardados: number }> {
+  onProgress?: (loteActual: number, totalLotes: number) => void,
+  // area: especialización (carpeta) de la norma, ver constants/especialidades.ts.
+  // Con área, el corte por artículo se decide por el contenido: toda norma
+  // con artículos (leyes, códigos) se corta por artículo, sin depender del
+  // tipo. Sin área, se comporta como antes (solo los tipos de código).
+  opciones: { area?: string } = {}
+): Promise<{ exito: boolean; chunksGuardados: number; articulos: number }> {
 
-  const esPrimaria = esTipoFuentePrimaria(tipoDocumento)
+  const porContenido = !!opciones.area && !TIPOS_SIN_ARTICULOS.includes(tipoDocumento)
+  const candidatas = esTipoFuentePrimaria(tipoDocumento) || porContenido
+    ? dividirEnArticulos(textoCompleto)
+    : []
+  const articulos = new Set(candidatas.filter(u => u.numeroArticulo !== undefined && !u.esComentario).map(u => u.numeroArticulo)).size
+  const esPrimaria = esTipoFuentePrimaria(tipoDocumento) || (porContenido && articulos >= MIN_ARTICULOS_PARA_CORTE)
 
   // Para fuente primaria, intentamos chunking por artículo. Si el
   // documento no sigue el formato "Artículo N°" (0 matches), caemos de
   // vuelta al chunking genérico para no perder el documento.
-  const unidades: UnidadArticulo[] = esPrimaria
-    ? dividirEnArticulos(textoCompleto)
-    : []
+  const unidades: UnidadArticulo[] = esPrimaria ? candidatas : []
 
   const unidadesFinales: UnidadArticulo[] = unidades.length > 0
     ? unidades
@@ -351,7 +436,8 @@ export async function guardarDocumentoEnPinecone(
       fechaGuardado: new Date().toISOString(),
       esFuentePrimaria: esPrimaria,
       ...(unidad.numeroArticulo !== undefined ? { numeroArticulo: unidad.numeroArticulo } : {}),
-      ...(unidad.esComentario ? { esComentario: true } : {})
+      ...(unidad.esComentario ? { esComentario: true } : {}),
+      ...(opciones.area ? { area: opciones.area } : {})
     }))
 
     await subirLoteConReintentos(records)
@@ -366,7 +452,7 @@ export async function guardarDocumentoEnPinecone(
   }
 
   console.log(`✅ Total guardado: ${totalGuardados} registros`)
-  return { exito: true, chunksGuardados: totalGuardados }
+  return { exito: true, chunksGuardados: totalGuardados, articulos: esPrimaria ? articulos : 0 }
 }
 
 // =========================
@@ -455,6 +541,7 @@ export interface DocumentoIndexado {
   nombre: string
   tipo: string
   chunks: number
+  area?: string
 }
 
 export async function listarDocumentosPinecone(): Promise<DocumentoIndexado[]> {

@@ -4,34 +4,54 @@
     <!-- Section header — se encoge y se atenúa al bajar en el chat, para
          devolverle espacio a la conversación sin perder el título del
          todo (ver onMessagesScroll). -->
-    <div class="page-header" v-show="mensajes.length === 0" :class="{ 'page-header--compact': chatDesplazado }">
-      <div class="section-icon-wrap icon-blue">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#686A57" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-        </svg>
-      </div>
-      <div>
-        <h1 class="page-title">Consultas Jurídicas</h1>
-        <p class="page-subtitle">Haz preguntas sobre leyes y normas peruanas</p>
+    <div class="page-header" v-show="!hayConversacion" :class="{ 'page-header--compact': chatDesplazado }">
+      <div class="saludo-bloque">
+        <!-- Cada letra en su span: entran escalonadas y, al pasar el mouse,
+             suben en ola (ver .page-title-letra). Solo decorativo. -->
+        <h1 class="page-title" aria-label="LexIT">
+          <span
+            v-for="(letra, li) in 'LexIT'"
+            :key="li"
+            class="page-title-letra"
+            :style="{ '--i': li }"
+            aria-hidden="true"
+          >{{ letra }}</span>
+        </h1>
+        <p class="page-saludo">{{ saludo }}</p>
       </div>
     </div>
 
-    <div class="consultas-layout">
+    <div class="consultas-layout" :class="{ 'consultas-layout--vacio': !hayConversacion }">
 
     <!-- Chat wrapper -->
     <div class="chat-wrapper">
 
       <!-- Messages area -->
       <div class="messages-area" ref="messagesBox" @scroll="onMessagesScroll">
-        <div v-for="(mensaje, index) in mensajes" :key="index" class="message-wrapper">
+        <template v-for="(mensaje, index) in mensajes" :key="index">
+        <div v-if="!esBienvenida(mensaje, index)" class="message-wrapper">
 
           <!-- AI message: bloque de texto simple, sin avatar ni burbuja -->
           <div v-if="mensaje.esIA" class="msg-block msg-block--ai">
-            <div class="msg-meta msg-meta--ai">LEXIT AI · {{ formatTimestamp(mensaje.timestamp) }}</div>
+            <div class="msg-meta msg-meta--ai">LexIT · {{ formatTimestamp(mensaje.timestamp) }}</div>
 
-            <!-- Mientras llega el primer trozo del stream, puntos de "escribiendo" -->
-            <div v-if="!mensaje.contenido && store.loading && index === mensajes.length - 1" class="typing-dots">
-              <span></span><span></span><span></span>
+            <!-- Mientras llega el primer trozo del stream: "LexIT está pensando"
+                 con brillo, puntos y frases que rotan solo con CSS. -->
+            <div
+              v-if="!mensaje.contenido && store.loading && index === mensajes.length - 1"
+              class="pensando"
+              role="status"
+              aria-live="polite"
+            >
+              <span class="pensando-marca" aria-hidden="true"><span></span></span>
+              <div class="pensando-texto">
+                <span class="pensando-titulo">LexIT está pensando<span class="pensando-puntos" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></span>
+                <span class="pensando-fases" aria-hidden="true">
+                  <span>Analizando tu consulta</span>
+                  <span>Revisando la base jurídica</span>
+                  <span>Redactando la respuesta</span>
+                </span>
+              </div>
             </div>
             <template v-else>
               <div
@@ -114,6 +134,7 @@
           </div>
 
         </div>
+        </template>
       </div>
 
       <!-- Input area -->
@@ -121,7 +142,7 @@
         <div class="composer-pill">
           <q-input
             v-model="pregunta"
-            placeholder="Escribe tu consulta legal aquí..."
+            :placeholder="store.especialidad ? `Escribe tu consulta de ${etiquetaEspecialidad(store.especialidad)}...` : 'Escribe tu consulta legal aquí...'"
             type="textarea"
             autogrow
             borderless
@@ -132,17 +153,86 @@
             @keydown.enter.exact.prevent="enviarConsulta"
           />
 
-          <button
-            class="ask-btn-round"
-            :disabled="store.loading || !pregunta.trim()"
-            title="Preguntar"
-            @click="enviarConsulta"
-          >
-            <svg v-if="!store.loading" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 19V5"/><path d="M5 12l7-7 7 7"/>
-            </svg>
-            <q-spinner v-else size="16px" color="white" />
-          </button>
+          <div class="composer-barra">
+            <!-- Especializaciones: limitan las respuestas (y la base jurídica
+                 consultada) a una rama del derecho. "General" = toda la base.
+                 Viven dentro del campo: un botón que despliega todas las
+                 opciones. -->
+            <button
+              type="button"
+              class="especialidad-selector"
+              :class="{ 'especialidad-selector--activa': !!store.especialidad }"
+              aria-haspopup="listbox"
+              :aria-expanded="menuEspecialidades"
+              aria-label="Especialización"
+              :disabled="store.loading"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 3v18"/><path d="M5 7h14"/><path d="M5 7l-3 7a3 3 0 0 0 6 0z"/><path d="M19 7l-3 7a3 3 0 0 0 6 0z"/><path d="M8 21h8"/>
+              </svg>
+              <span class="especialidad-selector-texto">{{ store.especialidad ? etiquetaEspecialidad(store.especialidad) : 'General' }}</span>
+              <svg class="especialidad-selector-flecha" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M6 9l6 6 6-6"/>
+              </svg>
+
+              <q-menu
+                v-model="menuEspecialidades"
+                anchor="top left"
+                self="bottom left"
+                :offset="[0, 10]"
+                class="especialidades-menu"
+                transition-show="jump-up"
+                transition-hide="fade"
+              >
+                <div class="especialidades-lista" role="listbox" aria-label="Especialización">
+                  <div class="especialidades-lista-titulo">Especialización</div>
+                  <button
+                    v-close-popup
+                    type="button"
+                    class="especialidad-opcion"
+                    :class="{ 'especialidad-opcion--activa': !store.especialidad }"
+                    role="option"
+                    :aria-selected="!store.especialidad"
+                    @click="store.especialidad = null"
+                  >
+                    <span class="especialidad-opcion-nombre">General</span>
+                    <span class="especialidad-opcion-desc">Toda la base jurídica</span>
+                    <svg v-if="!store.especialidad" class="especialidad-opcion-check" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                  </button>
+                  <button
+                    v-for="esp in ESPECIALIDADES"
+                    :key="esp.valor"
+                    v-close-popup
+                    type="button"
+                    class="especialidad-opcion"
+                    :class="{ 'especialidad-opcion--activa': store.especialidad === esp.valor }"
+                    role="option"
+                    :aria-selected="store.especialidad === esp.valor"
+                    @click="store.especialidad = esp.valor"
+                  >
+                    <span class="especialidad-opcion-nombre">{{ esp.etiqueta }}</span>
+                    <svg v-if="store.especialidad === esp.valor" class="especialidad-opcion-check" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                  </button>
+                </div>
+              </q-menu>
+            </button>
+
+            <button
+              class="ask-btn-round"
+              :disabled="store.loading || !pregunta.trim()"
+              title="Preguntar"
+              @click="enviarConsulta"
+            >
+              <svg v-if="!store.loading" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 19V5"/><path d="M5 12l7-7 7 7"/>
+              </svg>
+              <q-spinner v-else size="16px" color="white" />
+            </button>
+          </div>
         </div>
 
         <div v-if="store.error" class="error-row">
@@ -159,19 +249,104 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useConsultasStore } from '../stores/consultas-store'
+import { useUserProfileStore } from '../stores/userProfile'
+import { ESPECIALIDADES, etiquetaEspecialidad } from '../constants/especialidades'
 import { storeToRefs } from 'pinia'
+
+// Saludo según la hora del usuario, con el nombre registrado en su perfil
+// (sin nombre, solo el saludo). Se recalcula cada minuto por si cambia el
+// tramo del día con la página abierta.
+const profileStore = useUserProfileStore()
+const ahora = ref(new Date())
+let relojSaludo: ReturnType<typeof setInterval> | null = null
+onMounted(() => { relojSaludo = setInterval(() => { ahora.value = new Date() }, 60_000) })
+onUnmounted(() => { if (relojSaludo) clearInterval(relojSaludo) })
+
+// El store abre cada sesión con un mensaje de bienvenida (consultas-store,
+// iniciarSesion) y lo guarda con la sesión. Ya no se muestra: el saludo con
+// el nombre lo reemplaza. Sigue en el store porque el historial que se le
+// manda a la IA cuenta con él (slice(1)).
+function esBienvenida(mensaje: { esIA: boolean; contenido: string }, index: number): boolean {
+  return index === 0 && mensaje.esIA && mensaje.contenido.startsWith('**Hola, soy LexIT**')
+}
 
 const store = useConsultasStore()
 const pregunta = ref('')
 
 const { mensajes } = storeToRefs(store)
+// Hay conversación cuando hay algún mensaje además de la bienvenida oculta.
+const hayConversacion = computed(() => mensajes.value.some((m, i) => !esBienvenida(m, i)))
+
+// Frases de saludo por tramo horario/día, con variantes al azar dentro de
+// cada tramo (algunas reciben el nombre, otras no lo necesitan). "Estamos
+// listos para comenzar" es la frase "aleatoria": entra en la mezcla de
+// cualquier tramo. Las dos últimas aparecen cuando el usuario ya tiene
+// consultas guardadas y abre una conversación nueva ("al retomar").
+type Frase = string | ((nombre: string) => string)
+
+const saludo = computed(() => {
+  const fecha = ahora.value
+  const hora = fecha.getHours()
+  const dia = fecha.getDay() // 0 domingo … 1 lunes, 2 martes, 4 jueves
+  const nombre = profileStore.profile?.displayName?.trim() || ''
+
+  const candidatos: Frase[] = []
+
+  if (dia === 1 && hora >= 7 && hora < 10) {
+    candidatos.push((n) => (n ? `Buenos días, ${n}, ¿Listos para la jornada?` : 'Buenos días, ¿Listos para la jornada?'))
+  } else if ((dia === 2 || dia === 4) && hora >= 7 && hora < 10) {
+    candidatos.push((n) => (n ? `Buenos días ${n} ¿en qué trabajaremos hoy?` : 'Buenos días ¿en qué trabajaremos hoy?'))
+  } else if (hora >= 7 && hora < 10) {
+    candidatos.push((n) => (n ? `Buenos días, ${n}` : 'Buenos días'), 'Empecemos')
+  } else if (hora >= 10 && hora < 13) {
+    candidatos.push((n) => (n ? `Buenos días, ${n}` : 'Buenos días'))
+  } else if (hora >= 13 && hora < 16) {
+    candidatos.push((n) => (n ? `¡Buenas tardes, ${n}! Continuemos con la jornada` : '¡Buenas tardes! Continuemos con la jornada'))
+  } else if (hora >= 16 && hora < 17) {
+    candidatos.push('La jornada continúa, ¿en qué avanzamos?')
+  } else if (hora >= 17 && hora < 19) {
+    candidatos.push((n) => (n ? `Buen trabajo por hoy ${n}, dejemos listo lo que sigue.` : 'Buen trabajo por hoy, dejemos listo lo que sigue.'))
+  } else if (hora >= 19 && hora < 20) {
+    candidatos.push('¡Tengámoslo listo!')
+  } else if (hora >= 20 && hora < 22) {
+    candidatos.push((n) => (n ? `Buenas noches ${n} ¿Qué queda por resolver?` : 'Buenas noches ¿Qué queda por resolver?'))
+  } else if (hora >= 22) {
+    candidatos.push('Todavía queda tiempo para avanzar.')
+  } else if (hora < 3) {
+    candidatos.push('Seguimos adelante juntos')
+  } else if (hora < 4) {
+    candidatos.push('Preparado y listo')
+  } else if (hora < 5) {
+    candidatos.push((n) => (n ? `¿Madrugando ${n}?` : '¿Madrugando?'))
+  } else if (hora < 6) {
+    candidatos.push('El día empieza temprano')
+  } else {
+    candidatos.push((n) => (n ? `Buenos días ${n}, ¡comencemos!` : 'Buenos días, ¡comencemos!'))
+  }
+
+  candidatos.push('Estamos listos para comenzar')
+
+  if (store.historialSesiones.length > 0 && !hayConversacion.value) {
+    candidatos.push(
+      (n) => (n ? `Bien, ${n}, continuemos` : 'Bien, continuemos'),
+      'Buen trabajo hasta aquí, continuemos'
+    )
+  }
+
+  const elegida = candidatos[Math.floor(Math.random() * candidatos.length)] as Frase
+  return typeof elegida === 'function' ? elegida(nombre) : elegida
+})
 const messagesBox = ref<HTMLElement | null>(null)
 
 // Puramente visual: encoge/atenúa el encabezado mientras se baja en el
 // chat, para devolverle espacio a la conversación (ver .page-header--compact).
 const chatDesplazado = ref(false)
+
+// Puramente visual: si el menú de especializaciones está abierto, para
+// girar la flechita del selector (QMenu no marca aria-expanded solo).
+const menuEspecialidades = ref(false)
 
 function onMessagesScroll(event: Event) {
   chatDesplazado.value = (event.target as HTMLElement).scrollTop > 16
@@ -289,22 +464,22 @@ watch(mensajes, async () => {
    dentro de la misma familia de colores.
    ============================== */
 .consultas-page {
-  --lc-bg: #FFFFFF;
-  --lc-surface: #FFFFFF;
-  --lc-surface-alt: #D9D4C6;
-  --lc-surface-sunken: #BDB59B;
-  --lc-border: rgba(23, 33, 27, 0.10);
-  --lc-border-strong: rgba(23, 33, 27, 0.18);
-  --lc-text: #17211B;
-  --lc-text-muted: #3D473A;
-  --lc-text-faint: #686A57;
-  --lc-accent: #686A57;
-  --lc-accent-hover: #3D473A;
-  --lc-accent-soft: rgba(104, 106, 87, 0.12);
-  --lc-accent-soft-strong: rgba(104, 106, 87, 0.24);
-  --lc-accent-warm: #9C9275;
-  --lc-accent-warm-soft: rgba(156, 146, 117, 0.18);
-  --lc-ink: #F8F7F2;
+  --lc-bg: var(--lexit-blanco);
+  --lc-surface: var(--lexit-blanco);
+  --lc-surface-alt: var(--lexit-marfil);
+  --lc-surface-sunken: var(--lexit-marfil-suave);
+  --lc-border: var(--lexit-marfil);
+  --lc-border-strong: rgba(var(--lexit-verde-rgb), 0.18);
+  --lc-text: var(--lexit-verde);
+  --lc-text-muted: var(--lexit-texto-secundario);
+  --lc-text-faint: var(--lexit-texto-tenue);
+  --lc-accent: var(--lexit-verde);
+  --lc-accent-hover: rgba(var(--lexit-verde-rgb), 0.85);
+  --lc-accent-soft: var(--lexit-marfil-suave);
+  --lc-accent-soft-strong: var(--lexit-marfil);
+  --lc-accent-warm: var(--lexit-piedra);
+  --lc-accent-warm-soft: rgba(189, 181, 155, 0.25);
+  --lc-ink: var(--lexit-blanco-calido);
 
   /* El max-width:none real vive en ".q-page.consultas-page" más abajo —
      acá no alcanza, empata en especificidad con la regla global ".q-page"
@@ -372,39 +547,125 @@ watch(mensajes, async () => {
   opacity: 0.9;
 }
 
-.section-icon-wrap {
-  width: 44px;
-  height: 44px;
-  border-radius: 13px;
-  display: flex;
-  align-items: center;
+/* Estado de bienvenida (sin conversación): el saludo ocupa el centro del
+   espacio disponible sobre el composer, con entrada escalonada. */
+.page-header:not(.page-header--compact) {
+  flex: 1 1 auto;
   justify-content: center;
-  flex-shrink: 0;
-  box-shadow: inset 0 0 0 1px var(--lc-accent-soft-strong);
-  transition: width 0.25s ease, height 0.25s ease;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
-.section-icon-wrap svg {
-  width: 22px;
-  height: 22px;
+.page-header:not(.page-header--compact)::after {
+  content: '';
+  width: 120px;
+  height: 1px;
+  margin-top: 6px;
+  background: var(--lc-border-strong);
+  transform-origin: center;
+  animation: saludoLinea 0.9s 0.35s ease both;
 }
 
-.icon-blue { background: var(--lc-accent-soft); }
+.consultas-layout--vacio {
+  flex: 0 0 auto;
+}
 
+.page-header:not(.page-header--compact) .page-saludo {
+  animation: saludoEntrada 0.7s 0.45s ease both;
+}
+
+@keyframes saludoEntrada {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes saludoLinea {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+.saludo-bloque {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* "LexIT" grande, serif, letra por letra: entran escalonadas y al pasar el
+   mouse suben en ola, con una línea fina que se dibuja debajo. */
 .page-title {
+  position: relative;
+  display: inline-flex;
   font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
   font-optical-sizing: auto;
-  font-size: 1.7rem;
+  font-size: clamp(3rem, 6vw, 4.4rem);
   font-weight: 600;
-  letter-spacing: -0.01em;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
   margin: 0;
+  padding-bottom: 6px;
   color: var(--lc-text);
+  cursor: default;
+  transition: font-size 0.25s ease;
+}
+
+.page-title::after {
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 0;
+  height: 1px;
+  background: var(--lc-accent-warm);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.page-title:hover::after {
+  transform: scaleX(1);
+}
+
+.page-title-letra {
+  display: inline-block;
+  animation: letraEntrada 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i) * 70ms);
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), color 0.3s ease;
+  transition-delay: calc(var(--i) * 40ms);
+}
+
+.page-title:hover .page-title-letra {
+  transform: translateY(-5px);
+}
+
+/* "IT" se aclara un poco al pasar el mouse: el único acento, sutil. */
+.page-title:hover .page-title-letra:nth-child(n + 4) {
+  color: rgba(var(--lexit-verde-rgb), 0.72);
+}
+
+@keyframes letraEntrada {
+  from { opacity: 0; transform: translateY(0.45em); filter: blur(4px); }
+  to   { opacity: 1; transform: none; filter: blur(0); }
+}
+
+.page-header--compact .page-title {
+  font-size: 1.7rem;
 }
 
 .page-subtitle {
   margin: 4px 0 0;
   color: var(--lc-text-muted);
   font-size: 1rem;
+}
+
+.page-saludo {
+  margin: 4px 0 0;
+  font-family: 'Baskervville', 'EB Garamond', serif;
+  font-style: italic;
+  font-size: clamp(1.2rem, 2.2vw, 1.45rem);
+  color: var(--lc-text-muted);
 }
 
 
@@ -447,8 +708,7 @@ watch(mensajes, async () => {
    como dice el comentario del template, ahora sí sin caja alrededor. */
 .msg-block--ai {
   max-width: 100%;
-  border-left: 3px solid var(--lc-accent);
-  padding: 4px 0 4px 18px;
+  padding: 4px 0;
 }
 
 .msg-block--user {
@@ -532,24 +792,142 @@ watch(mensajes, async () => {
   color: var(--lc-text);
 }
 
-.typing-dots {
+/* "LexIT está pensando": marca que late, título con brillo que recorre
+   el texto, puntos suspensivos y tres frases que rotan (todo CSS). */
+.pensando {
   display: inline-flex;
-  gap: 6px;
-  padding: 4px 0;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px 10px 12px;
+  border: 1px solid var(--lc-border);
+  border-radius: 14px;
+  background: var(--lc-surface);
+  box-shadow: 0 6px 20px -14px rgba(23, 33, 27, 0.4);
+  animation: floatUp 0.35s ease-out both;
 }
 
-.typing-dots span {
-  width: 8px;
-  height: 8px;
-  background: var(--lc-accent);
+.pensando-marca {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pensando-marca::before,
+.pensando-marca::after {
+  content: '';
+  position: absolute;
+  inset: 0;
   border-radius: 50%;
-  display: inline-block;
-  opacity: 0.6;
-  animation: blink 1s infinite;
+  border: 1.5px solid var(--lc-accent-warm);
+  animation: pensandoOnda 1.8s ease-out infinite;
 }
 
-.typing-dots span:nth-child(2) { animation-delay: 0.15s; }
-.typing-dots span:nth-child(3) { animation-delay: 0.30s; }
+.pensando-marca::after { animation-delay: 0.9s; }
+
+.pensando-marca > span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--lc-accent);
+  animation: pensandoLatido 1.8s ease-in-out infinite;
+}
+
+@keyframes pensandoOnda {
+  from { transform: scale(0.35); opacity: 0.9; }
+  to   { transform: scale(1.15); opacity: 0; }
+}
+
+@keyframes pensandoLatido {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(0.75); }
+}
+
+.pensando-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 190px;
+}
+
+.pensando-titulo {
+  font-family: 'Baskervville', 'EB Garamond', serif;
+  font-size: 0.98rem;
+  font-weight: 600;
+  background: linear-gradient(
+    90deg,
+    var(--lc-text) 0%,
+    var(--lc-text) 40%,
+    var(--lc-accent-warm) 50%,
+    var(--lc-text) 60%,
+    var(--lc-text) 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: pensandoBrillo 2.2s linear infinite;
+}
+
+@keyframes pensandoBrillo {
+  from { background-position: 100% 0; }
+  to   { background-position: -150% 0; }
+}
+
+.pensando-puntos span {
+  display: inline-block;
+  color: var(--lc-text);
+  -webkit-text-fill-color: var(--lc-text);
+  animation: blink 1.2s infinite;
+}
+
+.pensando-puntos span:nth-child(2) { animation-delay: 0.2s; }
+.pensando-puntos span:nth-child(3) { animation-delay: 0.4s; }
+
+/* Las tres frases ocupan el mismo lugar y se turnan (ciclo de 7.5s). */
+.pensando-fases {
+  position: relative;
+  display: block;
+  height: 1.2em;
+  overflow: hidden;
+  font-size: 0.8rem;
+  color: var(--lc-text-faint);
+}
+
+.pensando-fases span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  opacity: 0;
+  animation: pensandoFase 7.5s ease-in-out infinite;
+}
+
+.pensando-fases span:nth-child(2) { animation-delay: 2.5s; }
+.pensando-fases span:nth-child(3) { animation-delay: 5s; }
+
+@keyframes pensandoFase {
+  0%   { opacity: 0; transform: translateY(70%); }
+  6%   { opacity: 1; transform: none; }
+  28%  { opacity: 1; transform: none; }
+  34%  { opacity: 0; transform: translateY(-70%); }
+  100% { opacity: 0; transform: translateY(-70%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pensando-marca::before,
+  .pensando-marca::after,
+  .pensando-marca > span,
+  .pensando-titulo,
+  .pensando-puntos span,
+  .page-title-letra { animation: none; }
+
+  .pensando-fases span { animation: none; }
+  .pensando-fases span:first-child { opacity: 1; }
+}
 
 /* Fuentes citadas */
 .fuentes-block {
@@ -734,12 +1112,12 @@ watch(mensajes, async () => {
 
 .composer-pill {
   display: flex;
-  align-items: flex-end;
-  gap: 6px;
+  flex-direction: column;
+  gap: 4px;
   background: var(--lc-surface);
   border: 1px solid var(--lc-border-strong);
-  border-radius: 26px;
-  padding: 7px 7px 7px 20px;
+  border-radius: 24px;
+  padding: 10px 10px 8px 18px;
   box-shadow: 0 4px 18px -6px rgba(23, 33, 27, 0.16);
   transition: border-color 0.18s, box-shadow 0.18s;
 }
@@ -749,7 +1127,15 @@ watch(mensajes, async () => {
   box-shadow: 0 0 0 3px var(--lc-accent-soft);
 }
 
-.composer-textarea-pill { flex: 1; }
+.composer-textarea-pill { flex: 1; padding-right: 8px; }
+
+.composer-barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-left: -8px;
+}
 
 :deep(.composer-textarea-pill .q-field__control) {
   background: transparent !important;
@@ -855,5 +1241,157 @@ watch(mensajes, async () => {
   }
 
   .msg-bubble-user { max-width: 88%; }
+}
+
+/* Selector de especialización dentro del campo de consulta */
+.especialidad-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 70%;
+  padding: 6px 10px 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--lc-border);
+  background: var(--lc-surface);
+  color: var(--lc-text-muted);
+  font-family: 'Baskervville', 'EB Garamond', serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.18s, border-color 0.18s, color 0.18s, transform 0.18s;
+}
+
+.especialidad-selector:hover:not(:disabled) {
+  background: var(--lc-surface-sunken);
+  border-color: var(--lc-border-strong);
+  color: var(--lc-text);
+}
+
+.especialidad-selector:active:not(:disabled) { transform: scale(0.97); }
+
+.especialidad-selector--activa {
+  background: var(--lc-accent-soft);
+  border-color: var(--lc-accent-soft-strong);
+  color: var(--lc-text);
+}
+
+.especialidad-selector-texto {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.especialidad-selector-flecha {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.especialidad-selector:hover:not(:disabled) .especialidad-selector-flecha {
+  transform: translateY(1px);
+}
+
+.especialidad-selector[aria-expanded="true"] .especialidad-selector-flecha {
+  transform: rotate(180deg);
+}
+
+.especialidad-selector:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.especialidad-selector:focus-visible {
+  outline: 2px solid var(--lc-accent);
+  outline-offset: 2px;
+}
+
+/* Contenido del menú (q-menu se monta en <body>, por eso usa las variables
+   globales --lexit-* y no las --lc-* de la página). */
+.especialidades-lista {
+  display: flex;
+  flex-direction: column;
+  min-width: 240px;
+  padding: 6px;
+}
+
+.especialidades-lista-titulo {
+  padding: 6px 10px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lexit-texto-tenue);
+}
+
+.especialidad-opcion {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: 12px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: var(--lexit-verde);
+  font-family: 'Baskervville', 'EB Garamond', serif;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s, padding-left 0.2s ease;
+  animation: opcionEntrada 0.3s ease both;
+}
+
+.especialidad-opcion:nth-child(3) { animation-delay: 0.03s; }
+.especialidad-opcion:nth-child(4) { animation-delay: 0.06s; }
+.especialidad-opcion:nth-child(5) { animation-delay: 0.09s; }
+.especialidad-opcion:nth-child(6) { animation-delay: 0.12s; }
+
+@keyframes opcionEntrada {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.especialidad-opcion:hover {
+  background: var(--lexit-marfil-suave);
+  padding-left: 14px;
+}
+
+.especialidad-opcion:focus-visible {
+  outline: 2px solid var(--lexit-verde);
+  outline-offset: -2px;
+}
+
+.especialidad-opcion--activa {
+  background: var(--lexit-marfil-suave);
+}
+
+.especialidad-opcion-nombre {
+  grid-column: 1;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.especialidad-opcion-desc {
+  grid-column: 1;
+  font-size: 0.76rem;
+  color: var(--lexit-texto-tenue);
+}
+
+.especialidad-opcion-check {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+@media (max-width: 480px) {
+  .especialidad-selector { font-size: 0.82rem; padding: 5px 9px; }
+}
+</style>
+
+<style>
+/* Caja del q-menu de especializaciones (montada en <body>, fuera del scope). */
+.q-menu.especialidades-menu {
+  border: 1px solid var(--lexit-marfil);
+  border-radius: 14px;
+  background: var(--lexit-blanco);
+  box-shadow: 0 18px 40px -18px rgba(23, 33, 27, 0.35);
 }
 </style>

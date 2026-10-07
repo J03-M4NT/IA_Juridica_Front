@@ -25,14 +25,14 @@
           <template v-slot:label>
             <div class="row items-center no-wrap">
               <!-- Avatar con foto real del usuario -->
-              <q-avatar size="32px" color="primary" text-color="white">
+              <q-avatar size="32px" class="avatar-usuario">
                 <img
                   v-if="profileStore.photoURL"
                   :src="profileStore.photoURL"
                   alt="Foto de perfil"
                   style="width: 100%; height: 100%; object-fit: cover;"
                 />
-                <q-icon v-else name="person" />
+                <span v-else class="avatar-inicial">{{ inicialUsuario }}</span>
               </q-avatar>
               <!-- Nombre real del usuario -->
               <div class="q-ml-sm text-profile-name">{{ profileStore.displayName }}</div>
@@ -221,7 +221,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../../stores/auth';
 import { useUserProfileStore } from '../../stores/userProfile';
@@ -237,11 +237,13 @@ import {
 import { FirebaseError } from 'firebase/app';
 import { useQuasar } from 'quasar';
 import ProfileDialog from '../Profile/ProfileDialog.vue';
+import { useBienvenidaStore } from '../../stores/bienvenida';
 
 const $q = useQuasar();
 const router = useRouter();
 const authStore = useAuthStore();
 const profileStore = useUserProfileStore();
+const bienvenida = useBienvenidaStore();
 
 const { isAuthenticated } = storeToRefs(authStore)
 
@@ -263,6 +265,9 @@ const registerForm = ref({
 });
 
 const showProfileDialog = ref(false);
+
+// Inicial del nombre para el avatar (cuando no hay foto de perfil).
+const inicialUsuario = computed(() => (profileStore.displayName.trim()[0] ?? 'U').toUpperCase());
 
 // PDF de Términos y condiciones (public/terminos-y-condiciones.pdf). Con
 // BASE_URL funciona igual en desarrollo (/) y en GitHub Pages
@@ -293,13 +298,9 @@ const handleLogin = async () => {
     await signInWithEmailAndPassword(auth, email, password);
     showLoginDialog.value = false;
     loginForm.value = { email: '', password: '' };
-    $q.notify({
-      type: 'positive',
-      message: '¡Inicio de sesión exitoso!',
-      position: 'top',
-      color: 'positive'
-    });
     // Redirigir al analizador después del login exitoso
+    // Mosaico de bienvenida (ver components/BienvenidaLexit.vue).
+    bienvenida.mostrar();
     await router.replace('/app/consultas');
   } catch (error) {
     let errorMessage = 'Error al iniciar sesión';
@@ -321,10 +322,11 @@ const handleLogin = async () => {
     }
 
     $q.notify({
-      type: 'negative',
       message: errorMessage,
-      position: 'top',
-      color: 'negative'
+      icon: 'error_outline',
+      position: 'bottom',
+      classes: 'lexit-toast lexit-toast--error',
+      timeout: 4500
     });
   }
 };
@@ -338,12 +340,8 @@ const handleGoogleSignIn = async () => {
     await signInWithPopup(auth, new GoogleAuthProvider());
     showLoginDialog.value = false;
     showRegisterDialog.value = false;
-    $q.notify({
-      type: 'positive',
-      message: '¡Sesión iniciada con Google!',
-      position: 'top',
-      color: 'positive'
-    });
+    // Mosaico de bienvenida (ver components/BienvenidaLexit.vue).
+    bienvenida.mostrar();
     await router.replace('/app/consultas');
   } catch (error) {
     // El usuario cerró la ventana de Google antes de elegir cuenta — no es
@@ -357,10 +355,11 @@ const handleGoogleSignIn = async () => {
       : 'No se pudo iniciar sesión con Google';
 
     $q.notify({
-      type: 'negative',
       message: errorMessage,
-      position: 'top',
-      color: 'negative'
+      icon: 'error_outline',
+      position: 'bottom',
+      classes: 'lexit-toast lexit-toast--error',
+      timeout: 4500
     });
   } finally {
     cargandoGoogle.value = false;
@@ -373,13 +372,9 @@ const handleRegister = async () => {
     await createUserWithEmailAndPassword(auth, email, password);
     showRegisterDialog.value = false;
     registerForm.value = { email: '', password: '' };
-    $q.notify({
-      type: 'positive',
-      message: '¡Registro exitoso!',
-      position: 'top',
-      color: 'positive'
-    });
     // Redirigir al analizador después del registro exitoso
+    // Mosaico de bienvenida (ver components/BienvenidaLexit.vue).
+    bienvenida.mostrar();
     await router.replace('/app/consultas');
   } catch (error) {
     let errorMessage = 'Error al registrarse';
@@ -404,10 +399,11 @@ const handleRegister = async () => {
     }
 
     $q.notify({
-      type: 'negative',
       message: errorMessage,
-      position: 'top',
-      color: 'negative'
+      icon: 'error_outline',
+      position: 'bottom',
+      classes: 'lexit-toast lexit-toast--error',
+      timeout: 4500
     });
   }
 };
@@ -418,21 +414,25 @@ const handleLogout = async () => {
     // Limpiar formularios
     loginForm.value = { email: '', password: '' };
     registerForm.value = { email: '', password: '' };
+    // Aviso discreto abajo, con los colores de la marca (ver .lexit-toast
+    // en css/app.scss). Los ingresos no avisan: los confirma la animación.
     $q.notify({
-      type: 'info',
-      message: 'Has cerrado sesión',
-      position: 'top',
-      color: 'info'
+      message: 'Cerraste sesión',
+      icon: 'logout',
+      position: 'bottom',
+      classes: 'lexit-toast',
+      timeout: 2200
     });
     // Usar replace en lugar de go(0) para una actualización más suave
     await router.replace('/');
   } catch (error) {
     const message = error instanceof FirebaseError ? ': ' + error.message : '';
     $q.notify({
-      type: 'negative',
       message: 'Error al cerrar sesión' + message,
-      position: 'top',
-      color: 'negative'
+      icon: 'error_outline',
+      position: 'bottom',
+      classes: 'lexit-toast lexit-toast--error',
+      timeout: 4500
     });
   }
 };
@@ -489,10 +489,11 @@ const handleLogout = async () => {
    lo que deja engancharlo acá con :deep(), aunque el menú se renderiza
    fuera del árbol de este componente (portal de Quasar). */
 :deep(.user-profile-menu) {
-  background: var(--ink) !important;
-  border: 1px solid rgba(250, 250, 247, 0.12);
+  background: var(--lexit-blanco) !important;
+  color: var(--lexit-verde) !important;
+  border: 1px solid var(--lexit-marfil);
   border-radius: 12px;
-  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 16px 40px -14px rgba(var(--lexit-verde-rgb), 0.25);
   min-width: 190px;
   overflow: hidden;
 }
@@ -504,15 +505,36 @@ const handleLogout = async () => {
 :deep(.user-profile-menu .q-item) {
   border-radius: 8px;
   min-height: 42px;
+  color: var(--lexit-verde);
+}
+
+:deep(.user-profile-menu .q-item:hover),
+:deep(.user-profile-menu .q-item .q-focus-helper) {
+  background: var(--lexit-marfil-suave);
+  opacity: 1;
 }
 
 :deep(.user-profile-menu .q-separator) {
-  background: rgba(250, 250, 247, 0.1);
+  background: var(--lexit-marfil);
   margin: 4px 2px;
 }
 
 .text-profile-name {
-  color: rgba(250, 250, 247, 0.92);
+  color: var(--lexit-verde);
+}
+
+/* Avatar: círculo Verde bosque con la inicial en blanco (o la foto). */
+.avatar-usuario {
+  background: var(--lexit-verde);
+  color: var(--lexit-blanco);
+}
+
+.avatar-inicial {
+  font-family: 'Baskervville', 'EB Garamond', serif;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 /* Backdrop del dialogo */
@@ -566,7 +588,7 @@ const handleLogout = async () => {
   font-family: 'Baskervville', 'EB Garamond', serif;
   font-size: 1.6rem;
   font-weight: 600;
-  color: #16161a;
+  color: var(--lexit-verde);
   margin: 0;
 }
 
@@ -606,7 +628,7 @@ const handleLogout = async () => {
   font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #1b1b1e;
+  color: var(--lexit-verde);
   background: #fff;
   border: 1px solid rgba(27, 27, 30, 0.16);
   border-radius: var(--border-radius);
@@ -654,7 +676,7 @@ const handleLogout = async () => {
   padding: 12px 14px;
   font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 1rem;
-  color: #1b1b1e;
+  color: var(--lexit-verde);
   background: #FAFAF7;
   border: 1px solid rgba(27, 27, 30, 0.14);
   border-radius: var(--border-radius);
@@ -749,7 +771,7 @@ const handleLogout = async () => {
   border-radius: 10px;
   font-size: 0.78rem;
   line-height: 1.45;
-  color: #3D473A;
+  color: var(--lexit-texto-secundario);
   text-align: left;
 }
 
@@ -763,7 +785,7 @@ const handleLogout = async () => {
 .consideraciones-icono {
   flex-shrink: 0;
   margin-top: 1px;
-  color: #686A57;
+  color: var(--lexit-texto-secundario);
 }
 
 .terminos-text {
@@ -778,7 +800,7 @@ const handleLogout = async () => {
 
 .terminos-link {
   font-weight: 600;
-  color: #3D473A;
+  color: var(--lexit-verde);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -806,5 +828,32 @@ const handleLogout = async () => {
   .switch-text { margin-top: 12px; }
   .consideraciones { margin-top: 12px; padding: 8px 10px; }
   .terminos-text { margin-top: 10px; padding-top: 10px; }
+}
+</style>
+
+<!-- Menú del perfil: Quasar lo dibuja fuera de este componente (en el
+     body), así que las reglas :deep() del bloque scoped no lo alcanzan.
+     Va sin scoped; la clase user-profile-menu es exclusiva de este menú. -->
+<style>
+.q-menu.user-profile-menu,
+.q-menu.user-profile-menu.q-dark {
+  background: var(--lexit-blanco) !important;
+  color: var(--lexit-verde) !important;
+  border: 1px solid var(--lexit-marfil);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px -14px rgba(var(--lexit-verde-rgb), 0.25);
+  min-width: 190px;
+}
+
+.user-profile-menu .q-item {
+  color: var(--lexit-verde) !important;
+}
+
+.user-profile-menu .q-item:hover {
+  background: var(--lexit-marfil-suave);
+}
+
+.user-profile-menu .q-separator {
+  background: var(--lexit-marfil) !important;
 }
 </style>

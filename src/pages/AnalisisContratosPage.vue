@@ -8,7 +8,7 @@
          y el panel de análisis/chat usan todo el alto de la pantalla. -->
     <div v-show="etapa !== 'trabajo'" class="page-header" :class="{ 'page-header--compact': chatDesplazado }">
       <div class="section-icon-wrap icon-blue">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2B352B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
       </div>
@@ -1750,22 +1750,22 @@ watch(mensajes, async () => {
    sub-vista dentro de la misma familia de colores.
    ============================== */
 .analisis-page {
-  --lc-bg: #FFFFFF;
-  --lc-surface: #FFFFFF;
-  --lc-surface-alt: #D9D4C6;
-  --lc-surface-sunken: #BDB59B;
-  --lc-border: rgba(23, 33, 27, 0.10);
-  --lc-border-strong: rgba(23, 33, 27, 0.18);
-  --lc-text: #17211B;
-  --lc-text-muted: #3D473A;
-  --lc-text-faint: #686A57;
-  --lc-accent: #2B352B;
-  --lc-accent-hover: #17211B;
-  --lc-accent-soft: rgba(43, 53, 43, 0.10);
-  --lc-accent-soft-strong: rgba(43, 53, 43, 0.20);
-  --lc-accent-warm: #9C9275;
-  --lc-accent-warm-soft: rgba(156, 146, 117, 0.18);
-  --lc-ink: #F8F7F2;
+  --lc-bg: var(--lexit-blanco);
+  --lc-surface: var(--lexit-blanco);
+  --lc-surface-alt: var(--lexit-marfil);
+  --lc-surface-sunken: var(--lexit-marfil-suave);
+  --lc-border: var(--lexit-marfil);
+  --lc-border-strong: rgba(var(--lexit-verde-rgb), 0.18);
+  --lc-text: var(--lexit-verde);
+  --lc-text-muted: var(--lexit-texto-secundario);
+  --lc-text-faint: var(--lexit-texto-tenue);
+  --lc-accent: var(--lexit-verde);
+  --lc-accent-hover: rgba(var(--lexit-verde-rgb), 0.85);
+  --lc-accent-soft: var(--lexit-marfil-suave);
+  --lc-accent-soft-strong: var(--lexit-marfil);
+  --lc-accent-warm: var(--lexit-piedra);
+  --lc-accent-warm-soft: rgba(189, 181, 155, 0.25);
+  --lc-ink: var(--lexit-blanco-calido);
 
   /* El max-width:none real vive en ".q-page.analisis-page" más abajo —
      acá no alcanza, empata en especificidad con la regla global ".q-page"
@@ -1863,7 +1863,7 @@ watch(mensajes, async () => {
   height: 22px;
 }
 
-.icon-blue { background: var(--lc-accent-soft); }
+.icon-blue { background: var(--lc-accent-soft); color: var(--lexit-verde); }
 
 .page-title {
   font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
@@ -2410,7 +2410,7 @@ button.metrica-bloque:hover {
 }
 
 button.metrica-bloque:focus-visible {
-  outline: 2px solid #3D473A;
+  outline: 2px solid var(--lexit-verde);
   outline-offset: 2px;
 }
 

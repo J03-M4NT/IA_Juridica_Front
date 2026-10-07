@@ -7,6 +7,7 @@ import * as cheerio from 'cheerio'
 import { initializeApp, getApps } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { ORIGENES_PERMITIDOS, MAX_CARACTERES_MENSAJE, autorizar, consumirCuotaIA, excede } from './seguridad'
+import { esArea, registrarNorma, olvidarNorma } from './especialidades'
 
 // Prueba de concepto aislada (edición quirúrgica de .docx) — ver
 // editarDocxPoc.ts para el porqué de que viva en su propio archivo.
@@ -237,6 +238,8 @@ interface PineconeRecord {
   numeroArticulo?: unknown
   esFuentePrimaria?: unknown
   esComentario?: unknown
+  // Especialización (carpeta) del documento: ver especialidades.ts
+  area?: unknown
 }
 
 interface SearchRequest {
@@ -303,10 +306,23 @@ export const upsertToPinecone = onRequest(
           ? { numeroArticulo: Number(record.numeroArticulo) }
           : {}),
         // Ensayo/nota de doctrina que trae el PDF del código (no es ley)
-        ...(record.esComentario === true ? { esComentario: true } : {})
+        ...(record.esComentario === true ? { esComentario: true } : {}),
+        ...(esArea(record.area) ? { area: record.area } : {})
       }))
 
       await idx.upsertRecords({ records: registros })
+
+      // El primer lote de cada documento lo registra en el catálogo de
+      // normas (para reconocerla por su nombre en Consultas).
+      const primero = registros.find(r => r.indiceChunk === 0)
+      if (primero?.documentoId) {
+        await registrarNorma({
+          documentoId: primero.documentoId,
+          nombre: primero.nombreDocumento,
+          tipo: primero.tipoDocumento,
+          ...(esArea(primero.area) ? { area: primero.area } : {})
+        })
+      }
 
       logger.info(`✅ Upsert exitoso: ${registros.length} registros`)
       res.json({ success: true, count: registros.length })
@@ -384,6 +400,7 @@ export const eliminarDocumentoDePinecone = onRequest(
         paginationToken = pagina.pagination?.next
       } while (paginationToken)
 
+      await olvidarNorma(documentoId)
       logger.info(`✅ Documento "${documentoId}" eliminado: ${totalEliminados} registros`)
       res.json({ success: true, eliminados: totalEliminados })
 
@@ -663,6 +680,7 @@ interface DocumentoIndexadoResumen {
   nombre: string
   tipo: string
   chunks: number
+  area?: string
 }
 
 export const listarDocumentosPinecone = onRequest(
@@ -719,7 +737,8 @@ export const listarDocumentosPinecone = onRequest(
             id: documentoId,
             nombre: typeof meta.nombreDocumento === 'string' && meta.nombreDocumento ? meta.nombreDocumento : documentoId,
             tipo: typeof meta.tipoDocumento === 'string' ? meta.tipoDocumento : '',
-            chunks: ids.length
+            chunks: ids.length,
+            ...(esArea(meta.area) ? { area: meta.area } : {})
           }
         })
         .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))

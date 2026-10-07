@@ -12,7 +12,7 @@
     <!-- Section header -->
     <div class="page-header">
       <div class="section-icon-wrap icon-orange">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17211B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
         </svg>
@@ -425,20 +425,20 @@ onMounted(() => {
    seriedad de "normas oficiales", distinto del resto de secciones.
    ============================== */
 .normas-page {
-  --ln-bg: #FFFFFF;
-  --ln-surface: #FFFFFF;
-  --ln-surface-alt: #D9D4C6;
-  --ln-surface-sunken: #BDB59B;
-  --ln-border: rgba(23, 33, 27, 0.10);
-  --ln-border-strong: rgba(23, 33, 27, 0.18);
-  --ln-text: #17211B;
-  --ln-text-muted: #3D473A;
-  --ln-text-faint: #686A57;
-  --ln-accent: #17211B;
-  --ln-accent-hover: #3D473A;
-  --ln-accent-soft: rgba(23, 33, 27, 0.08);
-  --ln-accent-soft-strong: rgba(23, 33, 27, 0.18);
-  --ln-ink: #F8F7F2;
+  --ln-bg: var(--lexit-blanco);
+  --ln-surface: var(--lexit-blanco);
+  --ln-surface-alt: var(--lexit-marfil);
+  --ln-surface-sunken: var(--lexit-marfil-suave);
+  --ln-border: var(--lexit-marfil);
+  --ln-border-strong: rgba(var(--lexit-verde-rgb), 0.18);
+  --ln-text: var(--lexit-verde);
+  --ln-text-muted: var(--lexit-texto-secundario);
+  --ln-text-faint: var(--lexit-texto-tenue);
+  --ln-accent: var(--lexit-verde);
+  --ln-accent-hover: rgba(var(--lexit-verde-rgb), 0.85);
+  --ln-accent-soft: var(--lexit-marfil-suave);
+  --ln-accent-soft-strong: var(--lexit-marfil);
+  --ln-ink: var(--lexit-blanco-calido);
 
   animation: floatUp 0.5s ease-out both;
 }
@@ -767,7 +767,7 @@ onMounted(() => {
   box-shadow: 0 0 0 1px rgba(23, 33, 27, 0.12), 0 8px 20px -10px rgba(23, 33, 27, 0.28);
 }
 
-.icon-orange { background: var(--ln-accent-soft); }
+.icon-orange { background: var(--ln-accent-soft); color: var(--lexit-verde); }
 
 .page-title {
   font-family: 'Baskervville', 'EB Garamond', serif;

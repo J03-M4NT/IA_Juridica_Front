@@ -18,6 +18,9 @@ interface OpcionesConsultaLexit {
   textoDocumentoAdjunto?: string | undefined
   nombreDocumentoAdjunto?: string | undefined
   esSolicitudAnalisis?: boolean
+  // Especialización de Consultas: limita la búsqueda y las respuestas a
+  // esa rama del derecho.
+  especialidad?: string
 }
 
 // Reemplaza a iniciarChatJuridico/enviarMensajeChatStream: toda la
@@ -34,7 +37,8 @@ export async function consultarLexit(
     historialMensajes,
     textoDocumentoAdjunto: opciones?.textoDocumentoAdjunto,
     nombreDocumentoAdjunto: opciones?.nombreDocumentoAdjunto,
-    esSolicitudAnalisis: opciones?.esSolicitudAnalisis ?? false
+    esSolicitudAnalisis: opciones?.esSolicitudAnalisis ?? false,
+    ...(opciones?.especialidad ? { especialidad: opciones.especialidad } : {})
   })
 
   const data = await response.json() as Partial<ConsultaLexitResultado> & { error?: string }
