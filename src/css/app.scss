@@ -7,27 +7,43 @@
 // serif para títulos + sans para UI, bordes finos en vez de sombras pesadas.
 // ==========================================================================
 :root {
+  // ------------------------------------------------------------------------
+  // PALETA LEXIT (diseño blanco). Único lugar donde se definen los colores de
+  // marca: el resto de la app usa estas variables. Los colores semánticos
+  // (riesgo alto/medio/bajo, error, éxito, advertencia) no son de marca y
+  // siguen en cada componente / en quasar.variables.scss.
+  // ------------------------------------------------------------------------
+  --lexit-blanco: #FFFFFF;           // fondo de las páginas y tarjetas
+  --lexit-blanco-calido: #F8F7F2;    // barra lateral
+  --lexit-verde: #17211B;            // textos, íconos y botones principales
+  --lexit-verde-rgb: 23, 33, 27;
+  --lexit-texto-secundario: rgba(23, 33, 27, 0.7); // 70%: contraste ≥ 5.9:1 (AA) en blanco y en la barra
+  --lexit-texto-tenue: rgba(23, 33, 27, 0.65);     // 65%: ≥ 5:1, para fechas y etiquetas chicas
+  --lexit-marfil: #D9D4C6;           // bordes, separadores, selección
+  --lexit-marfil-suave: rgba(217, 212, 198, 0.5); // hover
+  --lexit-piedra: #BDB59B;           // detalle sutil, casi nada
+
   // Superficie
-  --bg: #FAFAF7;
-  --surface: #FFFFFF;
-  --surface-alt: #F3F1EC;
-  --surface-sunken: #EFEDE6;
+  --bg: var(--lexit-blanco);
+  --surface: var(--lexit-blanco);
+  --surface-alt: var(--lexit-blanco-calido);
+  --surface-sunken: var(--lexit-marfil-suave);
 
   // Tinta / texto
-  --ink: #1B1B1E;
-  --ink-soft: #3A3A40;
-  --text-secondary: #6A6A72;
-  --text-muted: #9B9BA1;
+  --ink: var(--lexit-verde);
+  --ink-soft: rgba(23, 33, 27, 0.85);
+  --text-secondary: var(--lexit-texto-secundario);
+  --text-muted: var(--lexit-texto-tenue);
 
   // Acento único de marca
-  --accent: #B5502E;
-  --accent-hover: #9C4326;
-  --accent-soft: rgba(181, 80, 46, 0.10);
-  --accent-soft-strong: rgba(181, 80, 46, 0.16);
+  --accent: var(--lexit-verde);
+  --accent-hover: rgba(23, 33, 27, 0.85);
+  --accent-soft: var(--lexit-marfil-suave);
+  --accent-soft-strong: var(--lexit-marfil);
 
   // Bordes
-  --border-color: rgba(27, 27, 30, 0.10);
-  --border-color-strong: rgba(27, 27, 30, 0.16);
+  --border-color: var(--lexit-marfil);
+  --border-color-strong: rgba(23, 33, 27, 0.18);
 
   // Sombra (uso deliberadamente sutil)
   --shadow-light: 0 1px 2px rgba(20, 18, 14, 0.04);
@@ -197,4 +213,43 @@ h1, h2, h3 {
 .bg-light {
   background-color: var(--bg) !important;
   color: var(--ink) !important;
+}
+
+// Aviso discreto (ej. "Cerraste sesión"): crema con texto verde bosque,
+// en lugar de la barra de color de Quasar.
+.q-notification.lexit-toast {
+  background: #F8F7F2;
+  color: #17211B;
+  border: 1px solid rgba(23, 33, 27, 0.14);
+  border-radius: 999px;
+  box-shadow: 0 12px 30px -14px rgba(23, 33, 27, 0.35);
+  font-family: 'Baskervville', 'EB Garamond', Georgia, serif;
+  font-size: 0.95rem;
+  min-height: 0;
+  padding: 6px 18px;
+}
+
+.q-notification.lexit-toast .q-notification__icon {
+  color: #686A57;
+  font-size: 1.1rem;
+}
+// Variante de error: rojo suave (no la barra roja intensa de Quasar).
+.q-notification.lexit-toast--error {
+  background: #FBEDEA;
+  color: #7A1D14;
+  border-color: rgba(194, 59, 46, 0.28);
+}
+
+.q-notification.lexit-toast--error .q-notification__icon {
+  color: #C23B2E;
+}
+
+// Colores que usa el tipo 'negative' de Notify (ver boot/notify.ts): Quasar
+// genera las clases bg-<color> y text-<textColor> a partir de estos nombres.
+.bg-lexit-error-suave {
+  background: #FBEDEA !important;
+}
+
+.text-lexit-error-texto {
+  color: #7A1D14 !important;
 }

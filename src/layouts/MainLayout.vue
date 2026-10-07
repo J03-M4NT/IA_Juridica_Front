@@ -1,20 +1,6 @@
 <template>
   <q-layout view="hHh Lpr fFf">
 
-    <!-- Barra superior — solo en mobile/tablet, la marca y navegación viven
-         en el panel lateral en pantallas grandes (ver q-drawer abajo) -->
-    <q-header class="mobile-topbar lt-lg" height-hint="56">
-      <q-toolbar class="mobile-toolbar">
-        <q-btn
-          flat dense round icon="menu"
-          class="q-mr-sm hamburger-btn"
-          @click="drawerOpen = !drawerOpen"
-          aria-label="Menú de navegación"
-        />
-        <span class="mobile-brand" @click="$router.push('/')">LEXIT</span>
-      </q-toolbar>
-    </q-header>
-
     <!-- Panel lateral — abierto por defecto en desktop, drawer superpuesto
          en mobile. Sin show-if-above: así drawerOpen controla la
          visibilidad en TODOS los tamaños, y se puede plegar/desplegar
@@ -30,9 +16,11 @@
       <div class="sidebar-inner">
 
         <div class="sidebar-brand" @click="$router.push('/')">
-          <span class="sidebar-brand-text">LEXIT</span>
+          <span class="sidebar-brand-marca" aria-hidden="true">L</span>
+          <span class="sidebar-brand-text">LexIT</span>
         </div>
 
+        <span class="sidebar-seccion">Herramientas</span>
         <nav class="sidebar-nav">
 
           <router-link to="/app/consultas" class="sidebar-link"
@@ -78,9 +66,9 @@
             class="sidebar-link"
             :class="{ 'sidebar-link--active': $route.path === '/app/admin' }"
             @click="cerrarDrawerEnMobile">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
+            <!-- Sin ícono: espacio del ancho del ícono para que el texto quede
+                 alineado con los demás ítems. -->
+            <span class="sidebar-link-sin-icono" aria-hidden="true"></span>
             Admin
           </router-link>
 
@@ -94,7 +82,7 @@
         <div class="sidebar-history" v-if="authStore.user">
           <div class="history-header">
             <span class="history-title">Consultas Recientes</span>
-            <q-btn flat dense round icon="add" size="sm" color="white" class="new-chat-btn" @click="nuevaConsulta" />
+            <q-btn flat dense round icon="add" size="sm" class="new-chat-btn" @click="nuevaConsulta" />
           </div>
           
           <div class="history-list">
@@ -105,7 +93,6 @@
               :class="{ 'history-item--active': consultasStore.sesionActualId === sesion.id }"
               @click="cargarConsulta(sesion.id)"
             >
-              <q-icon name="chat_bubble_outline" size="xs" class="q-mr-sm" />
               <span class="history-item-text">{{ sesion.titulo }}</span>
               <button
                 type="button"
@@ -128,14 +115,12 @@
       </div>
     </q-drawer>
 
-    <!-- Toggle del panel lateral en desktop (>= lg) — en pantallas más
-         chicas ya existe el botón hamburguesa del topbar de arriba
-         (.mobile-topbar, visible con lt-lg), así que este solo hace
-         falta donde ese topbar está oculto. -->
+    <!-- Botón para mostrar u ocultar el panel lateral en cualquier tamaño de
+         pantalla (ya no hay barra superior). -->
     <q-btn
       round flat dense
       :icon="drawerOpen ? 'chevron_left' : 'chevron_right'"
-      class="sidebar-toggle-btn gt-md"
+      class="sidebar-toggle-btn"
       :style="{ left: drawerOpen ? '224px' : '10px' }"
       @click="drawerOpen = !drawerOpen"
       aria-label="Mostrar u ocultar el panel lateral"
@@ -143,6 +128,14 @@
 
     <!-- Page content -->
     <q-page-container class="page-container">
+      <!-- Fondo de la app: blanco con retícula de puntos muy suave y una luz
+           que sigue al mouse (solo decorativo, ver moverLuzFondo). -->
+      <div ref="fondoRef" class="app-fondo" aria-hidden="true">
+        <span class="app-fondo-mancha app-fondo-mancha--1"></span>
+        <span class="app-fondo-mancha app-fondo-mancha--2"></span>
+        <span class="app-fondo-luz"></span>
+      </div>
+
       <router-view v-slot="{ Component }">
         <transition name="fade" mode="out-in">
           <component :is="Component" class="q-page" />
@@ -247,113 +240,176 @@ function cerrarDrawerEnMobile() {
 const handleScroll = () => { /* reserved for future scroll effects */ }
 onMounted(() => window.addEventListener('scroll', handleScroll))
 onUnmounted(() => window.removeEventListener('scroll', handleScroll))
+
+// =========================
+// FONDO INTERACTIVO (solo presentación)
+// La luz y la retícula más marcada siguen al mouse; se actualiza una vez
+// por cuadro. Con pantalla táctil no se activa.
+// =========================
+const fondoRef = ref<HTMLElement | null>(null)
+let cuadroFondo = 0
+
+function moverLuzFondo(event: PointerEvent) {
+  if (event.pointerType !== 'mouse' || cuadroFondo) return
+  const { clientX, clientY } = event
+  cuadroFondo = requestAnimationFrame(() => {
+    cuadroFondo = 0
+    const fondo = fondoRef.value
+    if (!fondo) return
+    fondo.style.setProperty('--mx', `${clientX}px`)
+    fondo.style.setProperty('--my', `${clientY}px`)
+    fondo.style.setProperty('--foco', '1')
+  })
+}
+
+function apagarLuzFondo() {
+  fondoRef.value?.style.setProperty('--foco', '0')
+}
+
+onMounted(() => {
+  window.addEventListener('pointermove', moverLuzFondo, { passive: true })
+  document.documentElement.addEventListener('mouseleave', apagarLuzFondo)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('pointermove', moverLuzFondo)
+  document.documentElement.removeEventListener('mouseleave', apagarLuzFondo)
+  if (cuadroFondo) cancelAnimationFrame(cuadroFondo)
+})
 </script>
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Figtree:wght@400;500;600;700&display=swap');
 
 /* ==============================
-   Barra superior (mobile/tablet) — mismo tono oscuro que el panel
-   lateral, para que la transición entre ambos sea continua.
-   ============================== */
-.mobile-topbar {
-  background: var(--ink) !important;
-  border-bottom: 1px solid rgba(250, 250, 247, 0.08) !important;
-  box-shadow: none !important;
-}
-
-.mobile-toolbar {
-  min-height: 56px;
-  padding: 0 14px;
-}
-
-.mobile-brand {
-  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
-  font-optical-sizing: auto;
-  font-size: 1.2rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: #FAFAF7;
-  cursor: pointer;
-}
-
-.hamburger-btn {
-  color: rgba(250, 250, 247, 0.85) !important;
-}
-
-/* ==============================
-   Toggle del panel lateral (desktop, >= lg)
+   Toggle del panel lateral (en todos los tamaños)
    ============================== */
 .sidebar-toggle-btn {
   position: fixed;
   top: 18px;
   z-index: 4000;
-  background: var(--ink);
-  color: rgba(250, 250, 247, 0.85) !important;
-  border: 1px solid rgba(250, 250, 247, 0.12);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  background: var(--lexit-blanco);
+  color: var(--lexit-verde) !important;
+  border: 1px solid var(--lexit-marfil);
+  box-shadow: 0 2px 8px rgba(var(--lexit-verde-rgb), 0.10);
   transition: left 0.2s ease;
 }
 
+.sidebar-toggle-btn {
+  transition: left 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
 .sidebar-toggle-btn:hover {
-  background: #262019;
+  background: var(--lexit-blanco-calido);
+  transform: scale(1.06);
+  box-shadow: 0 6px 16px -6px rgba(var(--lexit-verde-rgb), 0.35);
 }
 
 /* ==============================
-   Panel lateral — oscuro a propósito (identidad "legal tech" seria),
-   con el mismo tinta que el resto de la marca (var(--ink)), no un
-   negro genérico. El :deep() de abajo es necesario porque el fondo
+   Panel lateral — Blanco cálido con un borde derecho fino en Marfil
+   claro (colores en app.scss, --lexit-*). El :deep() de abajo es necesario porque el fondo
    real de Quasar en modo oscuro (activado globalmente en
    boot/dark.ts) vive en .q-drawer__content, no en la raíz .q-drawer
    donde cae la clase .app-sidebar — sin este override, esa capa
    interna se queda con el negro por defecto de Quasar.
    ============================== */
 .app-sidebar {
-  background: var(--ink) !important;
+  background: var(--lexit-blanco-calido) !important;
 }
 
 :deep(.app-sidebar .q-drawer__content) {
-  background: var(--ink);
-  border-right: 1px solid rgba(250, 250, 247, 0.08);
+  background: var(--lexit-blanco-calido);
+  border-right: 1px solid var(--lexit-marfil);
+  color: var(--lexit-verde);
 }
 
 .sidebar-inner {
   position: relative;
+  min-height: 100%;
   height: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   padding: 22px 16px 18px;
+  /* Blanco cálido con una luz muy suave arriba */
+  background:
+    radial-gradient(120% 40% at 0% 0%, rgba(255, 255, 255, 0.9), transparent 70%),
+    var(--lexit-blanco-calido);
+  color: var(--lexit-verde);
   font-family: 'Baskervville', 'Figtree', sans-serif;
   overflow: hidden;
 }
 
-.sidebar-inner::before {
-  content: '';
-  position: absolute;
-  top: -140px;
-  left: -80px;
-  width: 320px;
-  height: 320px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(181, 80, 46, 0.28), transparent 70%);
-  pointer-events: none;
-}
-
+/* ---- Marca ---- */
 .sidebar-brand {
   position: relative;
-  padding: 6px 10px 22px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 4px 8px 24px;
   cursor: pointer;
 }
 
-.sidebar-brand-text {
-  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
-  font-optical-sizing: auto;
-  font-size: 1.45rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: #FAFAF7;
+.sidebar-brand-marca {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--lexit-verde);
+  color: var(--lexit-blanco-calido);
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  box-shadow: 0 8px 18px -10px rgba(var(--lexit-verde-rgb), 0.7);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
 }
 
+.sidebar-brand:hover .sidebar-brand-marca {
+  transform: rotate(-8deg) scale(1.05);
+  box-shadow: 0 12px 22px -10px rgba(var(--lexit-verde-rgb), 0.75);
+}
+
+.sidebar-brand-text {
+  position: relative;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--lexit-verde);
+}
+
+/* Línea fina que se dibuja bajo "LexIT" al pasar el mouse */
+.sidebar-brand-text::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  height: 1px;
+  background: var(--lexit-piedra);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sidebar-brand:hover .sidebar-brand-text::after {
+  transform: scaleX(1);
+}
+
+.sidebar-seccion {
+  padding: 0 12px 8px;
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--lexit-texto-tenue);
+}
+
+/* ---- Navegación ---- */
 .sidebar-nav {
   position: relative;
   display: flex;
@@ -363,55 +419,110 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 
 .sidebar-link {
   position: relative;
+  isolation: isolate;
   display: flex;
   align-items: center;
   gap: 11px;
   padding: 10px 12px;
-  border-radius: 10px;
+  border: 1px solid transparent;
+  border-radius: 11px;
   font-size: 0.94rem;
   font-weight: 500;
-  color: rgba(250, 250, 247, 0.62);
+  color: var(--lexit-texto-secundario);
   text-decoration: none;
-  transition: background 0.18s, color 0.18s;
+  transition: color 0.2s ease, background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Relleno que entra desde la izquierda al pasar el mouse */
+.sidebar-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--lexit-marfil-suave);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sidebar-link:hover::after {
+  transform: scaleX(1);
 }
 
 .sidebar-link svg {
   flex-shrink: 0;
+  transition: transform 0.25s ease;
+}
+
+.sidebar-link:hover svg {
+  transform: translateX(2px);
+}
+
+/* Admin no lleva ícono: este espacio (mismo ancho) alinea su texto. */
+.sidebar-link-sin-icono {
+  flex-shrink: 0;
+  width: 19px;
 }
 
 .sidebar-link:hover {
-  background: rgba(250, 250, 247, 0.06);
-  color: rgba(250, 250, 247, 0.92);
+  color: var(--lexit-verde);
 }
 
+.sidebar-link:focus-visible {
+  outline: 2px solid var(--lexit-verde);
+  outline-offset: 2px;
+}
+
+/* Activo: tarjeta blanca con sombra suave y barra a la izquierda */
 .sidebar-link--active {
-  background: rgba(181, 80, 46, 0.2);
-  color: #e8b381;
+  background: var(--lexit-blanco);
+  border-color: var(--lexit-marfil);
+  color: var(--lexit-verde);
   font-weight: 600;
+  box-shadow: 0 1px 2px rgba(var(--lexit-verde-rgb), 0.06), 0 8px 18px -12px rgba(var(--lexit-verde-rgb), 0.35);
+}
+
+.sidebar-link--active::after {
+  display: none;
 }
 
 .sidebar-link--active::before {
   content: '';
   position: absolute;
-  left: -16px;
+  left: -17px;
   top: 8px;
   bottom: 8px;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background: var(--accent);
+  background: var(--lexit-verde);
+  animation: barraActiva 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes barraActiva {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
 }
 
 .sidebar-footer {
   position: relative;
   margin-top: auto;
-  padding-top: 16px;
-  border-top: 1px solid rgba(250, 250, 247, 0.1);
+  padding: 10px 6px 4px;
+  border: 1px solid var(--lexit-marfil);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.7);
+  transition: box-shadow 0.25s ease, background-color 0.25s ease;
+}
+
+.sidebar-footer:hover {
+  background: var(--lexit-blanco);
+  box-shadow: 0 10px 22px -16px rgba(var(--lexit-verde-rgb), 0.45);
 }
 
 .sidebar-separator {
   height: 1px;
-  background: rgba(250, 250, 247, 0.1);
-  margin: 16px 0;
+  background: linear-gradient(90deg, transparent, var(--lexit-marfil) 20%, var(--lexit-marfil) 80%, transparent);
+  margin: 18px 0 16px;
 }
 
 .sidebar-history {
@@ -433,56 +544,94 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: rgba(250, 250, 247, 0.5);
+  color: var(--lexit-texto-secundario);
   font-weight: 600;
 }
 
 .new-chat-btn {
-  opacity: 0.7;
-  transition: opacity 0.2s;
+  color: var(--lexit-verde);
+  opacity: 0.75;
+  border: 1px solid var(--lexit-marfil);
+  transition: opacity 0.2s, transform 0.3s ease, background-color 0.2s;
 }
 .new-chat-btn:hover {
   opacity: 1;
-  background: rgba(250, 250, 247, 0.1);
+  background: var(--lexit-blanco);
+  transform: rotate(90deg);
 }
 
 .history-list {
   flex-grow: 1;
   overflow-y: auto;
+  /* Se desvanece abajo en vez de cortarse en seco */
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 28px), transparent);
+  padding-bottom: 20px;
   display: flex;
   flex-direction: column;
   gap: 2px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(250, 250, 247, 0.2) transparent;
+  scrollbar-color: var(--lexit-marfil) transparent;
 }
 .history-list::-webkit-scrollbar {
   width: 4px;
 }
 .history-list::-webkit-scrollbar-thumb {
-  background: rgba(250, 250, 247, 0.2);
+  background: var(--lexit-marfil);
   border-radius: 4px;
 }
 
 .history-item {
+  position: relative;
   display: flex;
   align-items: center;
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: 8px 10px 8px 20px;
+  border: 1px solid transparent;
+  border-radius: 9px;
   font-size: 0.85rem;
-  color: rgba(250, 250, 247, 0.7);
+  color: var(--lexit-texto-secundario);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s, padding-left 0.2s ease;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.history-item:hover {
-  background: rgba(250, 250, 247, 0.05);
-  color: rgba(250, 250, 247, 0.95);
+
+/* Puntito a la izquierda de cada conversación */
+.history-item::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin-top: -2px;
+  border-radius: 50%;
+  background: var(--lexit-marfil);
+  transition: background-color 0.2s, transform 0.2s;
 }
+
+.history-item:hover {
+  background: var(--lexit-marfil-suave);
+  color: var(--lexit-verde);
+  padding-left: 22px;
+}
+
+.history-item:hover::before {
+  background: var(--lexit-piedra);
+  transform: scale(1.3);
+}
+
 .history-item--active {
-  background: rgba(181, 80, 46, 0.15);
-  color: #e8b381;
+  background: var(--lexit-blanco);
+  border-color: var(--lexit-marfil);
+  color: var(--lexit-verde);
+  font-weight: 600;
+}
+
+.history-item--active::before {
+  background: var(--lexit-verde);
+  transform: scale(1.4);
 }
 .history-item-text {
   flex: 1;
@@ -504,7 +653,7 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   border: none;
   border-radius: 6px;
   background: none;
-  color: rgba(250, 250, 247, 0.55);
+  color: var(--lexit-texto-secundario);
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.15s, background-color 0.15s, color 0.15s;
@@ -514,8 +663,8 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   opacity: 1;
 }
 .history-item-delete:hover {
-  background: rgba(226, 104, 90, 0.18);
-  color: #f3a99e;
+  background: rgba(194, 59, 46, 0.10);
+  color: #C23B2E;
 }
 /* En pantallas táctiles no hay "hover": el botón se ve siempre. */
 @media (hover: none) {
@@ -526,43 +675,144 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   width: 100%;
 }
 
-/* AuthButtons.vue está pensado para fondos claros (usa el color
-   "primary" de Quasar, casi negro, para el texto) — se sobreescribe
-   solo el botón visible aquí (no el menú desplegable, que Quasar
-   renderiza aparte, flotando sobre toda la página) para que el
-   nombre del usuario se lea sobre este panel oscuro. */
+/* Botón del usuario en el panel claro: nombre en Verde bosque. Solo el
+   botón visible aquí (no el menú desplegable, que Quasar renderiza
+   aparte, flotando sobre toda la página). */
 .sidebar-footer :deep(.user-profile-btn) {
   width: 100%;
   justify-content: flex-start;
-  color: rgba(250, 250, 247, 0.92) !important;
+  color: var(--lexit-verde) !important;
 }
 
 .sidebar-footer :deep(.user-profile-btn .text-primary) {
-  color: rgba(250, 250, 247, 0.92) !important;
+  color: var(--lexit-verde) !important;
 }
 
 .sidebar-footer :deep(.user-profile-btn .q-icon) {
-  color: rgba(250, 250, 247, 0.55) !important;
+  color: var(--lexit-texto-secundario) !important;
+}
+
+.sidebar-footer :deep(.user-profile-btn:hover) {
+  background: var(--lexit-marfil-suave);
 }
 
 .sidebar-footer :deep(.q-avatar) {
-  background: var(--accent) !important;
+  background: var(--lexit-verde) !important;
+  color: var(--lexit-blanco) !important;
 }
 
 /* ==============================
    Page content
    ============================== */
+/* Transparente: el fondo blanco (con la retícula) lo pinta .app-fondo */
 .page-container {
-  background: #FAFAF7;
+  background: transparent;
 }
 
 .q-page {
-  background: #FAFAF7;
+  background: transparent;
   min-height: 100vh;
   padding: 34px 32px 60px;
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
+}
+
+/* ==============================
+   Fondo de la app — blanco, retícula de puntos muy suave que se desvanece
+   hacia abajo, dos manchas beige casi imperceptibles que flotan despacio y
+   una luz que sigue al mouse revelando la retícula (--mx, --my, --foco los
+   pone moverLuzFondo). Queda detrás de todo (z-index -1) y no recibe clics.
+   ============================== */
+.app-fondo {
+  --mx: 70vw;
+  --my: -30vh;
+  --foco: 0;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--lexit-blanco);
+}
+
+.app-fondo::before,
+.app-fondo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-size: 26px 26px;
+}
+
+/* Retícula base, visible sobre todo arriba */
+.app-fondo::before {
+  background-image: radial-gradient(rgba(var(--lexit-verde-rgb), 0.10) 1px, transparent 1.3px);
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 60% 0%, #000 0%, transparent 75%);
+  mask-image: radial-gradient(ellipse 90% 70% at 60% 0%, #000 0%, transparent 75%);
+}
+
+/* Retícula más marcada solo alrededor del mouse */
+.app-fondo::after {
+  background-image: radial-gradient(rgba(var(--lexit-verde-rgb), 0.22) 1.1px, transparent 1.4px);
+  -webkit-mask-image: radial-gradient(220px circle at var(--mx) var(--my), #000 0%, transparent 70%);
+  mask-image: radial-gradient(220px circle at var(--mx) var(--my), #000 0%, transparent 70%);
+  opacity: var(--foco);
+  transition: opacity 0.5s ease;
+}
+
+.app-fondo-luz {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 680px;
+  height: 680px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(217, 212, 198, 0.42), rgba(217, 212, 198, 0.12) 55%, transparent);
+  transform: translate3d(calc(var(--mx) - 50%), calc(var(--my) - 50%), 0);
+  opacity: var(--foco);
+  transition: opacity 0.5s ease;
+  will-change: transform;
+}
+
+.app-fondo-mancha {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.55;
+}
+
+.app-fondo-mancha--1 {
+  width: 520px;
+  height: 420px;
+  top: -160px;
+  right: -120px;
+  background: rgba(217, 212, 198, 0.65);
+  animation: manchaFlota 26s ease-in-out infinite alternate;
+}
+
+.app-fondo-mancha--2 {
+  width: 460px;
+  height: 380px;
+  bottom: -180px;
+  left: 18%;
+  background: rgba(189, 181, 155, 0.35);
+  animation: manchaFlota 32s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes manchaFlota {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(-60px, 40px, 0) scale(1.12); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-fondo-mancha { animation: none; }
+  .app-fondo-luz,
+  .app-fondo::after { display: none; }
+}
+
+@media (hover: none) {
+  .app-fondo-luz,
+  .app-fondo::after { display: none; }
 }
 
 /* ==============================
@@ -614,8 +864,35 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
      pone el propio $q.dialog()), así que esta regla global no puede
      afectar a ningún otro componente. -->
 <style>
+/* Panel lateral claro. El modo oscuro global de Quasar (boot/dark.ts)
+   pinta el panel con .q-dark (fondo #1C1C1E, texto blanco); la regla
+   scoped de arriba no llega a ese elemento, por eso va aquí, sin scoped.
+   Solo afecta al panel con la clase "app-sidebar". */
+.q-drawer.app-sidebar,
+.q-drawer.app-sidebar.q-dark,
+.app-sidebar .q-drawer__content {
+  background: var(--lexit-blanco-calido) !important;
+  color: var(--lexit-verde) !important;
+}
+
+.app-sidebar .q-drawer__content {
+  border-right: 1px solid var(--lexit-marfil);
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.8), 8px 0 24px -20px rgba(23, 33, 27, 0.35);
+}
+
+/* Cada página pintaba su propio fondo blanco encima del de la app; solo la
+   raíz de la página se deja transparente para que se vea .app-fondo (sus
+   tarjetas y paneles conservan su color). */
+.page-container > .q-page {
+  background: transparent !important;
+}
+
+.q-drawer--bordered.app-sidebar {
+  border-color: var(--lexit-marfil) !important;
+}
+
 .borrar-consulta-dialog .q-dialog__title,
 .borrar-consulta-dialog .q-dialog__message {
-  color: #16161a !important;
+  color: var(--lexit-verde) !important;
 }
 </style>

@@ -31,6 +31,9 @@ interface ConsultasState {
   fragmentosEncontrados: number
   sesionActualId: string | null
   historialSesiones: SesionConsulta[]
+  // Especialización elegida en el chat (ver constants/especialidades.ts);
+  // null = General (toda la base jurídica).
+  especialidad: string | null
 }
 
 // Ritmo del efecto "escribiéndose" al mostrar la respuesta (ver
@@ -58,7 +61,8 @@ export const useConsultasStore = defineStore('consultas', {
     usandoPinecone: false,
     fragmentosEncontrados: 0,
     sesionActualId: null,
-    historialSesiones: []
+    historialSesiones: [],
+    especialidad: null
   }),
 
   actions: {
@@ -130,7 +134,9 @@ export const useConsultasStore = defineStore('consultas', {
         // priorización de fuente primaria, dedupe, guardrails de 3 partes,
         // anti-alucinación) vive en la Cloud Function consultarLexit — ver
         // consultarLexit.ts.
-        const resultado = await consultarLexit(pregunta, historialMensajes)
+        const resultado = await consultarLexit(pregunta, historialMensajes, {
+          ...(this.especialidad ? { especialidad: this.especialidad } : {})
+        })
 
         this.usandoPinecone = resultado.usandoPinecone
         this.fragmentosEncontrados = resultado.fragmentosEncontrados

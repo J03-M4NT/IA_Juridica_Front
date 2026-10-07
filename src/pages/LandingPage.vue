@@ -1,321 +1,410 @@
 <template>
   <div class="landing-page" ref="pageRoot">
 
-    <!-- Blob decorations -->
-    <div class="blob-wrap blob-wrap-1"><div class="blob blob-1"></div></div>
-    <div class="blob-wrap blob-wrap-2"><div class="blob blob-2"></div></div>
-    <div class="blob-wrap blob-wrap-3"><div class="blob blob-3"></div></div>
+    <div class="scroll-progress" ref="progresoRef" aria-hidden="true"></div>
 
-    <!-- Header -->
-    <header class="landing-header">
+    <!-- Header: transparente sobre el hero oscuro; al bajar se vuelve claro. -->
+    <header class="landing-header" :class="{ 'landing-header--solido': headerSolido }">
       <div class="header-inner">
-        <div class="header-logo">
-          <span class="header-logo-text">LexIT</span>
-        </div>
-        <nav class="header-nav">
-          <a href="#producto" class="header-nav-link" @click.prevent="scrollToSection('producto')">Producto</a>
-          <a href="#como-funciona" class="header-nav-link" @click.prevent="scrollToSection('como-funciona')">Cómo funciona</a>
-          <a href="#nosotros" class="header-nav-link" @click.prevent="scrollToSection('nosotros')">Nosotros</a>
+        <button type="button" class="header-logo" @click="scrollToSection('inicio')">LexIT</button>
+        <nav class="header-nav" aria-label="Secciones">
+          <a
+            v-for="item in NAV"
+            :key="item.id"
+            :href="`#${item.id}`"
+            class="header-nav-link"
+            :class="{ 'header-nav-link--activo': seccionActiva === item.id }"
+            :aria-current="seccionActiva === item.id ? 'true' : undefined"
+            @click.prevent="scrollToSection(item.id)"
+          >{{ item.etiqueta }}</a>
         </nav>
         <auth-buttons ref="authButtonsRef" />
       </div>
     </header>
 
-    <!-- Main -->
     <main class="main-content">
 
-      <!-- Hero -->
-      <section class="hero-section" id="inicio">
-        <div class="hero-atmosphere" aria-hidden="true">
-          <span class="hero-glow hero-glow--1"></span>
-          <span class="hero-glow hero-glow--2"></span>
-          <span class="hero-glow hero-glow--3"></span>
-          <span class="hero-grid"></span>
+      <!-- ============ HERO (verde bosque) ============ -->
+      <section class="hero" id="inicio" ref="heroRef" @pointermove="moverFoco">
+        <div class="hero-fondo" aria-hidden="true">
+          <span class="hero-foco"></span>
+          <span class="hero-rejilla"></span>
+          <span class="hero-grano"></span>
         </div>
 
         <div class="hero-inner">
-          <span class="hero-badge">IA jurídica especializada en derecho peruano</span>
+          <div class="hero-texto">
+            <span class="hero-badge">
+              <span class="hero-badge-punto"></span>
+              IA jurídica especializada en derecho peruano
+            </span>
 
-          <h1 class="hero-title">
-            El derecho peruano,<br />
-            <em>al alcance de tu práctica.</em>
-          </h1>
+            <h1 class="hero-title">
+              El derecho peruano,<br />
+              <em>al alcance de tu práctica.</em>
+            </h1>
 
-          <p class="hero-description">
-            Resuelve consultas legales y analiza el riesgo de tus contratos por chat, completa
-            plantillas de contratos conversando con la IA, y mantente al día con las normas de
-            El Peruano — de principio a fin, sin salir de LexIT AI.
-          </p>
+            <p class="hero-description">
+              Consultas con la cita textual del artículo, análisis de riesgos de tus contratos,
+              plantillas que se completan conversando y las normas de El Peruano resumidas cada día.
+            </p>
 
-          <p class="hero-caption">Hecho para abogados y estudios jurídicos en Perú</p>
-
-          <!-- Vista previa ilustrativa del producto — al hacer clic invita a
-               iniciar sesión/registrarse, no ejecuta ninguna consulta real. -->
-          <button type="button" class="hero-mock" @click="abrirAuth">
-            <div class="mock-window">
-              <div class="mock-window-bar">
-                <span class="mock-dot"></span>
-                <span class="mock-dot"></span>
-                <span class="mock-dot"></span>
-                <span class="mock-window-title">Consultas — LexIT AI</span>
-              </div>
-              <div class="mock-chat">
-                <div class="mock-bubble mock-bubble--user">
-                  ¿Esta cláusula de resolución cumple el Código Civil?
-                </div>
-                <div class="mock-bubble mock-bubble--ai">
-                  <span class="mock-bubble-tag">Artículo 1430°</span>
-                  Sí, siempre que la condición resolutoria se pacte expresamente. Te muestro
-                  la cita textual y cómo aplica a tu cláusula…
-                </div>
-              </div>
-              <div class="mock-cta">Inicia sesión para probarlo →</div>
+            <div class="hero-acciones">
+              <button type="button" class="btn btn--primario" @click="abrirRegistro">
+                Crear cuenta gratis
+                <span class="btn-flecha" aria-hidden="true">→</span>
+              </button>
+              <button type="button" class="btn btn--contorno" @click="scrollToSection('producto')">
+                Ver la plataforma
+              </button>
             </div>
-          </button>
+
+            <p class="hero-caption">Hecho para abogados, estudios jurídicos y estudiantes de derecho en Perú</p>
+          </div>
+
+          <!-- Demo del producto: pestañas reales (cambia el contenido). Al
+               hacer clic en la ventana invita a iniciar sesión. -->
+          <div
+            class="demo"
+            @pointerenter="demoPausada = true"
+            @pointerleave="demoPausada = false"
+            @focusin="demoPausada = true"
+            @focusout="demoPausada = false"
+          >
+            <div class="demo-tabs" role="tablist" aria-label="Vista previa de LexIT">
+              <button
+                v-for="(tab, i) in DEMO_TABS"
+                :id="`demo-tab-${i}`"
+                :key="tab.id"
+                type="button"
+                role="tab"
+                class="demo-tab"
+                :class="{ 'demo-tab--activa': demoActiva === i }"
+                :aria-selected="demoActiva === i"
+                :aria-controls="`demo-panel-${i}`"
+                :tabindex="demoActiva === i ? 0 : -1"
+                @click="elegirDemo(i)"
+                @keydown.right.prevent="elegirDemo((i + 1) % DEMO_TABS.length, true)"
+                @keydown.left.prevent="elegirDemo((i + DEMO_TABS.length - 1) % DEMO_TABS.length, true)"
+              >{{ tab.etiqueta }}</button>
+              <span class="demo-tabs-progreso" :style="{ '--i': demoActiva }" aria-hidden="true">
+                <span :key="demoActiva" class="demo-tabs-progreso-relleno" :class="{ 'demo-tabs-progreso-relleno--pausa': demoPausada }"></span>
+              </span>
+            </div>
+
+            <button type="button" class="demo-ventana" aria-label="Inicia sesión para probar LexIT" @click="abrirAuth">
+              <span class="demo-barra">
+                <span class="demo-punto"></span><span class="demo-punto"></span><span class="demo-punto"></span>
+                <span class="demo-barra-titulo">{{ DEMO_TABS[demoActiva]!.titulo }}</span>
+              </span>
+
+              <Transition name="demo" mode="out-in">
+                <!-- Consultas -->
+                <span v-if="demoActiva === 0" id="demo-panel-0" key="c" class="demo-panel" role="tabpanel" aria-labelledby="demo-tab-0">
+                  <span class="demo-chip-esp">Derecho Civil</span>
+                  <span class="demo-msg demo-msg--user">¿Qué requisitos de validez tiene el acto jurídico?</span>
+                  <span class="demo-msg demo-msg--ia">
+                    <span class="demo-msg-autor">LexIT</span>
+                    {{ textoEscrito }}<span v-if="escribiendo" class="demo-cursor" aria-hidden="true"></span>
+                    <span v-if="!escribiendo" class="demo-cita">Código Civil · Art. 140°</span>
+                  </span>
+                </span>
+
+                <!-- Análisis de contratos -->
+                <span v-else-if="demoActiva === 1" id="demo-panel-1" key="a" class="demo-panel demo-panel--analisis" role="tabpanel" aria-labelledby="demo-tab-1">
+                  <span class="demo-doc">
+                    <span class="demo-linea demo-linea--titulo"></span>
+                    <span class="demo-linea"></span>
+                    <span class="demo-linea demo-linea--marca demo-linea--alto"></span>
+                    <span class="demo-linea"></span>
+                    <span class="demo-linea demo-linea--corta"></span>
+                    <span class="demo-linea demo-linea--marca demo-linea--medio"></span>
+                    <span class="demo-linea"></span>
+                    <span class="demo-linea demo-linea--marca demo-linea--bajo"></span>
+                    <span class="demo-linea demo-linea--corta"></span>
+                  </span>
+                  <span class="demo-riesgos">
+                    <span class="demo-riesgo"><b class="demo-riesgo-n demo-riesgo-n--alto">2</b>Alto</span>
+                    <span class="demo-riesgo"><b class="demo-riesgo-n demo-riesgo-n--medio">3</b>Medio</span>
+                    <span class="demo-riesgo"><b class="demo-riesgo-n demo-riesgo-n--bajo">1</b>Bajo</span>
+                    <span class="demo-observacion">Cláusula de penalidad sin tope: <em>Ver observación</em></span>
+                  </span>
+                </span>
+
+                <!-- Contratos -->
+                <span v-else-if="demoActiva === 2" id="demo-panel-2" key="t" class="demo-panel" role="tabpanel" aria-labelledby="demo-tab-2">
+                  <span class="demo-msg demo-msg--ia">
+                    <span class="demo-msg-autor">LexIT</span>
+                    ¿Qué tipo de contrato necesitas?
+                  </span>
+                  <span class="demo-msg demo-msg--user">Quiero alquilar mi departamento</span>
+                  <span class="demo-plantilla">
+                    <span class="demo-plantilla-icono" aria-hidden="true">§</span>
+                    <span class="demo-plantilla-texto"><b>Contrato de Arrendamiento</b>Plantilla en Word, lista para completar</span>
+                    <span class="demo-plantilla-accion">Usar →</span>
+                  </span>
+                </span>
+
+                <!-- Normas -->
+                <span v-else id="demo-panel-3" key="n" class="demo-panel" role="tabpanel" aria-labelledby="demo-tab-3">
+                  <span class="demo-resumen"><b>Resumen del día con IA</b>Tres normas de impacto en materia tributaria y laboral publicadas hoy.</span>
+                  <span class="demo-norma"><span class="demo-sector">Economía</span>Decreto Supremo que modifica el Reglamento…</span>
+                  <span class="demo-norma"><span class="demo-sector">Trabajo</span>Resolución Ministerial sobre jornada…</span>
+                  <span class="demo-norma"><span class="demo-sector">Justicia</span>Ley que precisa plazos procesales…</span>
+                </span>
+              </Transition>
+
+              <span class="demo-cta">Inicia sesión para probarlo <span aria-hidden="true">→</span></span>
+            </button>
+          </div>
         </div>
       </section>
 
-      <!-- Feature cards -->
-      <section class="features-section" id="producto">
+      <!-- ============ BASE JURÍDICA (marfil): cifras + cinta de normas ============ -->
+      <section class="base" aria-label="Base jurídica">
+        <div class="base-cifras">
+          <div v-for="cifra in CIFRAS" :key="cifra.etiqueta" class="cifra reveal">
+            <span class="cifra-numero">
+              <span class="cifra-valor" :data-hasta="cifra.valor">{{ cifra.prefijo }}{{ cifra.valor.toLocaleString('es-PE') }}</span>
+            </span>
+            <span class="cifra-etiqueta">{{ cifra.etiqueta }}</span>
+          </div>
+        </div>
+
+        <div class="cinta" aria-label="Normas indexadas en la base jurídica">
+          <div class="cinta-pista">
+            <template v-for="vuelta in 2" :key="vuelta">
+              <span v-for="norma in NORMAS_CINTA" :key="`${vuelta}-${norma}`" class="cinta-item" :aria-hidden="vuelta === 2 ? 'true' : undefined">
+                <span class="cinta-sep" aria-hidden="true">§</span>{{ norma }}
+              </span>
+            </template>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ PRODUCTO (blanco cálido) ============ -->
+      <section class="producto" id="producto">
         <div class="section-header reveal">
           <span class="section-label">Producto</span>
-          <h2 class="section-title">Una plataforma, tres pilares</h2>
+          <h2 class="section-title">Una plataforma, <em>cuatro herramientas</em></h2>
+          <p class="section-subtitle">Todo el trabajo jurídico del día, sin cambiar de pantalla.</p>
         </div>
 
-        <div class="features-grid">
+        <div class="producto-grid">
+          <div class="producto-lista" role="tablist" aria-label="Herramientas de LexIT" aria-orientation="vertical">
+            <button
+              v-for="(h, i) in HERRAMIENTAS"
+              :id="`herr-tab-${i}`"
+              :key="h.id"
+              type="button"
+              role="tab"
+              class="herr"
+              :class="{ 'herr--activa': herramientaActiva === i }"
+              :aria-selected="herramientaActiva === i"
+              :aria-controls="`herr-panel-${i}`"
+              :tabindex="herramientaActiva === i ? 0 : -1"
+              @click="herramientaActiva = i"
+              @mouseenter="herramientaActiva = i"
+              @keydown.down.prevent="moverHerramienta(i, 1)"
+              @keydown.up.prevent="moverHerramienta(i, -1)"
+            >
+              <span class="herr-num">{{ String(i + 1).padStart(2, '0') }}</span>
+              <span class="herr-texto">
+                <span class="herr-titulo">{{ h.titulo }}</span>
+                <span class="herr-desc">{{ h.descripcion }}</span>
+              </span>
+            </button>
+          </div>
 
-          <article class="feature-card">
-            <div class="feature-icon-wrap">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                <path d="M8 9h8"/>
-                <path d="M8 13h5"/>
-              </svg>
-            </div>
-            <h3 class="feature-title">Consultas Legales</h3>
-            <p class="feature-description">Chatea con una IA especializada en derecho peruano — o adjunta un contrato (PDF o Word) para un análisis de riesgos cláusula por cláusula, con base legal citada.</p>
-          </article>
-
-          <article class="feature-card">
-            <div class="feature-icon-wrap">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 7h18"/>
-                <path d="M3 7l2-3h14l2 3"/>
-                <path d="M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/>
-                <path d="M9 12h6"/>
-              </svg>
-            </div>
-            <h3 class="feature-title">Gestión de Contratos</h3>
-            <p class="feature-description">Elige una plantilla y complétala conversando con la IA, o edítala tú mismo. Descárgala lista, con marca de agua, o sigue editándola en Word con el complemento de LexIT.</p>
-          </article>
-
-          <article class="feature-card">
-            <div class="feature-icon-wrap">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-              </svg>
-            </div>
-            <h3 class="feature-title">Normas del Día</h3>
-            <p class="feature-description">Las normas publicadas en El Peruano, organizadas por sector, con un resumen diario generado por IA y lo más relevante para tu práctica.</p>
-          </article>
-
+          <div
+            :id="`herr-panel-${herramientaActiva}`"
+            class="producto-vista reveal"
+            role="tabpanel"
+            :aria-labelledby="`herr-tab-${herramientaActiva}`"
+            :data-tono="HERRAMIENTAS[herramientaActiva]!.tono"
+          >
+            <Transition name="vista" mode="out-in">
+              <div :key="herramientaActiva" class="vista">
+                <span class="vista-etiqueta">{{ HERRAMIENTAS[herramientaActiva]!.etiqueta }}</span>
+                <p class="vista-frase">{{ HERRAMIENTAS[herramientaActiva]!.frase }}</p>
+                <ul class="vista-puntos">
+                  <li v-for="p in HERRAMIENTAS[herramientaActiva]!.puntos" :key="p">{{ p }}</li>
+                </ul>
+              </div>
+            </Transition>
+          </div>
         </div>
       </section>
 
-      <!-- Fuentes legales / credibilidad — inspirado en la banda de
-           "reconocimientos" y áreas de práctica de estudios de abogados
-           tradicionales (ref. Estudio Rodrigo), pero con contenido real de
-           LEXIT: los códigos que de verdad tiene indexados como fuente
-           primaria (ver TIPOS_FUENTE_PRIMARIA en pineconeService.ts), no
-           premios ni cifras inventadas. -->
-      <section class="fuentes-section">
+      <!-- ============ ESPECIALIZACIONES (oliva oscuro) ============ -->
+      <section class="especialidades" id="especializaciones">
         <div class="section-header reveal">
-          <span class="section-label">Base legal</span>
-          <h2 class="section-title">Respaldado por la normativa peruana</h2>
-          <p class="fuentes-subtitle">
-            Las respuestas que citan artículos se basan en una base jurídica indexada por
-            código y por número de artículo — no en un resumen genérico — para que la cita
-            textual sea exacta.
+          <span class="section-label">Especializaciones</span>
+          <h2 class="section-title">Respuestas dentro de <em>tu rama del derecho</em></h2>
+          <p class="section-subtitle">
+            Elige una especialización en el chat y LexIT busca solo en sus normas — con la cita
+            textual del artículo, no un resumen genérico.
           </p>
         </div>
 
-        <div class="fuentes-badges reveal">
-          <span class="fuente-badge">Código Civil</span>
-          <span class="fuente-badge">Código Penal</span>
-          <span class="fuente-badge">Código Laboral</span>
-          <span class="fuente-badge">Código Tributario</span>
-          <span class="fuente-badge">Constitución Política</span>
+        <div class="esp-grid">
+          <article
+            v-for="(esp, i) in ESPECIALIDADES_LANDING"
+            :key="esp.id"
+            class="esp reveal"
+            :class="`esp--${esp.tono}`"
+          >
+            <div class="esp-cabecera">
+              <span class="esp-num">{{ String(i + 1).padStart(2, '0') }}</span>
+              <span class="esp-icono" aria-hidden="true">§</span>
+            </div>
+            <h3 class="esp-titulo">{{ esp.titulo }}</h3>
+            <p class="esp-desc">{{ esp.descripcion }}</p>
+            <ul class="esp-normas" :aria-label="`Normas de ${esp.titulo}`">
+              <li v-for="n in esp.normas" :key="n">{{ n }}</li>
+            </ul>
+            <button type="button" class="esp-cta" @click="abrirRegistro">
+              Consultar en {{ esp.titulo }} <span aria-hidden="true">→</span>
+            </button>
+          </article>
         </div>
       </section>
 
-      <!-- How it works -->
-      <section class="steps-section" id="como-funciona">
+      <!-- ============ CÓMO FUNCIONA (marfil) ============ -->
+      <section class="pasos" id="como-funciona">
         <div class="section-header reveal">
           <span class="section-label">Cómo funciona</span>
-          <h2 class="section-title">Empieza en tres pasos</h2>
+          <h2 class="section-title">Empieza en <em>tres pasos</em></h2>
         </div>
 
-        <div class="steps-grid">
-
-          <div class="step-card">
-            <div class="step-number">01</div>
-            <h3 class="step-title">Crea tu cuenta</h3>
-            <p class="step-description">Regístrate gratis en segundos y accede a todas las herramientas.</p>
-          </div>
-
-          <div class="step-card">
-            <div class="step-number">02</div>
-            <h3 class="step-title">Elige tu herramienta</h3>
-            <p class="step-description">Haz una consulta, adjunta un contrato para analizarlo, o completa una plantilla con ayuda de la IA.</p>
-          </div>
-
-          <div class="step-card">
-            <div class="step-number">03</div>
-            <h3 class="step-title">Obtén resultados</h3>
-            <p class="step-description">Recibe respuestas, análisis de riesgos y contratos listos para descargar o editar en Word.</p>
-          </div>
-
+        <div class="pasos-linea" ref="pasosRef">
+          <span class="pasos-linea-base" aria-hidden="true"></span>
+          <span class="pasos-linea-relleno" aria-hidden="true" :style="{ transform: `scaleX(${progresoPasos})` }"></span>
+          <ol class="pasos-grid">
+            <li v-for="(paso, i) in PASOS" :key="paso.titulo" class="paso" :class="{ 'paso--hecho': progresoPasos >= i / (PASOS.length - 1) - 0.01 }">
+              <span class="paso-punto" aria-hidden="true">{{ String(i + 1).padStart(2, '0') }}</span>
+              <h3 class="paso-titulo">{{ paso.titulo }}</h3>
+              <p class="paso-desc">{{ paso.descripcion }}</p>
+            </li>
+          </ol>
         </div>
       </section>
 
-      <!-- Nosotros / Dirección -->
-      <section class="nosotros-section" id="nosotros">
+      <!-- ============ NOSOTROS ============ -->
+      <section class="nosotros" id="nosotros">
         <div class="section-header reveal">
           <span class="section-label">Nosotros</span>
-          <h2 class="section-title">Quiénes están detrás de LexIT</h2>
-          <p class="nosotros-intro">
+          <h2 class="section-title">Quiénes están <em>detrás de LexIT</em></h2>
+          <p class="section-subtitle">
             LexIT nace para poner una IA jurídica entrenada en derecho peruano al alcance de
             cualquier abogado o estudio, sin perder el rigor de citar la norma exacta.
           </p>
         </div>
 
-        <div class="proposito-split reveal">
-          <div class="proposito-content">
+        <div class="proposito reveal">
+          <div class="proposito-texto">
+            <span class="proposito-comilla" aria-hidden="true">“</span>
             <p class="proposito-quote">
               LexIT nace para hacer el derecho más comprensible y fácil de consultar, tanto
               para quienes no son abogados como para quienes lo ejercen a diario.
             </p>
-
             <span class="proposito-label">Propósito</span>
-            <p class="proposito-tagline">Confianza - Certeza - Utilidad</p>
-          </div>
-
-          <div class="proposito-image-wrap">
-            <img :src="imagenProposito" alt="" class="proposito-image" />
-          </div>
-        </div>
-
-        <div class="mv-split reveal">
-          <div class="mv-image-wrap">
-            <img :src="imagenMisionVision" alt="" class="mv-image" />
-          </div>
-
-          <div class="mv-block">
-            <p class="mv-text"><span class="mv-label">Misión</span><br />
-              Facilitar el acceso a información jurídica clara mediante una herramienta de
-              inteligencia artificial, para que personas, abogados y practicantes puedan
-              consultar y trabajar con mayor seguridad.
-            </p>
-
-            <p class="mv-text"><span class="mv-label">Visión</span><br />
-              Ser una herramienta presente en el trabajo diario de estudiantes, practicantes y
-              abogados, y una primera puerta de entrada al derecho para quienes no lo son.
+            <p class="proposito-valores">
+              <span>Confianza</span><span>Certeza</span><span>Utilidad</span>
             </p>
           </div>
+          <div class="proposito-imagen">
+            <img :src="imagenProposito" alt="" class="parallax-img" />
+          </div>
         </div>
+      </section>
 
-        <h3 class="nosotros-subheading reveal">Dirección</h3>
-
-        <div class="nosotros-grid">
-
-          <article class="persona-card reveal">
-            <div class="persona-photo-wrap">
-              <img :src="fotoAlexZegarra" alt="Alex Zegarra" class="persona-photo" />
+      <!-- Misión y visión: banda oscura a todo el ancho -->
+      <section class="mv" aria-label="Misión y visión">
+        <div class="mv-inner">
+          <div class="mv-imagen reveal">
+            <img :src="imagenMisionVision" alt="" class="parallax-img" />
+          </div>
+          <div class="mv-bloques">
+            <div class="mv-bloque reveal">
+              <span class="mv-label">Misión</span>
+              <p class="mv-texto">
+                Facilitar el acceso a información jurídica clara mediante una herramienta de
+                inteligencia artificial, para que personas, abogados y practicantes puedan
+                consultar y trabajar con mayor seguridad.
+              </p>
             </div>
-            <div class="persona-caption">
-              <h3 class="persona-nombre">Alex Zegarra</h3>
-              <p class="persona-cargo">Presidente</p>
-              <p class="persona-area">Derecho Corporativo</p>
+            <div class="mv-bloque reveal">
+              <span class="mv-label">Visión</span>
+              <p class="mv-texto">
+                Ser una herramienta presente en el trabajo diario de estudiantes, practicantes y
+                abogados, y una primera puerta de entrada al derecho para quienes no lo son.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="equipo" aria-label="Equipo">
+        <h3 class="equipo-subtitulo reveal">Dirección</h3>
+        <div class="direccion-grid">
+          <article v-for="p in DIRECCION" :key="p.nombre" class="persona reveal">
+            <div class="persona-foto">
+              <img :src="p.foto" :alt="p.nombre" />
+            </div>
+            <div class="persona-info">
+              <h4 class="persona-nombre">{{ p.nombre }}</h4>
+              <p class="persona-cargo">{{ p.cargo }}</p>
+              <p class="persona-area">{{ p.area }}</p>
             </div>
           </article>
-
-          <article class="persona-card reveal">
-            <div class="persona-photo-wrap">
-              <img :src="fotoMijhailMedina" alt="Mijhail Medina" class="persona-photo" />
-            </div>
-            <div class="persona-caption">
-              <h3 class="persona-nombre">Mijhail Medina</h3>
-              <p class="persona-cargo">Vicepresidente</p>
-              <p class="persona-area">Ingeniería de Tecnologías de Información y Sistemas</p>
-            </div>
-          </article>
-
         </div>
 
-        <h3 class="nosotros-subheading reveal">Equipo</h3>
-
+        <h3 class="equipo-subtitulo reveal">Equipo</h3>
         <div class="equipo-grid">
-
-          <article class="miembro-card reveal">
-            <div class="miembro-photo-wrap">
-              <img :src="fotoJoeMantilla" alt="Joe Mantilla" class="miembro-photo" />
+          <article v-for="m in EQUIPO" :key="m.nombre" class="miembro reveal">
+            <div class="miembro-foto">
+              <img :src="m.foto" :alt="m.nombre" />
             </div>
-            <h4 class="miembro-nombre">Joe Mantilla</h4>
-            <p class="miembro-cargo">Ingeniería de Tecnologías de Información y Sistemas</p>
+            <h4 class="miembro-nombre">{{ m.nombre }}</h4>
+            <p class="miembro-area">{{ m.area }}</p>
           </article>
+        </div>
+      </section>
 
-          <article class="miembro-card reveal">
-            <div class="miembro-photo-wrap">
-              <img :src="fotoSandroAvila" alt="Sandro Avila" class="miembro-photo" />
-            </div>
-            <h4 class="miembro-nombre">Sandro Avila</h4>
-            <p class="miembro-cargo">Ingeniería de Tecnologías de Información y Sistemas</p>
-          </article>
-
-          <article class="miembro-card reveal">
-            <div class="miembro-photo-wrap">
-              <img :src="fotoDayanaCoello" alt="Irene Paye" class="miembro-photo" />
-            </div>
-            <h4 class="miembro-nombre">Irene Paye</h4>
-            <p class="miembro-cargo">Derecho Corporativo</p>
-          </article>
-
-          <article class="miembro-card reveal">
-            <div class="miembro-photo-wrap">
-              <img :src="fotoIrenePaye" alt="Dayana Coello" class="miembro-photo" />
-            </div>
-            <h4 class="miembro-nombre">Dayana Coello</h4>
-            <p class="miembro-cargo">Derecho Corporativo</p>
-          </article>
-
-          <article class="miembro-card reveal">
-            <div class="miembro-photo-wrap">
-              <img :src="fotoTarishGonzales" alt="Tarish Gonzales" class="miembro-photo" />
-            </div>
-            <h4 class="miembro-nombre">Tarish Gonzales</h4>
-            <p class="miembro-cargo">Derecho Corporativo</p>
-          </article>
-
+      <!-- ============ CTA FINAL (verde bosque) ============ -->
+      <section class="cta" aria-label="Empieza ahora">
+        <div class="cta-inner reveal">
+          <h2 class="cta-titulo">Trabaja con la norma exacta, <em>desde hoy.</em></h2>
+          <p class="cta-texto">Crea tu cuenta gratis y haz tu primera consulta en menos de un minuto.</p>
+          <div class="hero-acciones">
+            <button type="button" class="btn btn--primario" @click="abrirRegistro">
+              Crear cuenta gratis <span class="btn-flecha" aria-hidden="true">→</span>
+            </button>
+            <button type="button" class="btn btn--contorno" @click="abrirAuth">Ya tengo cuenta</button>
+          </div>
         </div>
       </section>
 
     </main>
 
-    <!-- Footer -->
     <footer class="landing-footer">
       <div class="footer-inner">
-        <div class="footer-brand">
-          <span class="footer-logo-text">LexIT</span>
+        <div class="footer-marca">
+          <span class="footer-logo">LexIT</span>
+          <p class="footer-lema">IA jurídica especializada en derecho peruano.</p>
         </div>
-        <p class="footer-copy">© 2026 LexIT AI. Todos los derechos reservados.</p>
+        <nav class="footer-nav" aria-label="Pie de página">
+          <a v-for="item in NAV" :key="item.id" :href="`#${item.id}`" @click.prevent="scrollToSection(item.id)">{{ item.etiqueta }}</a>
+          <a :href="URL_TERMINOS" target="_blank" rel="noopener">Términos y condiciones</a>
+          <a href="mailto:lexitiajuridica@gmail.com">lexitiajuridica@gmail.com</a>
+        </nav>
       </div>
+      <p class="footer-copy">© 2026 LexIT AI. Todos los derechos reservados. Las respuestas son orientativas y no sustituyen la asesoría de un abogado.</p>
     </footer>
 
   </div>
 </template>
-
-<!-- --------------------------------------------------- -->
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
@@ -342,29 +431,263 @@ const authStore = useAuthStore()
 const { isAuthenticated } = storeToRefs(authStore)
 
 const pageRoot = ref<HTMLElement | null>(null)
-
-const prefersReducedMotion = () =>
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-let handleMouseMove: ((e: MouseEvent) => void) | null = null
-const scrollTriggers: ScrollTrigger[] = []
-
+const heroRef = ref<HTMLElement | null>(null)
+const progresoRef = ref<HTMLElement | null>(null)
+const pasosRef = ref<HTMLElement | null>(null)
 const authButtonsRef = ref<InstanceType<typeof AuthButtons> | null>(null)
 
+const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+const URL_TERMINOS = `${import.meta.env.BASE_URL}terminos-y-condiciones.pdf`
+
+// =========================
+// CONTENIDO
+// =========================
+const NAV = [
+  { id: 'producto', etiqueta: 'Producto' },
+  { id: 'especializaciones', etiqueta: 'Especializaciones' },
+  { id: 'como-funciona', etiqueta: 'Cómo funciona' },
+  { id: 'nosotros', etiqueta: 'Nosotros' }
+]
+
+const DEMO_TABS = [
+  { id: 'consultas', etiqueta: 'Consultas', titulo: 'Consultas — LexIT' },
+  { id: 'analisis', etiqueta: 'Análisis', titulo: 'Análisis de contratos — LexIT' },
+  { id: 'contratos', etiqueta: 'Contratos', titulo: 'Gestión de contratos — LexIT' },
+  { id: 'normas', etiqueta: 'Normas', titulo: 'Normas del día — LexIT' }
+]
+
+const RESPUESTA_DEMO = 'Según el artículo 140° del Código Civil, el acto jurídico requiere: agente capaz, objeto física y jurídicamente posible, fin lícito y observancia de la forma prescrita bajo sanción de nulidad.'
+
+// Solo normas que existen en la base jurídica (no cifras ni nombres inventados).
+const CIFRAS = [
+  { valor: 4, prefijo: '', etiqueta: 'especializaciones del derecho' },
+  { valor: 3700, prefijo: '+', etiqueta: 'artículos citables, uno por uno' },
+  { valor: 365, prefijo: '', etiqueta: 'resúmenes al año de El Peruano' }
+]
+
+const NORMAS_CINTA = [
+  'Constitución Política del Perú', 'Código Civil', 'Código Penal', 'Código Procesal Civil',
+  'Código Procesal Penal', 'Ley de Conciliación', 'Código de Protección y Defensa del Consumidor',
+  'Ley contra el Crimen Organizado', 'Ley de Delitos Informáticos', 'Ley de los Delitos Aduaneros'
+]
+
+const HERRAMIENTAS = [
+  {
+    id: 'consultas', tono: 'bosque', etiqueta: 'Consultas jurídicas',
+    titulo: 'Consultas jurídicas',
+    descripcion: 'Pregunta en lenguaje natural y recibe la respuesta con la cita textual del artículo.',
+    frase: 'La norma exacta, no un resumen genérico.',
+    puntos: ['Citas desplegables con el texto del artículo', 'Filtro por especialización: Penal, Civil, Tributario, Comercial', 'Historial de conversaciones']
+  },
+  {
+    id: 'analisis', tono: 'grisaceo', etiqueta: 'Análisis de contratos',
+    titulo: 'Análisis de contratos',
+    descripcion: 'Sube tu contrato en Word: la IA marca los riesgos cláusula por cláusula, con su base legal.',
+    frase: 'Cada riesgo, en su lugar del documento.',
+    puntos: ['Riesgos alto, medio y bajo con su explicación', '"Ver observación" te lleva a la cláusula exacta', 'Aplica los cambios y descarga el mismo Word']
+  },
+  {
+    id: 'contratos', tono: 'oliva', etiqueta: 'Gestión de contratos',
+    titulo: 'Gestión de contratos',
+    descripcion: 'Dile qué necesitas y LexIT te ofrece la plantilla; complétala conversando o a mano.',
+    frase: 'De la idea al contrato, sin perder el formato.',
+    puntos: ['Asistente que encuentra la plantilla correcta', 'Completar con IA, dato por dato', 'Descarga en Word con el formato original']
+  },
+  {
+    id: 'normas', tono: 'piedra', etiqueta: 'Normas del día',
+    titulo: 'Normas del día',
+    descripcion: 'Las normas publicadas en El Peruano, por sector, con un resumen diario hecho con IA.',
+    frase: 'Al día con El Peruano, en minutos.',
+    puntos: ['Resumen del día y lo más relevante para tu práctica', 'Resumen de cada norma a partir de su PDF oficial', 'Filtro por sector']
+  }
+]
+
+const ESPECIALIDADES_LANDING = [
+  {
+    id: 'penal', tono: 'bosque', titulo: 'Derecho Penal',
+    descripcion: 'Delitos, penas y proceso penal, con el artículo exacto.',
+    normas: ['Código Penal', 'Código Procesal Penal', 'Ley contra el Crimen Organizado', 'Ley de Delitos Informáticos']
+  },
+  {
+    id: 'civil', tono: 'grisaceo', titulo: 'Derecho Civil',
+    descripcion: 'Contratos, obligaciones, familia y proceso civil.',
+    normas: ['Código Civil', 'Código Procesal Civil', 'Ley de Conciliación', 'Código de Protección y Defensa del Consumidor']
+  },
+  {
+    id: 'tributario', tono: 'oliva', titulo: 'Derecho Tributario',
+    descripcion: 'Tributos, aduanas y régimen tributario constitucional.',
+    normas: ['Ley de los Delitos Aduaneros', 'Constitución Política (régimen tributario)']
+  },
+  {
+    id: 'comercial', tono: 'beige', titulo: 'Derecho Comercial',
+    descripcion: 'Sociedades, mercado de valores, concursal y consumidor.',
+    normas: ['Ley General de Sociedades', 'Ley del Mercado de Valores', 'Ley General del Sistema Concursal', 'Ley de Protección de Datos Personales']
+  }
+]
+
+const PASOS = [
+  { titulo: 'Crea tu cuenta', descripcion: 'Regístrate gratis en segundos y accede a todas las herramientas.' },
+  { titulo: 'Elige tu herramienta', descripcion: 'Haz una consulta, sube un contrato para analizarlo o completa una plantilla con ayuda de la IA.' },
+  { titulo: 'Obtén resultados', descripcion: 'Respuestas con la norma citada, análisis de riesgos y contratos listos para descargar en Word.' }
+]
+
+const DIRECCION = [
+  { nombre: 'Alex Zegarra', cargo: 'Presidente', area: 'Derecho Corporativo', foto: fotoAlexZegarra },
+  { nombre: 'Mijhail Medina', cargo: 'Vicepresidente', area: 'Ingeniería de Tecnologías de Información y Sistemas', foto: fotoMijhailMedina }
+]
+
+const EQUIPO = [
+  { nombre: 'Joe Mantilla', area: 'Ingeniería de Tecnologías de Información y Sistemas', foto: fotoJoeMantilla },
+  { nombre: 'Sandro Avila', area: 'Ingeniería de Tecnologías de Información y Sistemas', foto: fotoSandroAvila },
+  { nombre: 'Irene Paye', area: 'Derecho Corporativo', foto: fotoDayanaCoello },
+  { nombre: 'Dayana Coello', area: 'Derecho Corporativo', foto: fotoIrenePaye },
+  { nombre: 'Tarish Gonzales', area: 'Derecho Corporativo', foto: fotoTarishGonzales }
+]
+
+// =========================
+// AUTENTICACIÓN (los botones abren las ventanas de AuthButtons)
+// =========================
 function abrirAuth() {
   authButtonsRef.value?.abrirLogin()
 }
 
-// El router usa modo hash (#/ruta) — un <a href="#producto"> normal lo
-// interpreta como navegación a una ruta inexistente y cae en el 404, así
-// que el scroll a las secciones se hace a mano en vez de dejarlo al navegador.
-function scrollToSection(id: string) {
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+function abrirRegistro() {
+  authButtonsRef.value?.abrirRegistro()
 }
 
-// Revela las cards y encabezados de sección con una animación a medida que
-// entran en pantalla al hacer scroll, en vez de mostrarse todos de golpe.
-let observer: IntersectionObserver | null = null
+// El router usa modo hash (#/ruta): un <a href="#producto"> normal lo
+// interpretaría como una ruta y caería en el 404, así que el scroll a las
+// secciones se hace a mano.
+function scrollToSection(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' })
+}
+
+// =========================
+// DEMO DEL HERO: pestañas que rotan solas (se pausan con mouse o teclado)
+// =========================
+const demoActiva = ref(0)
+const demoPausada = ref(false)
+const DEMO_MS = 7000
+let demoTimer: ReturnType<typeof setInterval> | null = null
+
+const textoEscrito = ref(RESPUESTA_DEMO)
+const escribiendo = ref(false)
+let escrituraTimer: ReturnType<typeof setInterval> | null = null
+
+function escribirRespuesta() {
+  if (escrituraTimer) clearInterval(escrituraTimer)
+  if (prefersReducedMotion()) {
+    textoEscrito.value = RESPUESTA_DEMO
+    escribiendo.value = false
+    return
+  }
+  let n = 0
+  textoEscrito.value = ''
+  escribiendo.value = true
+  escrituraTimer = setInterval(() => {
+    n += 3
+    textoEscrito.value = RESPUESTA_DEMO.slice(0, n)
+    if (n >= RESPUESTA_DEMO.length) {
+      if (escrituraTimer) clearInterval(escrituraTimer)
+      escrituraTimer = null
+      escribiendo.value = false
+    }
+  }, 28)
+}
+
+function elegirDemo(i: number, enfocar = false) {
+  demoActiva.value = i
+  if (i === 0) escribirRespuesta()
+  reiniciarDemo()
+  if (enfocar) document.getElementById(`demo-tab-${i}`)?.focus()
+}
+
+function reiniciarDemo() {
+  if (demoTimer) clearInterval(demoTimer)
+  demoTimer = null
+  if (prefersReducedMotion()) return
+  demoTimer = setInterval(() => {
+    if (demoPausada.value) return
+    demoActiva.value = (demoActiva.value + 1) % DEMO_TABS.length
+    if (demoActiva.value === 0) escribirRespuesta()
+  }, DEMO_MS)
+}
+
+// =========================
+// HERRAMIENTAS Y ESPECIALIZACIONES
+// =========================
+const herramientaActiva = ref(0)
+function moverHerramienta(i: number, paso: number) {
+  const siguiente = (i + paso + HERRAMIENTAS.length) % HERRAMIENTAS.length
+  herramientaActiva.value = siguiente
+  document.getElementById(`herr-tab-${siguiente}`)?.focus()
+}
+
+
+// =========================
+// HEADER, SECCIÓN ACTIVA, PROGRESO, FOCO DEL HERO
+// =========================
+const headerSolido = ref(false)
+const seccionActiva = ref('')
+const progresoPasos = ref(0)
+
+// Un solo cálculo por cuadro de pantalla para todo lo que depende del scroll.
+let cuadroScroll: number | null = null
+function alHacerScroll() {
+  if (cuadroScroll !== null) return
+  cuadroScroll = requestAnimationFrame(() => {
+    cuadroScroll = null
+    const total = document.documentElement.scrollHeight - window.innerHeight
+    const avance = total > 0 ? window.scrollY / total : 0
+    if (progresoRef.value) progresoRef.value.style.transform = `scaleX(${avance})`
+    headerSolido.value = window.scrollY > 40
+    // Línea de "Cómo funciona": se llena mientras la sección cruza la pantalla.
+    const pasos = pasosRef.value
+    if (pasos) {
+      const r = pasos.getBoundingClientRect()
+      const inicio = window.innerHeight * 0.85
+      const fin = window.innerHeight * 0.35
+      progresoPasos.value = prefersReducedMotion() ? 1 : Math.min(1, Math.max(0, (inicio - r.top) / (inicio - fin)))
+    }
+  })
+}
+
+// Luz que sigue al cursor en el hero.
+let cuadroFoco: number | null = null
+function moverFoco(e: PointerEvent) {
+  if (prefersReducedMotion() || e.pointerType !== 'mouse') return
+  const hero = heroRef.value
+  if (!hero || cuadroFoco !== null) return
+  const x = e.clientX
+  const y = e.clientY
+  cuadroFoco = requestAnimationFrame(() => {
+    cuadroFoco = null
+    const r = hero.getBoundingClientRect()
+    hero.style.setProperty('--hx', `${x - r.left}px`)
+    hero.style.setProperty('--hy', `${y - r.top}px`)
+  })
+}
+
+// Contadores que suben al entrar en pantalla.
+function animarCifra(el: HTMLElement) {
+  const hasta = Number(el.dataset.hasta ?? 0)
+  const prefijo = el.textContent?.startsWith('+') ? '+' : ''
+  if (prefersReducedMotion() || !hasta) return
+  const inicio = performance.now()
+  const DURACION = 1400
+  const paso = (t: number) => {
+    const p = Math.min(1, (t - inicio) / DURACION)
+    const suave = 1 - Math.pow(1 - p, 3)
+    el.textContent = prefijo + Math.round(hasta * suave).toLocaleString('es-PE')
+    if (p < 1) requestAnimationFrame(paso)
+  }
+  requestAnimationFrame(paso)
+}
+
+let observerReveal: IntersectionObserver | null = null
+let observerSecciones: IntersectionObserver | null = null
+const scrollTriggers: ScrollTrigger[] = []
 
 onMounted(() => {
   if (isAuthenticated.value) {
@@ -372,263 +695,73 @@ onMounted(() => {
     return
   }
 
-  observer = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue
-        entry.target.classList.add('is-visible')
-        observer?.unobserve(entry.target)
-      }
-    },
-    // rootMargin negativo en la base: el elemento revela recién cuando ya
-    // entró bien a la vista (no apenas roza el borde inferior), para que
-    // el efecto se note mientras se sigue bajando, no antes de llegar.
-    { threshold: 0.1, rootMargin: '0px 0px -10% 0px' }
-  )
+  window.addEventListener('scroll', alHacerScroll, { passive: true })
+  alHacerScroll()
+  escribirRespuesta()
+  reiniciarDemo()
 
-  document.querySelectorAll('.reveal').forEach((el) => observer?.observe(el))
+  // Revelado al entrar en pantalla (+ contadores).
+  observerReveal = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue
+      entry.target.classList.add('is-visible')
+      entry.target.querySelectorAll<HTMLElement>('.cifra-valor').forEach(animarCifra)
+      observerReveal?.unobserve(entry.target)
+    }
+  }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' })
+  document.querySelectorAll('.landing-page .reveal').forEach((el) => observerReveal?.observe(el))
 
-  // Animaciones GSAP (hero, tarjetas, parallax) — se omiten si el usuario
-  // pidió reducir el movimiento en su sistema.
+  // Sección visible → resalta su enlace en el header.
+  observerSecciones = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) seccionActiva.value = entry.target.id
+    }
+  }, { rootMargin: '-45% 0px -50% 0px' })
+  for (const { id } of NAV) {
+    const el = document.getElementById(id)
+    if (el) observerSecciones.observe(el)
+  }
+
   const root = pageRoot.value
   if (!root || prefersReducedMotion()) return
 
-  // --- Entrada del hero: más dinámica (3D y elastic) ---
-  const heroLogo = root.querySelector('.hero-logo')
-  const heroTexts = [
-    '.hero-title',
-    '.hero-subtitle',
-    '.hero-heading',
-    '.hero-description',
-  ]
-    .map((sel) => root.querySelector(sel))
-    .filter(Boolean) as HTMLElement[]
-
-  const tlHero = gsap.timeline({ delay: 0.1 })
-  
-  if (heroLogo) {
-    gsap.set(heroLogo, { scale: 0.5, opacity: 0 })
-    tlHero.to(heroLogo, {
-      scale: 1,
-      opacity: 1,
-      duration: 1.2,
-      ease: 'elastic.out(1, 0.5)'
-    })
-  }
-
-  gsap.set(heroTexts, { opacity: 0, y: 40, rotationX: -45, transformPerspective: 800 })
-  tlHero.to(heroTexts, {
-    opacity: 1,
-    y: 0,
-    rotationX: 0,
-    duration: 1,
-    ease: 'power3.out',
-    stagger: 0.15,
-  }, "-=0.9") // Empezar un poco antes de que termine el logo
-
-  // --- Feature cards: entrada elástica ---
-  const featureCards = root.querySelectorAll<HTMLElement>('.feature-card')
-  gsap.set(featureCards, { opacity: 0, y: 50, scale: 0.9 })
-  scrollTriggers.push(
-    ScrollTrigger.create({
-      trigger: '.features-grid',
-      start: 'top 85%',
-      once: true,
-      onEnter: () =>
-        gsap.to(featureCards, {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.8,
-          ease: 'back.out(1.5)',
-          stagger: 0.15,
-        }),
-    }),
-  )
-
-  // --- Step cards: rebote secuencial ---
-  const stepCards = root.querySelectorAll<HTMLElement>('.step-card')
-  gsap.set(stepCards, { opacity: 0, y: 60 })
-  scrollTriggers.push(
-    ScrollTrigger.create({
-      trigger: '.steps-grid',
-      start: 'top 85%',
-      once: true,
-      onEnter: () =>
-        gsap.to(stepCards, {
-          opacity: 1,
-          y: 0,
-          duration: 0.9,
-          ease: 'elastic.out(1, 0.75)',
-          stagger: 0.2,
-        }),
-    }),
-  )
-
-  // --- Floating Mockup (Continua) ---
-  const heroMock = root.querySelector('.hero-mock')
-  if (heroMock) {
-    gsap.to(heroMock, {
-      y: 15,
-      duration: 3,
-      repeat: -1,
-      yoyo: true,
-      ease: 'sine.inOut'
-    })
-  }
-
-  // --- Fondo reactivo al mouse (blob-wrap) y Scroll Parallax (blob inner) ---
-  const wraps = root.querySelectorAll<HTMLElement>('.blob-wrap')
-  const depths = [18, 26, 14]
-
-  const quickBlobs = Array.from(wraps).map((el) => ({
-    x: gsap.quickTo(el, 'x', { duration: 0.9, ease: 'power3.out' }),
-    y: gsap.quickTo(el, 'y', { duration: 0.9, ease: 'power3.out' }),
-  }))
-
-  // Magnetic Buttons & 3D Cards variables
-  const magneticLinks = root.querySelectorAll<HTMLElement>('.header-nav-link')
-  const interactiveCards = root.querySelectorAll<HTMLElement>('.feature-card, .step-card')
-  const allCards = Array.from(interactiveCards)
-
-  // Prepare quickTo for 3D tilt
-  const tiltCards = allCards.map(card => {
-    gsap.set(card, { transformPerspective: 1000 })
-    return {
-      el: card,
-      rx: gsap.quickTo(card, 'rotationX', { duration: 0.5, ease: 'power3.out' }),
-      ry: gsap.quickTo(card, 'rotationY', { duration: 0.5, ease: 'power3.out' })
-    }
+  // Entrada del hero.
+  gsap.from(root.querySelectorAll('.hero-texto > *'), {
+    opacity: 0, y: 28, duration: 0.9, ease: 'power3.out', stagger: 0.1, delay: 0.1
+  })
+  gsap.from(root.querySelector('.demo'), {
+    opacity: 0, y: 40, scale: 0.97, duration: 1.1, ease: 'power3.out', delay: 0.35
   })
 
-  // Mockup hover events for glow effect
-  if (heroMock) {
-    heroMock.addEventListener('mouseenter', () => {
-      gsap.to(heroMock, { scale: 1.02, duration: 0.4, ease: 'back.out(2)', boxShadow: '0 25px 50px rgba(10, 37, 92, 0.2)' })
-    })
-    heroMock.addEventListener('mouseleave', () => {
-      gsap.to(heroMock, { scale: 1, duration: 0.4, ease: 'power2.out', boxShadow: '0 20px 40px rgba(10, 37, 92, 0.08)' })
-    })
-  }
-
-  // Magnetic events
-  magneticLinks.forEach(link => {
-    link.addEventListener('mousemove', (e) => {
-      const rect = link.getBoundingClientRect()
-      const x = e.clientX - rect.left - rect.width / 2
-      const y = e.clientY - rect.top - rect.height / 2
-      gsap.to(link, { x: x * 0.4, y: y * 0.4, duration: 0.3, ease: 'power2.out' })
-    })
-    link.addEventListener('mouseleave', () => {
-      gsap.to(link, { x: 0, y: 0, duration: 0.7, ease: 'elastic.out(1, 0.3)' })
-    })
-  })
-
-  handleMouseMove = (e: MouseEvent) => {
-    const cx = window.innerWidth / 2
-    const cy = window.innerHeight / 2
-    const nx = (e.clientX - cx) / cx
-    const ny = (e.clientY - cy) / cy
-
-    // Blobs
-    quickBlobs.forEach((q, i) => {
-      const depth = depths[i] ?? 16
-      q.x(nx * depth)
-      q.y(ny * depth)
-    })
-
-    // 3D Cards Tilt effect
-    tiltCards.forEach(cardData => {
-      const rect = cardData.el.getBoundingClientRect()
-      // Check if mouse is hovering the card
-      if (e.clientX > rect.left && e.clientX < rect.right && e.clientY > rect.top && e.clientY < rect.bottom) {
-        const cardCx = rect.left + rect.width / 2
-        const cardCy = rect.top + rect.height / 2
-        // Calculate relative position to card center (-1 to 1)
-        const cnx = (e.clientX - cardCx) / (rect.width / 2)
-        const cny = (e.clientY - cardCy) / (rect.height / 2)
-        // Tilt intensity
-        cardData.rx(-cny * 10) // Rotate around X axis based on Y position
-        cardData.ry(cnx * 10)  // Rotate around Y axis based on X position
-      } else {
-        // Reset if not hovering
-        cardData.rx(0)
-        cardData.ry(0)
-      }
-    })
-  }
-
-  window.addEventListener('mousemove', handleMouseMove, { passive: true })
-
-  // Scroll Parallax para los blobs (añade profundidad vertical al hacer scroll)
-  const innerBlobs = root.querySelectorAll<HTMLElement>('.blob')
-  innerBlobs.forEach((blob, index) => {
-    const speed = index === 0 ? 0.15 : index === 1 ? -0.2 : 0.1
-    const st = ScrollTrigger.create({
-      trigger: root,
-      start: 'top top',
-      end: 'bottom top',
-      scrub: true,
-      animation: gsap.to(blob, {
-        y: () => window.innerHeight * speed,
-        ease: 'none'
-      })
-    })
-    scrollTriggers.push(st)
-  })
-
-  // Parallax sutil para las imágenes editoriales de "Propósito" y "Misión/Visión"
-  // (misma técnica que los blobs: la imagen se mueve más lento/rápido que el
-  // scroll, recortada por el contenedor con overflow:hidden).
-  const parallaxImages: { selector: string; trigger: string }[] = [
-    { selector: '.proposito-image', trigger: '.proposito-split' },
-    { selector: '.mv-image', trigger: '.mv-split' }
-  ]
-  parallaxImages.forEach(({ selector, trigger }) => {
-    const el = root.querySelector<HTMLElement>(selector)
-    if (!el) return
-    const st = ScrollTrigger.create({
-      trigger,
+  // Parallax suave de las imágenes editoriales.
+  root.querySelectorAll<HTMLElement>('.parallax-img').forEach((img) => {
+    scrollTriggers.push(ScrollTrigger.create({
+      trigger: img.parentElement ?? img,
       start: 'top bottom',
       end: 'bottom top',
       scrub: true,
-      animation: gsap.fromTo(el, { y: -30 }, { y: 30, ease: 'none' })
-    })
-    scrollTriggers.push(st)
-  })
-
-  // Advanced text parallax
-  heroTexts.forEach((el, index) => {
-    const st = ScrollTrigger.create({
-      trigger: '.hero-section',
-      start: 'top top',
-      end: 'bottom top',
-      scrub: true,
-      animation: gsap.to(el, {
-        y: (index + 1) * -30,
-        opacity: 0,
-        ease: 'none'
-      })
-    })
-    scrollTriggers.push(st)
+      animation: gsap.fromTo(img, { yPercent: -6 }, { yPercent: 6, ease: 'none' })
+    }))
   })
 })
 
 onUnmounted(() => {
-  observer?.disconnect()
-  if (handleMouseMove) window.removeEventListener('mousemove', handleMouseMove)
+  observerReveal?.disconnect()
+  observerSecciones?.disconnect()
   scrollTriggers.forEach((st) => st.kill())
+  if (demoTimer) clearInterval(demoTimer)
+  if (escrituraTimer) clearInterval(escrituraTimer)
+  window.removeEventListener('scroll', alHacerScroll)
+  if (cuadroScroll !== null) cancelAnimationFrame(cuadroScroll)
+  if (cuadroFoco !== null) cancelAnimationFrame(cuadroFoco)
 })
 </script>
 
-<!-- --------------------------------------------------- -->
-
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Figtree:wght@400;500;600;700&display=swap');
+@import '@fontsource/geist/300.css';
+@import '@fontsource/geist/400.css';
+@import '@fontsource/geist/500.css';
 
-/* Baskervville (SIL Open Font License, ver src/assets/fonts/baskervville/
-   OFL.txt) para los títulos de la landing. Fuentes variables: un archivo
-   cubre los pesos 400-700. */
 @font-face {
   font-family: 'Baskervville';
   src: url('../assets/fonts/baskervville/Baskervville-VariableFont_wght.ttf') format('truetype');
@@ -646,1071 +779,1458 @@ onUnmounted(() => {
 }
 
 /* ==============================
-   Base — misma paleta verde-bosque/beige, ahora invertida a fondo claro
-   (Blanco Cálido) a pedido explícito del usuario: el verde oscuro pasa
-   de ser el canvas a ser el texto/acento, y el beige claro/blanco pasa
-   de ser el texto a ser la superficie. Mismos 8 tonos, otra jerarquía.
+   PALETA EN TONOS CLAROS: los fondos son blanco, blanco cálido (crema),
+   marfil y piedra; el verde bosque queda para textos y botones
+   principales. El resto de la paleta (oliva, beige oliva, grisáceo) da
+   acentos. Variables solo dentro de .landing-page.
    ============================== */
 .landing-page {
-  --sp-canvas: #FFFFFF;          /* blanco puro, a pedido explícito ("eso es color crema") */
-  --sp-surface: #FFFFFF;
-  --sp-surface-alt: #D9D4C6;     /* Marfil Claro — hover de tarjetas */
-  --sp-border: rgba(23, 33, 27, 0.10);
-  --sp-border-strong: rgba(23, 33, 27, 0.18);
-  --sp-text: #17211B;            /* Verde Bosque Profundo */
-  --sp-text-muted: #3D473A;      /* Verde Grisáceo */
-  --sp-text-faint: #686A57;      /* Oliva Medio */
-  /* --sp-accent (Verde Grisáceo) cumple doble rol: como texto (labels,
-     links, cargos) se distingue del texto normal por ser un poco más
-     cálido/menos oscuro que --sp-text; como fondo de botón (CTA) es lo
-     bastante oscuro para que el texto claro (--sp-ink) encima se lea
-     bien — por eso NO es el mismo tono que --sp-text ni tan claro como
-     --sp-text-muted. */
-  --sp-accent: #3D473A;
-  --sp-accent-hover: #17211B;
-  --sp-accent-soft: rgba(61, 71, 58, 0.08);
-  --sp-accent-soft-strong: rgba(61, 71, 58, 0.16);
-  /* Acento secundario (Oliva Medio) para contenido editorial/de confianza
-     (badges de fuentes legales) — un tercer tono, más cálido, distinto
-     del acento principal (más frío/verdoso). */
-  --sp-accent-secondary: #686A57;
-  --sp-accent-secondary-soft: rgba(104, 106, 87, 0.12);
-  --sp-accent-secondary-soft-strong: rgba(104, 106, 87, 0.28);
-  --sp-ink: #F8F7F2;              /* texto claro sobre superficies oscuras (--sp-accent) */
+  --bosque: #17211B;
+  --grisaceo: #3D473A;
+  --oliva: #686A57;
+  --beige-oliva: #9C9275;
+  --piedra: #BDB59B;
+  --marfil: #D9D4C6;
+  --crema: #F8F7F2;
+  --blanco: #FFFFFF;
+  /* Tonos intermedios entre crema y marfil, para variar las bandas */
+  --crema-2: #F1EEE6;
+  --marfil-claro: #E9E5DA;
+
+  /* 75%: contraste ≥ 4.5:1 incluso sobre piedra */
+  --texto: var(--bosque);
+  --texto-sec: rgba(23, 33, 27, 0.75);
+  --borde: rgba(23, 33, 27, 0.12);
+  --borde-fuerte: rgba(23, 33, 27, 0.24);
+
+  --serif: 'Baskervville', 'EB Garamond', Georgia, serif;
+  --sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --radio: 18px;
+  --radio-sm: 12px;
+  --ancho: 1200px;
+  --gutter: clamp(20px, 5vw, 56px);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
 
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  overflow-x: hidden;
-  background: var(--sp-canvas);
-  color: var(--sp-text);
-  font-family: 'Baskervville', 'EB Garamond', Georgia, serif;
-  font-kerning: normal;
-  font-variant-ligatures: common-ligatures;
+  background: var(--crema);
+  color: var(--texto);
+  font-family: var(--sans);
+  font-weight: 400;
+  letter-spacing: 0.005em;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.landing-page em { font-style: italic; }
+
+/* Barra de progreso de lectura */
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--beige-oliva);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  z-index: 60;
 }
 
 /* ==============================
-   Blob decorations
-   - .blob-wrap: posición en pantalla + lo mueve GSAP (mouse parallax)
-   - .blob: animación orgánica de CSS (scale + micro-drift)
-   Separados para que ambos transforms no se peleen.
-   ============================== */
-@keyframes blob {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(12px, -10px) scale(1.06); }
-}
-
-.blob-wrap {
-  position: absolute;
-  pointer-events: none;
-  will-change: transform;
-}
-
-.blob-wrap-1 { top: -120px; right: -80px; width: 420px; height: 420px; }
-.blob-wrap-2 { top: 180px; left: -140px; width: 380px; height: 380px; }
-.blob-wrap-3 { top: 520px; right: -100px; width: 340px; height: 340px; }
-
-.blob {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  filter: blur(8px);
-}
-
-/* Mismo tono cálido de la paleta (Beige Oliva), mucho más sutil ahora
-   que el fondo es claro — sobre blanco, la misma opacidad de antes se
-   vería sucia en vez de atmosférica. */
-.blob-1 {
-  background: radial-gradient(circle at 30% 30%, rgba(156, 146, 117, 0.14), transparent 70%);
-}
-
-.blob-2 {
-  background: radial-gradient(circle at 40% 40%, rgba(156, 146, 117, 0.10), transparent 70%);
-}
-
-.blob-3 {
-  background: radial-gradient(circle at 50% 50%, rgba(61, 71, 58, 0.05), transparent 70%);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .blob-1 { animation: blob 14s ease-in-out infinite; }
-  .blob-2 { animation: blob 18s ease-in-out infinite; }
-  .blob-3 { animation: blob 16s ease-in-out infinite; }
-}
-
-@keyframes driftGlow {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(2%, -3%, 0) scale(1.06); }
-}
-
-/* ==============================
-   Revelado al hacer scroll (ver IntersectionObserver en el script)
-   ============================== */
-.reveal {
-  opacity: 0;
-  transform: translateY(40px);
-  transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1), transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: opacity, transform;
-}
-
-.reveal.is-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.features-grid .feature-card.reveal { transition-delay: 0.08s; }
-.features-grid .feature-card.reveal:nth-child(2) { transition-delay: 0.2s; }
-.features-grid .feature-card.reveal:nth-child(3) { transition-delay: 0.32s; }
-
-.steps-grid .step-card.reveal { transition-delay: 0.08s; }
-.steps-grid .step-card.reveal:nth-child(2) { transition-delay: 0.2s; }
-.steps-grid .step-card.reveal:nth-child(3) { transition-delay: 0.32s; }
-
-@media (prefers-reduced-motion: reduce) {
-  .reveal {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
-}
-
-/* ==============================
-   Header
+   HEADER
    ============================== */
 .landing-header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 50;
-  background: rgba(248, 247, 242, 0.86);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--sp-border);
+  border-bottom: 1px solid transparent;
+  transition: background-color 0.35s var(--ease), border-color 0.35s, backdrop-filter 0.35s;
 }
 
-/* AuthButtons.vue trae sus propios colores de "Iniciar Sesión"/
-   "Registrarse" — ya estaban pensados para un header claro, así que acá
-   alcanza con acercarlos a la paleta verde en vez de su terracota por
-   defecto, sin tocar ese componente. */
-:deep(.auth-buttons .login-btn) {
-  color: var(--sp-text) !important;
-}
-
-:deep(.auth-buttons .login-btn:hover) {
-  background: rgba(23, 33, 27, 0.05) !important;
-}
-
-:deep(.auth-buttons .register-btn) {
-  background: var(--sp-accent) !important;
-  color: var(--sp-ink) !important;
-}
-
-:deep(.auth-buttons .register-btn:hover) {
-  background: var(--sp-accent-hover) !important;
-}
-
-/* Misma tipografía que el resto de la landing (el componente usa Figtree,
-   que se mantiene dentro de la app). */
-:deep(.auth-buttons .auth-btn) {
-  font-family: 'Baskervville', 'EB Garamond', serif;
+.landing-header--solido {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: saturate(140%) blur(10px);
+  border-bottom-color: var(--borde);
 }
 
 .header-inner {
-  max-width: 1180px;
+  max-width: var(--ancho);
   margin: 0 auto;
-  padding: 14px 28px;
+  padding: 14px var(--gutter);
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 28px;
 }
 
 .header-logo {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  flex-shrink: 0;
-}
-
-.header-logo-text {
-  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
-  font-optical-sizing: auto;
-  font-size: 1.7rem;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--serif);
+  font-size: 1.6rem;
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: var(--sp-text);
+  color: var(--texto);
 }
 
 .header-nav {
-  flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 32px;
+  gap: 4px;
+  margin-left: auto;
 }
 
 .header-nav-link {
-  font-size: 0.92rem;
-  font-weight: 500;
-  color: var(--sp-text-muted);
-  text-decoration: none;
-  transition: color 0.18s;
-}
-
-.header-nav-link:hover {
-  color: var(--sp-accent);
-}
-
-/* ==============================
-   Main
-   ============================== */
-.main-content {
-  flex: 1;
   position: relative;
-  z-index: 1;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  color: var(--texto-sec);
+  text-decoration: none;
+  transition: color 0.25s;
 }
 
+.header-nav-link:hover,
+.header-nav-link--activo { color: var(--texto); }
+
+.header-nav-link::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 3px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.35s var(--ease);
+}
+
+.header-nav-link:hover::after,
+.header-nav-link--activo::after { transform: scaleX(1); }
+
+:deep(.auth-buttons .auth-btn) {
+  font-family: var(--sans);
+  font-weight: 500;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+}
+
+:deep(.auth-buttons .login-btn) { color: var(--texto) !important; }
+:deep(.auth-buttons .login-btn:hover) { background: rgba(23, 33, 27, 0.06) !important; }
+:deep(.auth-buttons .register-btn) { background: var(--bosque) !important; color: var(--crema) !important; }
+:deep(.auth-buttons .register-btn:hover) { background: var(--grisaceo) !important; }
+
 /* ==============================
-   Hero — fondo blanco cálido, atmósfera muy sutil (los glows de acá
-   abajo quedan casi imperceptibles a propósito: sobre fondo oscuro
-   sumaban drama, sobre blanco lo que suma es que el texto respire).
+   BOTONES
    ============================== */
-.hero-section {
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 24px;
+  border-radius: 999px;
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color 0.25s, color 0.25s, border-color 0.25s, transform 0.25s var(--ease);
+}
+
+.btn:hover { transform: translateY(-2px); }
+.btn:focus-visible { outline: 2px solid var(--beige-oliva); outline-offset: 3px; }
+
+.btn--primario {
+  background: var(--bosque);
+  color: var(--crema);
+}
+
+.btn--primario:hover { background: var(--grisaceo); }
+
+.btn--contorno {
+  background: var(--blanco);
+  color: var(--texto);
+  border-color: var(--borde-fuerte);
+}
+
+.btn--contorno:hover { border-color: var(--texto); }
+
+.btn-flecha { transition: transform 0.3s var(--ease); }
+.btn:hover .btn-flecha { transform: translateX(4px); }
+
+/* ==============================
+   HERO (crema, con luces suaves de piedra y marfil)
+   ============================== */
+.hero {
+  --hx: 70%;
+  --hy: 30%;
   position: relative;
   overflow: hidden;
-  background: var(--sp-canvas);
-  padding: 96px 28px 110px;
-  animation: floatUp 0.7s ease-out both;
+  background: var(--crema);
+  padding: 140px var(--gutter) 110px;
 }
 
-.hero-atmosphere {
+.hero-fondo { position: absolute; inset: 0; pointer-events: none; }
+
+.hero-foco {
   position: absolute;
   inset: 0;
-  pointer-events: none;
+  background:
+    radial-gradient(520px circle at var(--hx) var(--hy), rgba(189, 181, 155, 0.28), transparent 60%),
+    radial-gradient(900px circle at 90% 105%, rgba(217, 212, 198, 0.75), transparent 60%),
+    radial-gradient(700px circle at 0% 0%, rgba(255, 255, 255, 0.9), transparent 70%);
 }
 
-.hero-glow {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(70px);
-  opacity: 0.55;
-  animation: driftGlow 14s ease-in-out infinite;
-}
-
-.hero-glow--1 {
-  width: 520px;
-  height: 520px;
-  top: -180px;
-  left: -120px;
-  background: radial-gradient(circle, rgba(156, 146, 117, 0.22), transparent 70%);
-}
-
-.hero-glow--2 {
-  width: 460px;
-  height: 460px;
-  bottom: -220px;
-  right: -100px;
-  background: radial-gradient(circle, rgba(156, 146, 117, 0.14), transparent 70%);
-  animation-delay: -6s;
-}
-
-.hero-glow--3 {
-  width: 380px;
-  height: 380px;
-  top: 30%;
-  left: 55%;
-  background: radial-gradient(circle, rgba(61, 71, 58, 0.06), transparent 70%);
-  animation-delay: -3s;
-}
-
-.hero-grid {
+.hero-rejilla {
   position: absolute;
   inset: 0;
   background-image:
     linear-gradient(rgba(23, 33, 27, 0.05) 1px, transparent 1px),
     linear-gradient(90deg, rgba(23, 33, 27, 0.05) 1px, transparent 1px);
-  background-size: 42px 42px;
-  mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 40%, transparent 100%);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 25%, transparent 80%);
+}
+
+.hero-grano {
+  position: absolute;
+  inset: 0;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 .hero-inner {
   position: relative;
-  z-index: 1;
-  max-width: 760px;
+  max-width: var(--ancho);
   margin: 0 auto;
-  text-align: center;
-}
-
-.hero-logo {
-  height: 78px;
-  width: 78px;
-  display: block;
-  margin: 0 auto 22px;
-  filter: drop-shadow(0 8px 22px rgba(139, 92, 246, 0.22));
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: clamp(32px, 5vw, 72px);
+  align-items: center;
 }
 
 .hero-badge {
-  display: inline-block;
-  padding: 6px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  border: 1px solid var(--borde-fuerte);
   border-radius: 999px;
-  background: var(--sp-surface);
-  border: 1px solid var(--sp-border-strong);
-  color: var(--sp-text-muted);
+  background: rgba(255, 255, 255, 0.7);
   font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  margin-bottom: 24px;
+  letter-spacing: 0.04em;
+  color: var(--texto-sec);
 }
 
-/* Serif editorial (equivalente a "Arizona Mix" de la referencia) con
-   tracking negativo agresivo — nada de texto en gradiente, un solo color
-   sólido por línea, como pide la referencia. */
+.hero-badge-punto {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--beige-oliva);
+  animation: latido 2.4s infinite;
+}
+
+@keyframes latido {
+  0% { box-shadow: 0 0 0 0 rgba(156, 146, 117, 0.55); }
+  70% { box-shadow: 0 0 0 10px rgba(156, 146, 117, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(156, 146, 117, 0); }
+}
+
 .hero-title {
-  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
-  font-optical-sizing: auto;
-  font-size: clamp(2.6rem, 5vw + 1rem, 4.6rem);
-  line-height: 1.04;
+  font-family: var(--serif);
   font-weight: 500;
-  margin: 0 0 22px;
-  letter-spacing: -0.03em;
-  color: var(--sp-text);
+  font-size: clamp(2.6rem, 5.4vw, 4.6rem);
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+  margin: 26px 0 22px;
+  color: var(--texto);
 }
 
-.hero-title em {
-  font-style: italic;
-  color: var(--sp-accent);
-}
+.hero-title em { color: var(--oliva); }
 
 .hero-description {
-  font-size: 1.14rem;
+  max-width: 540px;
+  font-size: 1.08rem;
   line-height: 1.65;
-  color: var(--sp-text-muted);
-  max-width: 580px;
-  margin: 0 auto 14px;
+  color: var(--texto-sec);
+  margin: 0 0 32px;
+}
+
+.hero-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .hero-caption {
+  margin: 26px 0 0;
   font-size: 0.85rem;
-  color: var(--sp-text-faint);
-  margin: 0 0 48px;
+  color: var(--texto-sec);
 }
 
-/* Vista previa ilustrativa — es un <button>: al hacer clic abre el login */
-.hero-mock {
+/* ---------- Demo del hero ---------- */
+.demo { position: relative; }
+
+.demo-tabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 14px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+}
+
+.demo-tab {
+  padding: 9px 6px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--texto-sec);
+  font-family: var(--sans);
+  font-size: 0.86rem;
+  cursor: pointer;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.demo-tab:hover { color: var(--texto); }
+
+.demo-tab--activa {
+  background: var(--marfil);
+  color: var(--texto);
+  font-weight: 500;
+}
+
+.demo-tab:focus-visible { outline: 2px solid var(--beige-oliva); outline-offset: 2px; }
+
+.demo-tabs-progreso {
+  position: absolute;
+  left: calc(4px + var(--i) * (100% - 8px) / 4);
+  width: calc((100% - 8px) / 4 - 4px);
+  bottom: -9px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 2px;
+  transition: left 0.4s var(--ease);
+}
+
+.demo-tabs-progreso-relleno {
+  display: block;
+  height: 100%;
+  background: var(--beige-oliva);
+  transform-origin: left;
+  animation: llenar 7s linear forwards;
+}
+
+.demo-tabs-progreso-relleno--pausa { animation-play-state: paused; }
+
+@keyframes llenar {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.demo-ventana {
   display: block;
   width: 100%;
-  max-width: 480px;
-  margin: 0 auto;
+  text-align: left;
   padding: 0;
-  border: none;
-  background: none;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--crema-2);
+  color: var(--texto);
   font: inherit;
   cursor: pointer;
-  filter: drop-shadow(0 30px 60px rgba(0, 0, 0, 0.45));
-  transition: transform 0.25s ease, filter 0.25s ease;
-}
-
-.hero-mock:hover,
-.hero-mock:focus-visible {
-  transform: translateY(-3px);
-  filter: drop-shadow(0 36px 70px rgba(0, 0, 0, 0.5));
-}
-
-.hero-mock:active {
-  transform: translateY(-1px) scale(0.99);
-}
-
-/* Blanco puro + borde visible: el canvas del hero ya es casi blanco
-   (Blanco Cálido), así que sin esto la ventana del mock se perdería
-   contra el fondo en vez de leerse como una tarjeta flotando. */
-.mock-window {
-  background: #FFFFFF;
-  border: 1px solid var(--sp-border);
-  border-radius: 14px;
   overflow: hidden;
-  text-align: left;
+  box-shadow: 0 30px 70px -32px rgba(23, 33, 27, 0.35);
+  transition: transform 0.4s var(--ease), box-shadow 0.4s;
 }
 
-.mock-cta {
-  padding: 12px 16px;
-  background: var(--ink);
-  color: #FAFAF7;
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-align: center;
+.demo-ventana:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 40px 80px -30px rgba(23, 33, 27, 0.4);
 }
 
-.mock-window-bar {
+.demo-ventana:focus-visible { outline: 2px solid var(--beige-oliva); outline-offset: 4px; }
+
+.demo-barra {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 14px;
-  background: #efefe9;
-  border-bottom: 1px solid rgba(27, 27, 30, 0.07);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--borde);
+  background: var(--blanco);
 }
 
-.mock-dot {
-  width: 8px;
-  height: 8px;
+.demo-punto {
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  background: rgba(27, 27, 30, 0.18);
+  background: var(--marfil);
 }
 
-.mock-window-title {
-  margin-left: 8px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #8a8a90;
+.demo-barra-titulo {
+  margin-left: 10px;
+  font-size: 0.78rem;
+  color: var(--texto-sec);
 }
 
-.mock-chat {
-  padding: 18px 16px;
+.demo-panel {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-height: 268px;
+  padding: 20px;
 }
 
-.mock-bubble {
-  padding: 10px 14px;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  line-height: 1.5;
+.demo-chip-esp {
+  align-self: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--blanco);
+  border: 1px solid var(--borde-fuerte);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
 }
 
-.mock-bubble--user {
-  align-self: flex-end;
-  background: var(--ink);
-  color: #FAFAF7;
-  border-bottom-right-radius: 4px;
-  max-width: 80%;
-}
-
-.mock-bubble--ai {
-  align-self: flex-start;
-  background: #fff;
-  border: 1px solid rgba(27, 27, 30, 0.08);
-  color: #3a3a40;
-  border-bottom-left-radius: 4px;
-  max-width: 90%;
-}
-
-.mock-bubble-tag {
+.demo-msg {
   display: block;
-  font-family: 'Baskervville', 'EB Garamond', serif;
-  font-weight: 600;
-  color: var(--accent);
-  margin-bottom: 4px;
+  max-width: 88%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 0.88rem;
+  line-height: 1.55;
 }
+
+.demo-msg--user {
+  align-self: flex-end;
+  background: var(--marfil);
+  border-bottom-right-radius: 4px;
+}
+
+.demo-msg--ia {
+  align-self: flex-start;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-bottom-left-radius: 4px;
+}
+
+.demo-msg-autor {
+  display: block;
+  margin-bottom: 4px;
+  font-family: var(--serif);
+  font-weight: 600;
+  color: var(--oliva);
+}
+
+.demo-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--texto);
+  animation: parpadeo 0.9s steps(1) infinite;
+}
+
+@keyframes parpadeo { 50% { opacity: 0; } }
+
+.demo-cita {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--crema-2);
+  border: 1px solid var(--borde);
+  font-size: 0.74rem;
+  font-weight: 500;
+}
+
+/* Análisis */
+.demo-panel--analisis {
+  flex-direction: row;
+  gap: 16px;
+}
+
+.demo-doc {
+  flex: 1.4;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 16px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+}
+
+.demo-linea {
+  display: block;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--marfil-claro);
+}
+
+.demo-linea--titulo { width: 55%; height: 10px; background: var(--piedra); margin-bottom: 4px; }
+.demo-linea--corta { width: 62%; }
+.demo-linea--marca { height: 9px; }
+.demo-linea--alto { background: #F2B8B0; box-shadow: inset 0 -2px 0 #C23B2E; }
+.demo-linea--medio { background: #F6D3B5; box-shadow: inset 0 -2px 0 #B9791E; width: 80%; }
+.demo-linea--bajo { background: #CFE6D7; box-shadow: inset 0 -2px 0 #2F8F5E; width: 70%; }
+
+.demo-riesgos {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.demo-riesgo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  background: var(--blanco);
+  font-size: 0.82rem;
+}
+
+.demo-riesgo-n {
+  font-family: var(--serif);
+  font-size: 1.25rem;
+}
+
+.demo-riesgo-n--alto { color: #C23B2E; }
+.demo-riesgo-n--medio { color: #8F5B10; }
+.demo-riesgo-n--bajo { color: #2F8F5E; }
+
+.demo-observacion {
+  margin-top: auto;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--texto-sec);
+}
+
+.demo-observacion em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--texto);
+  text-decoration: underline;
+}
+
+/* Contratos */
+.demo-plantilla {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: 12px;
+  background: var(--blanco);
+}
+
+.demo-plantilla-icono {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--marfil);
+  font-family: var(--serif);
+}
+
+.demo-plantilla-texto {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  font-size: 0.78rem;
+  color: var(--texto-sec);
+}
+
+.demo-plantilla-texto b {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--texto);
+}
+
+.demo-plantilla-accion { font-size: 0.82rem; font-weight: 500; }
+
+/* Normas */
+.demo-resumen {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--marfil);
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--texto-sec);
+}
+
+.demo-resumen b {
+  font-family: var(--serif);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--texto);
+}
+
+.demo-norma {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  background: var(--blanco);
+  font-size: 0.82rem;
+}
+
+.demo-sector {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--crema-2);
+  border: 1px solid var(--borde);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.demo-cta {
+  display: block;
+  padding: 13px 20px;
+  border-top: 1px solid var(--borde);
+  background: var(--blanco);
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--texto);
+}
+
+.demo-enter-active,
+.demo-leave-active { transition: opacity 0.3s var(--ease), transform 0.3s var(--ease); }
+.demo-enter-from { opacity: 0; transform: translateY(10px); }
+.demo-leave-to { opacity: 0; transform: translateY(-6px); }
 
 /* ==============================
-   Section headers (compartido)
+   ENCABEZADOS DE SECCIÓN
    ============================== */
 .section-header {
+  max-width: 760px;
+  margin: 0 auto clamp(40px, 6vw, 64px);
   text-align: center;
-  margin-bottom: 46px;
 }
 
 .section-label {
   display: inline-block;
-  font-size: 0.82rem;
-  font-weight: 600;
-  letter-spacing: 0.09em;
+  margin-bottom: 14px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--sp-accent);
-  margin-bottom: 12px;
+  /* grisáceo: se lee bien también sobre marfil (oliva quedaba en 3.7:1) */
+  color: var(--grisaceo);
 }
 
 .section-title {
-  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
-  font-optical-sizing: auto;
-  font-size: 2.3rem;
-  font-weight: 500;
-  letter-spacing: -0.02em;
   margin: 0;
-  color: var(--sp-text);
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(2rem, 4vw, 3.1rem);
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  color: var(--texto);
+}
+
+.section-title em { color: var(--oliva); }
+
+.section-subtitle {
+  margin: 18px auto 0;
+  max-width: 620px;
+  font-size: 1.04rem;
+  line-height: 1.65;
+  color: var(--texto-sec);
 }
 
 /* ==============================
-   Feature cards
+   BASE JURÍDICA (marfil + cinta en piedra)
    ============================== */
-.features-section {
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 90px 28px 30px;
+.base {
+  background: var(--marfil);
+  padding: 56px 0 0;
 }
 
-.features-grid {
+.base-cifras {
+  max-width: var(--ancho);
+  margin: 0 auto;
+  padding: 0 var(--gutter) 48px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 22px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
 }
 
-/* Tarjeta plana (ver "Dark Card" de la referencia): sin vidrio esmerilado
-   ni sombra fuerte — la profundidad sale del cambio de fondo (canvas →
-   surface) y de un borde fino, no de blur/shadow. El tilt 3D de GSAP
-   sigue funcionando igual, solo cambia qué se ve debajo del cursor. */
-.feature-card {
-  background: var(--sp-surface);
-  border: 1px solid var(--sp-border);
-  border-radius: 4px;
-  padding: 30px 26px;
-  box-shadow: none;
-  transition: transform 0.3s ease, border-color 0.3s ease, background-color 0.3s ease;
-}
-
-.feature-card:hover {
-  transform: translateY(-5px);
-  border-color: var(--sp-accent-soft-strong);
-  background: var(--sp-surface-alt);
-}
-
-.feature-icon-wrap {
-  width: 56px;
-  height: 56px;
-  border-radius: 4px;
+.cifra {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 22px;
-  background: var(--sp-accent-soft);
-  color: var(--sp-accent);
-  transition: background 0.25s, color 0.25s, transform 0.25s;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 20px;
+  border-left: 1px solid var(--borde-fuerte);
 }
 
-.feature-card:hover .feature-icon-wrap {
-  background: var(--sp-accent);
-  color: var(--sp-ink);
-  transform: scale(1.06);
-}
-
-.feature-title {
-  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
-  font-optical-sizing: auto;
-  font-size: 1.45rem;
+.cifra-numero {
+  font-family: var(--serif);
+  font-size: clamp(2.4rem, 4.6vw, 3.6rem);
   font-weight: 500;
-  letter-spacing: -0.01em;
-  margin: 0 0 9px;
-  color: var(--sp-text);
+  line-height: 1;
 }
 
-.feature-description {
-  font-size: 1rem;
-  line-height: 1.6;
-  color: var(--sp-text-muted);
-  margin: 0;
+.cifra-etiqueta {
+  font-size: 0.95rem;
+  color: var(--texto-sec);
 }
 
-/* ==============================
-   Fuentes legales / credibilidad
-   ============================== */
-.fuentes-section {
-  max-width: 780px;
-  margin: 0 auto;
-  padding: 40px 28px 70px;
-  text-align: center;
+.cinta {
+  overflow: hidden;
+  padding: 18px 0;
+  border-top: 1px solid var(--borde);
+  background: var(--piedra);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
 }
 
-.fuentes-subtitle {
-  font-size: 1rem;
-  line-height: 1.6;
-  color: var(--sp-text-muted);
-  max-width: 560px;
-  margin: 14px auto 0;
-}
-
-.fuentes-badges {
+.cinta-pista {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 30px;
+  width: max-content;
+  animation: cinta 48s linear infinite;
 }
 
-.fuente-badge {
+.cinta:hover .cinta-pista { animation-play-state: paused; }
+
+.cinta-item {
   display: inline-flex;
   align-items: center;
-  padding: 9px 18px;
-  border-radius: 999px;
-  background: var(--sp-accent-secondary-soft);
-  border: 1px solid var(--sp-accent-secondary-soft-strong);
-  color: var(--sp-accent-secondary);
-  font-size: 0.85rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  gap: 14px;
+  padding: 0 22px;
+  font-family: var(--serif);
+  font-size: 1.15rem;
+  white-space: nowrap;
+}
+
+.cinta-sep { color: var(--grisaceo); opacity: 0.7; }
+
+@keyframes cinta {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 
 /* ==============================
-   Steps / How it works
+   PRODUCTO (blanco)
    ============================== */
-.steps-section {
-  max-width: 1080px;
+.producto {
+  padding: clamp(80px, 10vw, 130px) var(--gutter);
+  background: var(--blanco);
+}
+
+.producto-grid {
+  max-width: var(--ancho);
   margin: 0 auto;
-  padding: 60px 28px 60px;
-}
-
-.steps-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
+  grid-template-columns: 1fr 1.1fr;
+  gap: clamp(28px, 4vw, 56px);
+  align-items: stretch;
 }
 
-.step-card {
+.producto-lista { display: flex; flex-direction: column; }
+
+.herr {
+  display: flex;
+  gap: 20px;
+  padding: 22px 8px;
+  border: none;
+  border-top: 1px solid var(--borde);
+  background: none;
+  text-align: left;
+  font: inherit;
+  color: var(--texto);
+  cursor: pointer;
+  transition: padding 0.35s var(--ease);
+}
+
+.herr:last-child { border-bottom: 1px solid var(--borde); }
+
+.herr-num {
+  font-family: var(--serif);
+  font-size: 0.95rem;
+  color: var(--texto-sec);
+  padding-top: 4px;
+}
+
+.herr-texto { display: flex; flex-direction: column; gap: 6px; }
+
+.herr-titulo {
+  font-family: var(--serif);
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--texto-sec);
+  transition: color 0.3s;
+}
+
+.herr-desc {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--texto-sec);
+  transition: max-height 0.45s var(--ease), opacity 0.35s;
+}
+
+.herr--activa { padding-left: 18px; }
+.herr--activa .herr-num,
+.herr--activa .herr-titulo { color: var(--texto); }
+.herr--activa .herr-desc { max-height: 120px; opacity: 1; }
+.herr:hover .herr-titulo { color: var(--texto); }
+.herr:focus-visible { outline: 2px solid var(--beige-oliva); outline-offset: -2px; }
+
+.producto-vista {
   position: relative;
   overflow: hidden;
-  background: var(--sp-surface);
-  border: 1px solid var(--sp-border);
-  border-radius: 4px;
-  padding: 30px 26px;
-  box-shadow: none;
-  transition: border-color 0.25s, background-color 0.25s;
+  min-height: 380px;
+  border-radius: var(--radio);
+  border: 1px solid var(--borde);
+  padding: clamp(28px, 4vw, 48px);
+  display: flex;
+  align-items: flex-end;
+  background: var(--crema);
+  transition: background-color 0.6s var(--ease);
 }
 
-.step-card::before {
+.producto-vista::before {
+  content: '§';
+  position: absolute;
+  top: -40px;
+  right: 10px;
+  font-family: var(--serif);
+  font-size: 320px;
+  line-height: 1;
+  color: var(--texto);
+  opacity: 0.06;
+  pointer-events: none;
+}
+
+/* Cada herramienta tiñe el panel con un tono claro distinto */
+.producto-vista[data-tono='bosque'] { background: var(--crema); }
+.producto-vista[data-tono='grisaceo'] { background: var(--marfil-claro); }
+.producto-vista[data-tono='oliva'] { background: var(--marfil); }
+.producto-vista[data-tono='piedra'] { background: var(--piedra); }
+
+.vista { position: relative; }
+
+.vista-etiqueta {
+  display: inline-block;
+  padding: 5px 12px;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.6);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--texto);
+}
+
+.vista-frase {
+  margin: 18px 0 22px;
+  font-family: var(--serif);
+  font-size: clamp(1.7rem, 3vw, 2.4rem);
+  line-height: 1.15;
+}
+
+.vista-puntos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.vista-puntos li {
+  position: relative;
+  padding: 12px 0 12px 22px;
+  border-top: 1px solid var(--borde-fuerte);
+  font-size: 0.95rem;
+}
+
+.vista-puntos li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: var(--oliva);
+}
+
+.vista-enter-active,
+.vista-leave-active { transition: opacity 0.35s var(--ease), transform 0.35s var(--ease); }
+.vista-enter-from { opacity: 0; transform: translateY(14px); }
+.vista-leave-to { opacity: 0; transform: translateY(-8px); }
+
+/* ==============================
+   ESPECIALIZACIONES (crema) — 4 tarjetas, todas visibles
+   ============================== */
+.especialidades {
+  padding: clamp(80px, 10vw, 130px) var(--gutter);
+  background: var(--crema-2);
+}
+
+.esp-grid {
+  max-width: var(--ancho);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+
+.esp {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 26px 24px 22px;
+  border-radius: var(--radio);
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  transition: transform 0.4s var(--ease), box-shadow 0.4s var(--ease), border-color 0.3s;
+}
+
+/* Franja de color arriba: cada área con un tono de la paleta */
+.esp::before {
   content: '';
   position: absolute;
   top: 0;
-  left: 0;
-  right: 0;
+  left: 24px;
+  right: 24px;
   height: 3px;
-  background: var(--sp-accent);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.3s ease;
+  border-radius: 0 0 3px 3px;
 }
 
-.step-card:hover {
+.esp--bosque::before { background: var(--grisaceo); }
+.esp--grisaceo::before { background: var(--oliva); }
+.esp--oliva::before { background: var(--beige-oliva); }
+.esp--beige::before { background: var(--piedra); }
+
+.esp:hover {
   transform: translateY(-6px);
-  border-color: var(--sp-accent-soft-strong);
-  background: var(--sp-surface-alt);
+  border-color: var(--borde-fuerte);
+  box-shadow: 0 24px 50px -28px rgba(23, 33, 27, 0.35);
 }
 
-.step-card:hover::before {
-  transform: scaleX(1);
+.esp-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.step-card:active {
-  transform: translateY(-2px) scale(0.99);
+.esp-num {
+  font-family: var(--serif);
+  font-size: 0.95rem;
+  color: var(--texto-sec);
 }
 
-.step-number {
-  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
-  font-optical-sizing: auto;
-  font-size: 2.6rem;
+.esp-icono {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--crema-2);
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  transition: background-color 0.3s;
+}
+
+.esp:hover .esp-icono { background: var(--marfil); }
+
+.esp-titulo {
+  margin: 22px 0 8px;
+  font-family: var(--serif);
+  font-size: 1.55rem;
   font-weight: 500;
-  line-height: 1;
-  color: var(--sp-accent-soft-strong);
-  margin-bottom: 14px;
-  transition: color 0.25s;
+  line-height: 1.15;
 }
 
-.step-card:hover .step-number {
-  color: var(--sp-accent);
+.esp-desc {
+  margin: 0 0 18px;
+  font-size: 0.94rem;
+  line-height: 1.55;
+  color: var(--texto-sec);
 }
 
-.step-title {
-  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
-  font-optical-sizing: auto;
-  font-size: 1.35rem;
+.esp-normas {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.esp-normas li {
+  position: relative;
+  padding-left: 16px;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.esp-normas li::before {
+  content: '§';
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: var(--serif);
+  color: var(--oliva);
+}
+
+.esp-cta {
+  margin-top: auto;
+  padding: 10px 0 0;
+  border: none;
+  border-top: 1px solid var(--borde);
+  background: none;
+  text-align: left;
+  font-family: var(--sans);
+  font-size: 0.86rem;
   font-weight: 500;
-  letter-spacing: -0.01em;
-  margin: 0 0 8px;
-  color: var(--sp-text);
+  color: var(--texto);
+  cursor: pointer;
 }
 
-.step-description {
+.esp-cta span { display: inline-block; transition: transform 0.3s var(--ease); }
+.esp-cta:hover span { transform: translateX(4px); }
+.esp-cta:focus-visible { outline: 2px solid var(--beige-oliva); outline-offset: 3px; }
+
+/* ==============================
+   CÓMO FUNCIONA (marfil)
+   ============================== */
+.pasos {
+  padding: clamp(80px, 10vw, 130px) var(--gutter);
+  background: var(--marfil);
+}
+
+.pasos-linea {
+  position: relative;
+  max-width: var(--ancho);
+  margin: 0 auto;
+}
+
+.pasos-linea-base,
+.pasos-linea-relleno {
+  position: absolute;
+  top: 27px;
+  left: calc(100% / 6);
+  right: calc(100% / 6);
+  height: 2px;
+}
+
+.pasos-linea-base { background: var(--borde-fuerte); }
+
+.pasos-linea-relleno {
+  background: var(--oliva);
+  transform-origin: left;
+  transform: scaleX(0);
+}
+
+.pasos-grid {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+}
+
+.paso { text-align: center; }
+
+.paso-punto {
+  display: inline-grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid var(--borde-fuerte);
+  background: var(--marfil);
+  font-family: var(--serif);
+  font-size: 1.15rem;
+  color: var(--texto-sec);
+  transition: background-color 0.4s, color 0.4s, border-color 0.4s, transform 0.4s var(--ease);
+}
+
+.paso--hecho .paso-punto {
+  background: var(--blanco);
+  border-color: var(--oliva);
+  color: var(--texto);
+  transform: scale(1.06);
+}
+
+.paso-titulo {
+  margin: 20px 0 8px;
+  font-family: var(--serif);
+  font-size: 1.45rem;
+  font-weight: 500;
+}
+
+.paso-desc {
+  max-width: 300px;
+  margin: 0 auto;
   font-size: 0.98rem;
   line-height: 1.6;
-  color: var(--sp-text-muted);
-  margin: 0;
+  color: var(--texto-sec);
 }
 
 /* ==============================
-   Nosotros / Dirección
+   NOSOTROS
    ============================== */
-.nosotros-section {
-  max-width: 1080px;
+.nosotros {
+  padding: clamp(80px, 10vw, 130px) var(--gutter) clamp(56px, 7vw, 90px);
+  background: var(--blanco);
+}
+
+.proposito {
+  max-width: var(--ancho);
   margin: 0 auto;
-  padding: 60px 28px 100px;
-}
-
-.nosotros-intro {
-  font-size: 1.05rem;
-  line-height: 1.65;
-  color: var(--sp-text-muted);
-  max-width: 620px;
-  margin: 14px auto 0;
-}
-
-/* Propósito — cita editorial a la izquierda + fotografía institucional
-   (blanco y negro) a la derecha, con leve parallax de scroll (ver script)
-   para que se sienta interactiva sin salirse del tono editorial. */
-.proposito-split {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
-  gap: 56px;
+  grid-template-columns: 1.1fr 1fr;
+  gap: clamp(28px, 5vw, 72px);
   align-items: center;
-  max-width: 1080px;
-  margin: 48px auto 0;
 }
 
-.proposito-content {
-  text-align: left;
+.proposito-comilla {
+  display: block;
+  font-family: var(--serif);
+  font-size: 6rem;
+  line-height: 0.6;
+  color: var(--piedra);
 }
 
 .proposito-quote {
-  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
-  font-optical-sizing: auto;
-  font-size: 1.5rem;
-  line-height: 1.5;
-  font-weight: 400;
-  color: var(--sp-text);
-  text-align: justify;
-  margin: 0 0 32px;
+  margin: 10px 0 28px;
+  font-family: var(--serif);
+  font-size: clamp(1.5rem, 2.6vw, 2.1rem);
+  line-height: 1.3;
 }
 
 .proposito-label {
-  display: inline-block;
-  font-size: 0.82rem;
-  font-weight: 600;
-  letter-spacing: 0.09em;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--sp-accent);
-  margin-bottom: 14px;
+  color: var(--oliva);
 }
 
-.proposito-tagline {
-  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
-  font-optical-sizing: auto;
-  font-size: 1.3rem;
-  font-weight: 500;
-  color: var(--sp-text);
-  margin: 0;
+.proposito-valores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 0;
 }
 
-.proposito-image-wrap {
-  position: relative;
-  aspect-ratio: 1500 / 1434;
-  border-radius: 4px;
+.proposito-valores span {
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: var(--crema-2);
+  border: 1px solid var(--borde);
+  font-size: 0.88rem;
+}
+
+.proposito-imagen,
+.mv-imagen {
   overflow: hidden;
+  border-radius: var(--radio);
+  aspect-ratio: 4 / 3;
 }
 
-.proposito-image {
-  position: absolute;
-  top: -10%;
-  left: 0;
+.parallax-img {
   width: 100%;
-  height: 120%;
+  height: 112%;
   object-fit: cover;
   display: block;
-  will-change: transform;
 }
 
-/* Misión / Visión — imagen a la izquierda, texto plano editorial a la
-   derecha (sin caja ni borde en el texto: solo título en negrita +
-   párrafo debajo, como una cita de catálogo/galería). */
-.mv-split {
+.mv {
+  background: var(--crema-2);
+  padding: clamp(72px, 9vw, 120px) var(--gutter);
+}
+
+.mv-inner {
+  max-width: var(--ancho);
+  margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 48px;
+  grid-template-columns: 1fr 1.1fr;
+  gap: clamp(28px, 5vw, 72px);
   align-items: center;
-  max-width: 1080px;
-  margin: 48px auto 0;
 }
 
-.mv-image-wrap {
-  position: relative;
-  aspect-ratio: 1500 / 1105;
-  border-radius: 4px;
-  overflow: hidden;
-}
+.mv-bloques { display: flex; flex-direction: column; gap: 36px; }
 
-.mv-image {
-  position: absolute;
-  top: -10%;
-  left: 0;
-  width: 100%;
-  height: 120%;
-  object-fit: cover;
-  display: block;
-  will-change: transform;
-}
-
-.mv-block {
-  text-align: left;
-}
-
-.mv-text {
-  font-size: 1.02rem;
-  line-height: 1.7;
-  color: var(--sp-text-muted);
-  margin: 0 0 28px;
-}
-
-.mv-text:last-child {
-  margin-bottom: 0;
+.mv-bloque {
+  padding-left: 22px;
+  border-left: 2px solid var(--beige-oliva);
 }
 
 .mv-label {
-  display: inline;
-  font-weight: 700;
-  color: var(--sp-text);
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--oliva);
 }
 
-/* Subtítulo que separa "Equipo" (grilla general) de "Dirección" (las dos
-   tarjetas grandes que ya había) dentro de la misma sección Nosotros. */
-.nosotros-subheading {
-  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
-  font-optical-sizing: auto;
-  font-size: 1.1rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: var(--sp-text);
-  text-align: center;
-  margin: 56px 0 24px;
+.mv-texto {
+  margin: 10px 0 0;
+  font-family: var(--serif);
+  font-size: clamp(1.15rem, 1.8vw, 1.4rem);
+  line-height: 1.5;
 }
 
-/* Grilla "Equipo" — más chica que la de Dirección pero no tan angosta
-   como antes, en fila, sin recuadro (mismo criterio que Dirección: solo
-   la foto y el texto debajo, nada de caja). */
-.equipo-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 20px;
-  max-width: 1080px;
+.equipo {
+  padding: clamp(64px, 8vw, 110px) var(--gutter);
+  max-width: var(--ancho);
   margin: 0 auto;
 }
 
-/* 5 en fila solo cuando entran; en tablet y celular, menos columnas para
-   que las fotos no queden diminutas. */
-@media (max-width: 900px) {
-  .equipo-grid { grid-template-columns: repeat(3, 1fr); }
-}
-
-@media (max-width: 520px) {
-  .equipo-grid { grid-template-columns: repeat(2, 1fr); }
-}
-
-.miembro-card {
+.equipo-subtitulo {
+  margin: 0 0 28px;
+  font-family: var(--serif);
+  font-size: 1.6rem;
+  font-weight: 500;
   text-align: center;
 }
 
-.miembro-photo-wrap {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 3 / 4.3;
-  overflow: hidden;
-  border-radius: 4px;
-  background: var(--sp-canvas);
+.equipo-subtitulo:not(:first-child) { margin-top: 72px; }
+
+.direccion-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 340px));
+  justify-content: center;
+  gap: 28px;
 }
 
-.miembro-photo {
+.persona-foto,
+.miembro-foto {
+  overflow: hidden;
+  border-radius: var(--radio);
+  background: var(--marfil);
+}
+
+.persona-foto { aspect-ratio: 4 / 5; }
+.miembro-foto { aspect-ratio: 1; border-radius: 50%; }
+
+.persona-foto img,
+.miembro-foto img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: top center;
   display: block;
-  transition: transform 0.4s ease;
+  filter: grayscale(1) contrast(1.02);
+  transition: filter 0.6s var(--ease), transform 0.8s var(--ease);
 }
 
-.miembro-card:hover .miembro-photo {
+.persona:hover img,
+.miembro:hover img {
+  filter: grayscale(0);
   transform: scale(1.04);
 }
 
+.persona-info { padding: 18px 4px 0; }
+
+.persona-nombre,
 .miembro-nombre {
-  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
-  font-optical-sizing: auto;
-  font-size: 0.95rem;
-  font-weight: 500;
-  letter-spacing: -0.005em;
-  margin: 14px 0 3px;
-  color: var(--sp-text);
-}
-
-.miembro-cargo {
-  font-size: 0.72rem;
-  font-weight: 500;
-  line-height: 1.4;
-  color: var(--sp-text-faint);
   margin: 0;
-  padding: 0 4px;
-}
-
-.nosotros-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 24px;
-  max-width: 920px;
-  margin: 0 auto;
-}
-
-/* Retrato grande sin recuadro — solo la foto "flotando" sobre el fondo
-   de la página, con el nombre/cargo debajo, también sin caja. Antes
-   tenían una tarjeta (fondo + borde) alrededor; a pedido del usuario se
-   quitó ese encierro. */
-.persona-card {
-  text-align: center;
-}
-
-.persona-photo-wrap {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 3 / 4;
-  overflow: hidden;
-  border-radius: 4px;
-  background: var(--sp-canvas);
-}
-
-.persona-photo {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: top center;
-  display: block;
-  transition: transform 0.4s ease;
-}
-
-.persona-card:hover .persona-photo {
-  transform: scale(1.03);
-}
-
-.persona-caption {
-  padding: 18px 6px 0;
-}
-
-.persona-nombre {
-  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
-  font-optical-sizing: auto;
-  font-size: 1.3rem;
+  font-family: var(--serif);
+  font-size: 1.35rem;
   font-weight: 500;
-  letter-spacing: -0.01em;
-  margin: 0 0 4px;
-  color: var(--sp-text);
 }
 
 .persona-cargo {
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--sp-accent);
-  margin: 0;
+  margin: 4px 0 2px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--oliva);
 }
 
-.persona-area {
-  font-size: 0.85rem;
-  color: var(--sp-text-muted);
-  margin: 4px 0 0;
+.persona-area,
+.miembro-area {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--texto-sec);
 }
+
+.equipo-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 24px;
+  text-align: center;
+}
+
+.miembro-nombre { margin-top: 14px; font-size: 1.15rem; }
+.miembro-area { margin-top: 4px; font-size: 0.8rem; }
 
 /* ==============================
-   Footer
+   CIERRE (marfil con luces suaves)
+   ============================== */
+.cta {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(80px, 10vw, 130px) var(--gutter);
+  background:
+    radial-gradient(700px circle at 15% 0%, rgba(255, 255, 255, 0.7), transparent 60%),
+    radial-gradient(600px circle at 90% 100%, rgba(189, 181, 155, 0.55), transparent 60%),
+    var(--marfil);
+  text-align: center;
+}
+
+.cta-inner { max-width: 760px; margin: 0 auto; }
+
+.cta-titulo {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(2.2rem, 4.6vw, 3.6rem);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+}
+
+.cta-titulo em { color: var(--oliva); }
+
+.cta-texto {
+  margin: 18px 0 32px;
+  font-size: 1.05rem;
+  color: var(--texto-sec);
+}
+
+.cta .hero-acciones { justify-content: center; }
+
+/* ==============================
+   FOOTER (crema)
    ============================== */
 .landing-footer {
-  border-top: 1px solid var(--sp-border);
-  padding: 30px 28px;
-  position: relative;
-  z-index: 1;
+  background: var(--crema);
+  border-top: 1px solid var(--borde);
+  padding: 56px var(--gutter) 28px;
 }
 
 .footer-inner {
-  max-width: 1180px;
+  max-width: var(--ancho);
   margin: 0 auto;
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 32px;
   flex-wrap: wrap;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--borde);
 }
 
-.footer-brand {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-}
-
-.footer-logo-text {
-  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
-  font-optical-sizing: auto;
-  font-size: 1.2rem;
+.footer-logo {
+  font-family: var(--serif);
+  font-size: 1.8rem;
   font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--sp-text);
 }
+
+.footer-lema { margin: 6px 0 0; font-size: 0.9rem; color: var(--texto-sec); }
+
+.footer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 26px;
+  align-content: flex-start;
+}
+
+.footer-nav a {
+  color: var(--texto-sec);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.25s;
+}
+
+.footer-nav a:hover { color: var(--texto); text-decoration: underline; }
 
 .footer-copy {
-  font-size: 0.85rem;
-  color: var(--sp-text-faint);
-  margin: 0;
+  max-width: var(--ancho);
+  margin: 22px auto 0;
+  font-size: 0.8rem;
+  color: var(--texto-sec);
 }
 
 /* ==============================
-   Responsive
+   REVELADO AL HACER SCROLL
    ============================== */
-@media (max-width: 768px) {
-  .header-inner {
-    padding: 12px 16px;
-  }
-
-  .header-logo-text {
-    font-size: 1.2rem;
-  }
-
-  .header-nav {
-    display: none;
-  }
-
-  .hero-section {
-    padding: 64px 20px 70px;
-  }
-
-  .hero-title {
-    font-size: 2.6rem;
-  }
-
-  .features-section {
-    padding: 60px 16px 20px;
-  }
-
-  .steps-section {
-    padding: 40px 16px 40px;
-  }
-
-  .nosotros-section {
-    padding: 40px 16px 60px;
-  }
-
-  .features-grid,
-  .steps-grid,
-  .nosotros-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .proposito-split,
-  .mv-split {
-    grid-template-columns: 1fr;
-    gap: 28px;
-  }
-
-  .proposito-quote {
-    font-size: 1.25rem;
-  }
-
-  .equipo-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .footer-inner {
-    flex-direction: column;
-    text-align: center;
-  }
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.9s var(--ease), transform 0.9s var(--ease);
 }
 
-@media (max-width: 480px) {
-  .hero-title {
-    font-size: 2.15rem;
+.reveal.is-visible { opacity: 1; transform: none; }
+
+/* Las tarjetas de especialización entran una tras otra */
+.esp-grid .esp.reveal:nth-child(2) { transition-delay: 0.08s; }
+.esp-grid .esp.reveal:nth-child(3) { transition-delay: 0.16s; }
+.esp-grid .esp.reveal:nth-child(4) { transition-delay: 0.24s; }
+
+/* ==============================
+   RESPONSIVE
+   ============================== */
+@media (max-width: 1024px) {
+  .hero-inner,
+  .producto-grid,
+  .proposito,
+  .mv-inner { grid-template-columns: 1fr; }
+
+  .hero { padding-top: 120px; }
+  .demo { max-width: 620px; }
+
+  .esp-grid { grid-template-columns: repeat(2, 1fr); }
+  .equipo-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .header-nav { display: none; }
+  .header-inner { justify-content: space-between; }
+
+  .base-cifras { grid-template-columns: 1fr; gap: 20px; }
+
+  .pasos-linea-base,
+  .pasos-linea-relleno { display: none; }
+  .pasos-grid { grid-template-columns: 1fr; gap: 36px; }
+
+  .direccion-grid { grid-template-columns: minmax(0, 340px); }
+}
+
+@media (max-width: 560px) {
+  .esp-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 520px) {
+  .demo-tab { font-size: 0.76rem; padding: 8px 2px; }
+  .demo-panel--analisis { flex-direction: column; }
+  .equipo-grid { grid-template-columns: repeat(2, 1fr); }
+  .btn { width: 100%; justify-content: center; }
+}
+
+/* ==============================
+   MOVIMIENTO REDUCIDO
+   ============================== */
+@media (prefers-reduced-motion: reduce) {
+  .landing-page *,
+  .landing-page *::before,
+  .landing-page *::after {
+    animation: none !important;
+    transition: none !important;
   }
 
-  .hero-description {
-    font-size: 1.02rem;
-  }
+  .reveal { opacity: 1; transform: none; }
+  .cinta-pista { transform: none; }
 }
 </style>

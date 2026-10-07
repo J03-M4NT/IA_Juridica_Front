@@ -4,7 +4,7 @@
     <!-- Section header -->
     <div class="page-header">
       <div class="section-icon-wrap icon-admin">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#B5502E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
         </svg>
       </div>
@@ -18,7 +18,7 @@
     <div class="stats-row q-mb-lg">
       <div class="stat-card">
         <div class="stat-icon-wrap icon-teal">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B5502E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <path d="M14 2v6h6"/>
           </svg>
@@ -32,7 +32,7 @@
       <!-- ✅ Stat card Pinecone -->
       <div class="stat-card">
         <div class="stat-icon-wrap icon-purple">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B5502E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <ellipse cx="12" cy="5" rx="9" ry="3"/>
             <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
             <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
@@ -53,7 +53,7 @@
           <q-btn
             color="accent"
             icon="cloud_upload"
-            label="Subir PDF a Pinecone"
+            label="Subir normas (PDF / Word)"
             no-caps unelevated
             @click="pineconeDialog = true"
           />
@@ -74,7 +74,7 @@
         <div class="row items-center q-gutter-md">
           <q-icon name="info" color="accent" size="20px" />
           <span class="text-grey-7" style="font-size:0.9rem;">
-            Los PDFs subidos aquí se indexan en Pinecone y son usados por la IA para responder consultas jurídicas con información precisa y verificada.
+            Las normas subidas aquí (PDF, Word .docx o .doc de SPIJ) se indexan en Pinecone y la IA las usa para responder consultas jurídicas. Elige su especialización para que aparezcan en la carpeta correcta y en el filtro de Consultas.
           </span>
         </div>
 
@@ -83,20 +83,27 @@
           <div class="text-weight-bold text-grey-8 q-mb-sm" style="font-size:0.85rem;">
             DOCUMENTOS INDEXADOS ({{ documentosIndexados.length }})
           </div>
-          <div class="row q-gutter-sm">
-            <q-chip
-              v-for="doc in documentosIndexados"
-              :key="doc.id"
-              color="accent"
-              text-color="white"
-              icon="description"
-              removable
-              @remove="eliminarDeIndexados(doc)"
-            >
-              {{ doc.nombre }}
-              <span class="q-ml-xs" style="opacity:0.75;">· {{ doc.chunks }} frag.</span>
-              <q-tooltip>{{ doc.tipo || 'sin tipo' }} — {{ doc.chunks }} fragmentos en Pinecone</q-tooltip>
-            </q-chip>
+          <!-- Agrupados por especialización, como las carpetas del compartido. -->
+          <div v-for="grupo in documentosPorArea" :key="grupo.area" class="normas-grupo">
+            <div class="normas-grupo-titulo">
+              <q-icon name="folder" size="18px" />
+              {{ grupo.etiqueta }} <span class="normas-grupo-cuenta">({{ grupo.docs.length }})</span>
+            </div>
+            <div class="row q-gutter-sm">
+              <q-chip
+                v-for="doc in grupo.docs"
+                :key="doc.id"
+                color="accent"
+                text-color="white"
+                icon="description"
+                removable
+                @remove="eliminarDeIndexados(doc)"
+              >
+                {{ doc.nombre }}
+                <span class="q-ml-xs" style="opacity:0.75;">· {{ doc.chunks }} frag.</span>
+                <q-tooltip>{{ doc.tipo || 'sin tipo' }} — {{ doc.chunks }} fragmentos en Pinecone</q-tooltip>
+              </q-chip>
+            </div>
           </div>
         </div>
 
@@ -166,23 +173,26 @@
     <q-dialog v-model="pineconeDialog" persistent>
       <div class="lx-dialog-card">
         <div class="lx-dialog-header">
-          <span class="lx-dialog-title">Subir PDF a Pinecone</span>
+          <span class="lx-dialog-title">Subir normas a la base jurídica</span>
           <button class="lx-dialog-close" type="button" @click="pineconeDialog = false">✕</button>
         </div>
         <div class="lx-dialog-body">
 
-          <q-input
-            v-model="pdfPinecone.nombre"
-            label="Nombre del documento *"
-            outlined dense
-            label-color="grey-8" color="accent" input-class="text-grey-9"
-            hint="Ej: Código Penal Peruano"
-            :rules="[v => !!v || 'Requerido']"
-            class="lx-input q-mb-sm"
+          <!-- Especialización = la carpeta del compartido (Derecho Penal,
+               Civil, Tributario, Comercial). Se elige una vez para todos los
+               archivos del lote. -->
+          <q-select
+            v-model="cargaNormas.area"
+            label="Especialización"
+            outlined dense emit-value map-options clearable
+            label-color="grey-8" color="accent"
+            :options="opcionesEspecialidad"
+            hint="Con especialización, cada norma con artículos se corta por artículo (para citarla exacto)."
+            class="lx-input q-mb-md"
           />
 
           <q-select
-            v-model="pdfPinecone.tipo"
+            v-model="cargaNormas.tipo"
             label="Tipo de documento *"
             outlined dense
             label-color="grey-8" color="accent"
@@ -192,19 +202,54 @@
           />
 
           <q-file
-            v-model="pdfPinecone.archivo"
-            label="Archivo PDF *"
-            outlined dense
+            :model-value="cargaNormas.archivos"
+            label="Archivos (PDF, Word .docx o .doc de SPIJ) *"
+            outlined dense multiple append
             label-color="grey-8" color="accent"
-            accept=".pdf"
-            max-file-size="20971520"
-            :rules="[v => !!v || 'Selecciona un PDF']"
-            class="lx-input q-mb-md"
+            accept=".pdf,.docx,.doc"
+            :max-file-size="MAX_BYTES_NORMA"
+            :disable="subiendoPinecone"
+            class="lx-input q-mb-sm"
+            @update:model-value="onArchivosNormas"
+            @rejected="onArchivosRechazados"
           >
             <template #prepend>
               <q-icon name="attach_file" color="grey-7" />
             </template>
           </q-file>
+
+          <!-- Un nombre por archivo (es el que verá el usuario en la cita).
+               Se sugiere a partir del título que trae el documento. -->
+          <div v-if="cargaNormas.items.length" class="normas-lote-resumen">
+            {{ normasPendientes.length }} lista(s) para indexar
+            <template v-if="cargaNormas.items.some(i => i.estado === 'leyendo')"> · leyendo {{ cargaNormas.items.filter(i => i.estado === 'leyendo').length }}…</template>
+            <template v-if="cargaNormas.items.some(i => i.estado === 'duplicado')"> · {{ cargaNormas.items.filter(i => i.estado === 'duplicado').length }} duplicada(s)</template>
+            <template v-if="cargaNormas.items.some(i => i.estado === 'error')"> · {{ cargaNormas.items.filter(i => i.estado === 'error').length }} con error (no se subirán)</template>
+          </div>
+          <div v-if="cargaNormas.items.length" class="normas-lote q-mb-md">
+            <div v-for="(item, idx) in cargaNormas.items" :key="item.clave" class="normas-lote-item">
+              <q-input
+                v-model="item.nombre"
+                :label="item.archivo.name"
+                outlined dense
+                label-color="grey-8" color="accent" input-class="text-grey-9"
+                :loading="item.estado === 'leyendo'"
+                :disable="subiendoPinecone || item.estado === 'listo' || item.estado === 'duplicado'"
+                :error="item.estado === 'error'"
+                :error-message="item.mensaje"
+                class="lx-input col"
+              >
+                <template #append>
+                  <q-icon v-if="item.estado === 'listo'" name="check_circle" color="positive" size="20px" />
+                  <q-btn v-else-if="!subiendoPinecone" flat round dense icon="close" size="sm" @click="quitarNorma(idx)" />
+                </template>
+              </q-input>
+              <div v-if="item.mensaje && item.estado !== 'error'" class="normas-lote-nota" :class="{ 'normas-lote-nota--aviso': item.estado === 'duplicado' }">
+                {{ item.mensaje }}
+                <button v-if="item.estado === 'duplicado' && !subiendoPinecone" type="button" class="normas-lote-incluir" @click="incluirIgual(item)">Incluir igual</button>
+              </div>
+            </div>
+          </div>
 
           <!-- Progress -->
           <div v-if="subiendoPinecone" class="q-mb-md">
@@ -221,16 +266,16 @@
           </div>
 
           <div class="lx-dialog-footer">
-            <button class="lx-btn-ghost" type="button" @click="pineconeDialog = false">
-              Cancelar
+            <button class="lx-btn-ghost" type="button" @click="cerrarCargaNormas">
+              {{ cargaNormas.items.some(i => i.estado === 'listo') ? 'Cerrar' : 'Cancelar' }}
             </button>
             <q-btn
               color="accent"
-              label="Indexar en Pinecone"
+              :label="etiquetaBotonIndexar"
               icon="cloud_upload"
               no-caps unelevated
               :loading="subiendoPinecone"
-              :disable="!pdfPinecone.nombre || !pdfPinecone.tipo || !pdfPinecone.archivo"
+              :disable="!puedeIndexarNormas"
               @click="subirPDFaPinecone"
             />
           </div>
@@ -358,7 +403,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { collection, getDocs, orderBy, query } from 'firebase/firestore'
 import { db } from '../firebase/firebaseConfig'
@@ -370,7 +415,8 @@ import {
   eliminarDocumentoPinecone,
   type DocumentoIndexado
 } from '../services/pineconeService'
-import { extraerTextoPDF } from '../utils/pdfExtractor'
+import { extraerTextoNorma, sugerirNombreNorma } from '../utils/extraerTextoNorma'
+import { ESPECIALIDADES, etiquetaEspecialidad } from '../constants/especialidades'
 const $q = useQuasar()
 
 interface Template {
@@ -427,10 +473,144 @@ const tiposDocumento = [
   'otro'
 ]
 
-const pdfPinecone = ref({
-  nombre: '',
-  tipo: '',
-  archivo: null as File | null
+// Carga en lote: varios archivos (PDF, .docx o .doc de SPIJ) de una misma
+// especialización. Cada archivo se lee al elegirlo, para sugerir su nombre
+// (el título que trae el documento) y detectar errores antes de subir.
+interface NormaACargar {
+  clave: string
+  archivo: File
+  nombre: string
+  texto: string
+  estado: 'leyendo' | 'pendiente' | 'duplicado' | 'subiendo' | 'listo' | 'error'
+  mensaje: string
+}
+
+const cargaNormas = ref({
+  area: null as string | null,
+  tipo: 'ley-general',
+  archivos: [] as File[],
+  items: [] as NormaACargar[]
+})
+
+// Los PDF oficiales de los códigos pesan bastante (el Código Procesal Penal
+// de SPIJ, 75 MB). El texto se extrae en el navegador, así que el tope es
+// solo para no colgar la pestaña con archivos desproporcionados.
+const MAX_BYTES_NORMA = 150 * 1024 * 1024
+
+// Quasar descarta en silencio los archivos que no cumplen accept/tamaño:
+// se avisa cuáles y por qué.
+function onArchivosRechazados(rechazos: { failedPropValidation: string; file: File }[]) {
+  for (const { failedPropValidation, file } of rechazos) {
+    $q.notify({
+      type: 'warning',
+      message: failedPropValidation === 'max-file-size'
+        ? `"${file.name}" pesa ${(file.size / 1048576).toFixed(0)} MB: el máximo es 150 MB.`
+        : `"${file.name}": formato no soportado (usa PDF, .docx o .doc de SPIJ).`,
+      timeout: 6000
+    })
+  }
+}
+
+const opcionesEspecialidad = ESPECIALIDADES.map(e => ({ label: e.etiqueta, value: e.valor }))
+
+const normasPendientes = computed(() => cargaNormas.value.items.filter(i => i.estado === 'pendiente'))
+const puedeIndexarNormas = computed(() =>
+  !!cargaNormas.value.tipo &&
+  normasPendientes.value.length > 0 &&
+  !cargaNormas.value.items.some(i => i.estado === 'leyendo' || i.estado === 'subiendo') &&
+  normasPendientes.value.every(i => i.nombre.trim() && i.texto)
+)
+
+// Menos texto que esto no es una norma: suele ser una página de enlace de
+// SPIJ ("Hacer click para ir al contenido...") o una nota.
+const MIN_CARACTERES_NORMA = 500
+
+// Clave para reconocer la misma norma con nombres distintos: su número
+// ("Ley N° 29571" → "29571") o, si no tiene, el nombre normalizado.
+function claveDeNorma(nombre: string): string {
+  // El último número del nombre es el de la propia norma: "...a la Decisión
+  // 486... (Decreto Legislativo N° 1075)" es la 1075, no la 486.
+  const numeros = [...nombre.matchAll(/\b(?:ley|decreto(?:\s+legislativo)?|decisi[oó]n)\b[^\d]{0,12}(\d{2,6}(?:-\d{2,4})?)/gi)]
+  const numero = numeros[numeros.length - 1]?.[1]
+  if (numero) return numero
+  return nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+// Marca como duplicada una norma que ya está en la base o que se repite en
+// el lote (subirla dos veces duplica sus fragmentos). Se puede incluir igual.
+function revisarDuplicado(item: NormaACargar) {
+  const clave = claveDeNorma(item.nombre)
+  const yaIndexada = documentosIndexados.value.find(d => claveDeNorma(d.nombre) === clave)
+  const repetida = cargaNormas.value.items.find(i => i !== item && i.estado !== 'error' && i.texto && claveDeNorma(i.nombre) === clave && cargaNormas.value.items.indexOf(i) < cargaNormas.value.items.indexOf(item))
+  if (yaIndexada) {
+    item.estado = 'duplicado'
+    item.mensaje = `Ya está en la base: "${yaIndexada.nombre}"${yaIndexada.area ? ` (${etiquetaEspecialidad(yaIndexada.area)})` : ''}. No se subirá.`
+  } else if (repetida) {
+    item.estado = 'duplicado'
+    item.mensaje = `Repetida en este lote ("${repetida.archivo.name}"). No se subirá.`
+  }
+}
+
+function incluirIgual(item: NormaACargar) {
+  item.estado = 'pendiente'
+  item.mensaje = ''
+}
+const etiquetaBotonIndexar = computed(() =>
+  normasPendientes.value.length > 1 ? `Indexar ${normasPendientes.value.length} normas` : 'Indexar en Pinecone'
+)
+
+async function leerNorma(item: NormaACargar) {
+  try {
+    const texto = await extraerTextoNorma(item.archivo)
+    if (!texto || texto.length < 50) throw new Error('No se pudo extraer texto. Si es un PDF escaneado, no sirve.')
+    if (texto.length < MIN_CARACTERES_NORMA) {
+      throw new Error(`Casi vacío (${texto.length} caracteres): parece un enlace o una nota, no el texto de la norma.`)
+    }
+    item.texto = texto
+    item.nombre = sugerirNombreNorma(texto, item.archivo.name)
+    item.estado = 'pendiente'
+    item.mensaje = ''
+    revisarDuplicado(item)
+  } catch (err) {
+    item.estado = 'error'
+    item.mensaje = err instanceof Error ? err.message : 'No se pudo leer el archivo'
+  }
+}
+
+function onArchivosNormas(valor: File[] | File | null) {
+  const archivos = Array.isArray(valor) ? valor : valor ? [valor] : []
+  cargaNormas.value.archivos = archivos
+  const yaEstan = new Set(cargaNormas.value.items.map(i => i.clave))
+  for (const archivo of archivos) {
+    const clave = `${archivo.name}:${archivo.size}:${archivo.lastModified}`
+    if (yaEstan.has(clave)) continue
+    cargaNormas.value.items.push({ clave, archivo, nombre: archivo.name, texto: '', estado: 'leyendo', mensaje: '' })
+    // Se lee desde el array reactivo, para que la pantalla vea los cambios.
+    void leerNorma(cargaNormas.value.items[cargaNormas.value.items.length - 1]!)
+  }
+}
+
+function quitarNorma(idx: number) {
+  const [quitado] = cargaNormas.value.items.splice(idx, 1)
+  if (quitado) cargaNormas.value.archivos = cargaNormas.value.archivos.filter(a => a !== quitado.archivo)
+}
+
+function cerrarCargaNormas() {
+  pineconeDialog.value = false
+  cargaNormas.value = { area: null, tipo: 'ley-general', archivos: [], items: [] }
+}
+
+// Documentos indexados agrupados por especialización (como las carpetas).
+const documentosPorArea = computed(() => {
+  const grupos = new Map<string, DocumentoIndexado[]>()
+  for (const doc of documentosIndexados.value) {
+    const clave = doc.area ?? ''
+    grupos.set(clave, [...(grupos.get(clave) ?? []), doc])
+  }
+  const orden = [...ESPECIALIDADES.map(e => e.valor as string), '']
+  return [...grupos.entries()]
+    .sort((a, b) => orden.indexOf(a[0]) - orden.indexOf(b[0]))
+    .map(([area, docs]) => ({ area, etiqueta: etiquetaEspecialidad(area) || 'Sin especialización', docs }))
 })
 
 const columns = [
@@ -472,72 +652,61 @@ const cargarStatsPinecone = async () => {
 }
 
 // =========================
-// SUBIR PDF A PINECONE
+// SUBIR NORMAS A PINECONE (una o varias, en orden)
 // =========================
 const subirPDFaPinecone = async () => {
-  if (!pdfPinecone.value.archivo) return
+  const lote = normasPendientes.value
+  if (lote.length === 0) return
 
   subiendoPinecone.value = true
   porcentajePinecone.value = 0
-  progresoPinecone.value = 'Iniciando...'
+  let subidas = 0
 
-  try {
-    // 1. Extraer texto del PDF
-    progresoPinecone.value = 'Extrayendo texto del PDF...'
-    const texto = await extraerTextoPDF(pdfPinecone.value.archivo, (i, total) => {
-      progresoPinecone.value = `Extrayendo texto: página ${i} de ${total}...`
-      porcentajePinecone.value = (i / total) * 0.3 // 30% del progreso
-    })
-
-    if (!texto || texto.length < 50) {
-      throw new Error('No se pudo extraer texto del PDF. Verifica que no esté escaneado.')
+  for (const [n, item] of lote.entries()) {
+    item.estado = 'subiendo'
+    item.mensaje = ''
+    const prefijo = lote.length > 1 ? `(${n + 1}/${lote.length}) ` : ''
+    progresoPinecone.value = `${prefijo}Indexando "${item.nombre}"...`
+    try {
+      const documentoId = `${cargaNormas.value.tipo}_${Date.now()}`
+      const resultado = await guardarDocumentoEnPinecone(
+        documentoId,
+        item.nombre.trim(),
+        item.texto,
+        cargaNormas.value.tipo,
+        (loteActual, totalLotes) => {
+          progresoPinecone.value = `${prefijo}"${item.nombre}": lote ${loteActual} de ${totalLotes}...`
+          porcentajePinecone.value = (n + loteActual / totalLotes) / lote.length
+        },
+        cargaNormas.value.area ? { area: cargaNormas.value.area } : {}
+      )
+      item.estado = 'listo'
+      item.mensaje = resultado.articulos > 0
+        ? `${resultado.chunksGuardados} fragmentos · ${resultado.articulos} artículos`
+        : `${resultado.chunksGuardados} fragmentos (sin artículos: corte por longitud)`
+      vectoresTotales.value += resultado.chunksGuardados
+      subidas++
+    } catch (err) {
+      const error = err as Error
+      console.error('❌ Error subiendo a Pinecone:', error)
+      item.estado = 'error'
+      item.mensaje = error.message
     }
-
-    // 2. Guardar en Pinecone
-    progresoPinecone.value = 'Indexando en Pinecone...'
-    porcentajePinecone.value = 0.4
-
-    const documentoId = `${pdfPinecone.value.tipo}_${Date.now()}`
-
-    const resultado = await guardarDocumentoEnPinecone(
-      documentoId,
-      pdfPinecone.value.nombre,
-      texto,
-      pdfPinecone.value.tipo,
-      (loteActual, totalLotes) => {
-        progresoPinecone.value = `Indexando en Pinecone: lote ${loteActual} de ${totalLotes}...`
-        porcentajePinecone.value = 0.4 + (loteActual / totalLotes) * 0.6
-      }
-    )
-
-    porcentajePinecone.value = 1
-
-    // 3. Refrescar lista y contador desde Pinecone
-    vectoresTotales.value += resultado.chunksGuardados
-    void cargarDocumentosIndexados()
-
-    $q.notify({
-      type: 'positive',
-      message: `✅ "${pdfPinecone.value.nombre}" indexado correctamente (${resultado.chunksGuardados} fragmentos)`,
-      timeout: 5000
-    })
-
-    pineconeDialog.value = false
-    pdfPinecone.value = { nombre: '', tipo: '', archivo: null }
-
-  } catch (err) {
-    const error = err as Error
-    console.error('❌ Error subiendo a Pinecone:', error)
-    $q.notify({
-      type: 'negative',
-      message: `Error: ${error.message}`,
-      timeout: 6000
-    })
-  } finally {
-    subiendoPinecone.value = false
-    progresoPinecone.value = ''
-    porcentajePinecone.value = 0
   }
+
+  subiendoPinecone.value = false
+  progresoPinecone.value = ''
+  porcentajePinecone.value = 0
+  void cargarDocumentosIndexados()
+
+  const fallidas = lote.length - subidas
+  $q.notify({
+    type: fallidas === 0 ? 'positive' : 'warning',
+    message: fallidas === 0
+      ? (subidas === 1 ? '✅ 1 norma indexada correctamente' : `✅ ${subidas} normas indexadas correctamente`)
+      : `Se indexaron ${subidas} de ${lote.length}. Revisa las que quedaron con error.`,
+    timeout: 6000
+  })
 }
 
 // =========================
@@ -659,7 +828,7 @@ onMounted(async () => {
    las demás páginas: selector combinado para ganarle a la regla
    compartida sin tocarla. */
 .q-page.admin-page {
-  background: #FFFFFF;
+  background: var(--lexit-blanco);
 }
 
 @keyframes floatUp {
@@ -687,8 +856,8 @@ onMounted(async () => {
 }
 
 .icon-admin  { background: var(--accent-soft); }
-.icon-teal   { background: var(--accent-soft); }
-.icon-purple { background: var(--accent-soft); }
+.icon-teal   { background: var(--accent-soft); color: var(--lexit-verde); }
+.icon-purple { background: var(--accent-soft); color: var(--lexit-verde); }
 
 .page-title {
   font-family: 'Baskervville', 'EB Garamond', serif;
@@ -899,7 +1068,7 @@ color: var(--text-secondary);
   transition: background 0.2s;
 }
 
-.lx-dialog-close:hover { background: rgba(27, 27, 30, 0.10); }
+.lx-dialog-close:hover { background: var(--lexit-marfil-suave); }
 
 .lx-dialog-body { padding: 20px 28px 28px; }
 
@@ -934,4 +1103,62 @@ color: var(--text-secondary);
 
 :deep(.q-table tbody td) { color: var(--ink-soft); }
 :deep(.q-table thead th) { color: var(--text-secondary); }
+
+/* Carga de normas en lote */
+.normas-lote {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.normas-lote-nota {
+  font-size: 0.78rem;
+  color: var(--lexit-texto-secundario);
+  margin: -2px 0 2px 4px;
+}
+
+.normas-lote-nota--aviso {
+  color: #9A6A12;
+}
+
+.normas-lote-incluir {
+  margin-left: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--lexit-verde);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.normas-lote-resumen {
+  font-size: 0.82rem;
+  color: var(--lexit-texto-secundario);
+  margin: 0 0 6px 2px;
+}
+
+/* Documentos indexados por especialización */
+.normas-grupo {
+  margin-bottom: 12px;
+}
+
+.normas-grupo-titulo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--lexit-verde);
+  margin-bottom: 6px;
+}
+
+.normas-grupo-cuenta {
+  font-weight: 400;
+  color: var(--lexit-texto-secundario);
+}
 </style>
