@@ -691,7 +691,7 @@ onMounted(async () => {
 .icon-purple { background: var(--accent-soft); }
 
 .page-title {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'EB Garamond', serif;
   font-size: 2rem;
   font-weight: 600;
   margin: 0;
@@ -738,7 +738,7 @@ onMounted(async () => {
 }
 
 .stat-number {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'EB Garamond', serif;
   font-size: 1.9rem;
   font-weight: 600;
   color: var(--ink);
@@ -770,7 +770,7 @@ onMounted(async () => {
   font-size: 1.05rem;
   font-weight: 600;
   color: var(--ink);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
 }
 
 .add-btn {
@@ -782,7 +782,7 @@ onMounted(async () => {
   color: var(--surface);
   border: none;
   border-radius: var(--border-radius-small);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
@@ -867,7 +867,7 @@ onMounted(async () => {
   border-radius: var(--border-radius);
   box-shadow: var(--shadow-heavy);
   overflow: hidden;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
 }
 
 .lx-dialog-header {
@@ -878,7 +878,7 @@ onMounted(async () => {
 }
 
 .lx-dialog-title {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'EB Garamond', serif;
   font-size: 1.4rem;
   font-weight: 600;
   color: var(--ink);
@@ -915,7 +915,7 @@ color: var(--text-secondary);
   background: transparent;
   border: none;
   color: var(--text-secondary);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.92rem;
   font-weight: 600;
   cursor: pointer;

@@ -268,7 +268,7 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 }
 
 .mobile-brand {
-  font-family: 'Fraunces', 'EB Garamond', serif;
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
   font-optical-sizing: auto;
   font-size: 1.2rem;
   font-weight: 600;
@@ -323,7 +323,7 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   display: flex;
   flex-direction: column;
   padding: 22px 16px 18px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   overflow: hidden;
 }
 
@@ -346,7 +346,7 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 }
 
 .sidebar-brand-text {
-  font-family: 'Fraunces', 'EB Garamond', serif;
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
   font-optical-sizing: auto;
   font-size: 1.45rem;
   font-weight: 600;

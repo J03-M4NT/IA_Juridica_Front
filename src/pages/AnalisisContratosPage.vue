@@ -1866,7 +1866,7 @@ watch(mensajes, async () => {
 .icon-blue { background: var(--lc-accent-soft); }
 
 .page-title {
-  font-family: 'Fraunces', 'EB Garamond', serif;
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
   font-optical-sizing: auto;
   font-size: 1.7rem;
   font-weight: 600;
@@ -1932,7 +1932,7 @@ watch(mensajes, async () => {
 .drop-overlay-content {
   text-align: center;
   color: var(--lc-accent);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-weight: 600;
 }
 
@@ -1964,7 +1964,7 @@ watch(mensajes, async () => {
   gap: 10px;
   padding: 12px 20px;
   border-bottom: 1px solid rgba(27, 27, 30, 0.08);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   background: #fff;
   flex-shrink: 0;
 }
@@ -2090,7 +2090,7 @@ watch(mensajes, async () => {
   justify-content: center;
   gap: 10px;
   background: var(--surface-alt);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.9rem;
   color: var(--text-secondary);
 }
@@ -2098,7 +2098,7 @@ watch(mensajes, async () => {
 .documento-cargando p { margin: 0; }
 
 .documento-hint {
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.85rem;
   color: var(--text-secondary);
   background: #fff;
@@ -2146,7 +2146,7 @@ watch(mensajes, async () => {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.85rem;
   color: var(--text-secondary);
 }
@@ -2310,7 +2310,7 @@ watch(mensajes, async () => {
 .sugerencias-rail-header {
   padding: 14px 16px;
   border-bottom: 1px solid var(--lc-border);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-weight: 600;
   font-size: 0.86rem;
   color: var(--lc-text);
@@ -2345,7 +2345,7 @@ watch(mensajes, async () => {
   border: none;
   border-radius: var(--border-radius-small);
   padding: 11px 14px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
@@ -2382,7 +2382,7 @@ watch(mensajes, async () => {
 }
 
 .metrica-numero {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'EB Garamond', serif;
   font-size: 1.5rem;
   font-weight: 600;
   line-height: 1;
@@ -2390,7 +2390,7 @@ watch(mensajes, async () => {
 }
 
 .metrica-label {
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.68rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -2455,7 +2455,7 @@ button.metrica-bloque:focus-visible {
 }
 
 .sugerencias-cargando-titulo {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'EB Garamond', serif;
   font-size: 1.15rem;
   font-weight: 600;
   color: var(--lc-text);
@@ -2463,7 +2463,7 @@ button.metrica-bloque:focus-visible {
 }
 
 .sugerencias-cargando-sub {
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.82rem;
   color: var(--lc-text-muted);
   margin: 0;
@@ -2481,7 +2481,7 @@ button.metrica-bloque:focus-visible {
 }
 
 .sugerencias-error-titulo {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'EB Garamond', serif;
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--lc-text);
@@ -2489,7 +2489,7 @@ button.metrica-bloque:focus-visible {
 }
 
 .sugerencias-error-sub {
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.82rem;
   color: var(--lc-text-muted);
   margin: 0;
@@ -2503,7 +2503,7 @@ button.metrica-bloque:focus-visible {
   border: none;
   border-radius: var(--border-radius-small);
   padding: 8px 16px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -2515,7 +2515,7 @@ button.metrica-bloque:focus-visible {
 .pdf-panel-status {
   text-align: center;
   color: var(--text-secondary);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.88rem;
 }
 
@@ -2589,7 +2589,7 @@ button.metrica-bloque:focus-visible {
   border-radius: 9px;
   background: none;
   color: var(--lc-text-muted);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
@@ -2654,7 +2654,7 @@ button.metrica-bloque:focus-visible {
 
 .analisis-vacio-titulo {
   margin: 0;
-  font-family: 'Fraunces', 'EB Garamond', serif;
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
   font-size: 1.15rem;
   font-weight: 600;
   color: var(--lc-text);
@@ -2715,7 +2715,7 @@ button.metrica-bloque:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: 'Fraunces', 'EB Garamond', serif;
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
   font-size: 0.74rem;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -2739,7 +2739,7 @@ button.metrica-bloque:focus-visible {
 .formatted-message :deep(h1),
 .formatted-message :deep(h2),
 .formatted-message :deep(h3) {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'EB Garamond', serif;
   font-weight: 600;
   margin: 8px 0 4px;
   color: var(--lc-text);
@@ -2810,7 +2810,7 @@ button.metrica-bloque:focus-visible {
   border: 1px solid var(--lc-accent-soft-strong);
   padding: 6px 11px;
   border-radius: var(--border-radius-small);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
 }
 
 /* Citas: cuadros pequeños y cerrados; el texto se abre al hacer clic. */
@@ -2831,7 +2831,7 @@ button.metrica-bloque:focus-visible {
   border: 1px solid var(--lc-border-strong);
   border-radius: 8px;
   color: var(--lc-text-muted);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
@@ -2921,7 +2921,7 @@ button.metrica-bloque:focus-visible {
   border-radius: 4px;
   background: var(--lc-accent-soft);
   color: var(--lc-accent);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.7rem;
   font-weight: 700;
   line-height: 1;
@@ -2931,7 +2931,7 @@ button.metrica-bloque:focus-visible {
 
 .formatted-message :deep(.cita-ref:hover) { background: var(--lc-accent); color: var(--lc-ink); }
 .formatted-message :deep(hr) { border: none; border-top: 1px solid var(--lc-border-strong); margin: 12px 0; }
-.formatted-message :deep(h4) { font-family: 'EB Garamond', serif; font-weight: 600; margin: 8px 0 4px; color: var(--lc-text); }
+.formatted-message :deep(h4) { font-family: 'Baskervville', 'EB Garamond', serif; font-weight: 600; margin: 8px 0 4px; color: var(--lc-text); }
 
 .fuente-doc-name {
   display: block;
@@ -2971,7 +2971,7 @@ button.metrica-bloque:focus-visible {
   background: none;
   border: none;
   color: var(--lc-accent);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -2990,7 +2990,7 @@ button.metrica-bloque:focus-visible {
   color: var(--lc-accent);
   border-radius: var(--border-radius-small);
   padding: 6px 8px 6px 10px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.82rem;
   font-weight: 600;
   max-width: 100%;
@@ -3067,7 +3067,7 @@ button.metrica-bloque:focus-visible {
 
 :deep(.composer-textarea-pill .q-field__native) {
   color: var(--lc-text) !important;
-  font-family: 'Figtree', sans-serif !important;
+  font-family: 'Baskervville', 'Figtree', sans-serif !important;
   font-size: 1rem !important;
   padding: 7px 0 !important;
   line-height: 1.45 !important;
@@ -3108,7 +3108,7 @@ button.metrica-bloque:focus-visible {
   border: none;
   border-radius: var(--border-radius-small);
   padding: 6px 9px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -3128,7 +3128,7 @@ button.metrica-bloque:focus-visible {
   border: none;
   border-radius: 999px;
   padding: 9px 20px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
@@ -3170,7 +3170,7 @@ button.metrica-bloque:focus-visible {
 }
 
 .sugerencia-clausula {
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -3180,7 +3180,7 @@ button.metrica-bloque:focus-visible {
 
 .riesgo-badge {
   flex-shrink: 0;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -3243,7 +3243,7 @@ button.metrica-bloque:focus-visible {
   color: var(--text-secondary);
   border-radius: var(--border-radius-small);
   padding: 6px 12px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
@@ -3257,7 +3257,7 @@ button.metrica-bloque:focus-visible {
   border: none;
   border-radius: var(--border-radius-small);
   padding: 6px 12px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
@@ -3271,7 +3271,7 @@ button.metrica-bloque:focus-visible {
   color: var(--text-secondary);
   border-radius: var(--border-radius-small);
   padding: 6px 12px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
@@ -3290,7 +3290,7 @@ button.metrica-bloque:focus-visible {
   color: var(--text-secondary);
   border-radius: var(--border-radius-small);
   padding: 6px 12px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
@@ -3339,7 +3339,7 @@ button.metrica-bloque:focus-visible {
   flex-shrink: 0;
   margin: 0;
   padding: 8px 20px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.8rem;
   line-height: 1.45;
   color: #3a3a40;
@@ -3362,7 +3362,7 @@ button.metrica-bloque:focus-visible {
   border: none;
   border-radius: var(--border-radius-small);
   padding: 7px 12px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
@@ -3389,7 +3389,7 @@ button.metrica-bloque:focus-visible {
   align-items: center;
   gap: 8px;
   padding: 7px 10px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--lc-text);
@@ -3429,7 +3429,7 @@ button.metrica-bloque:focus-visible {
 
 .sugerencias-aplicadas-titulo {
   margin: 0 0 8px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -3458,7 +3458,7 @@ button.metrica-bloque:focus-visible {
   border-radius: var(--border-radius-small);
   padding: 5px 10px;
   color: var(--lc-text-muted);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
@@ -3521,7 +3521,7 @@ button.metrica-bloque:focus-visible {
 
 .subir-titulo {
   margin: 0;
-  font-family: 'Fraunces', 'EB Garamond', serif;
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
   font-size: 1.35rem;
   font-weight: 600;
   color: var(--lc-text);
@@ -3539,7 +3539,7 @@ button.metrica-bloque:focus-visible {
   border-radius: 999px;
   background: var(--lc-accent);
   color: var(--lc-ink);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.9rem;
   font-weight: 600;
 }
@@ -3575,7 +3575,7 @@ button.metrica-bloque:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--lc-text);
@@ -3587,7 +3587,7 @@ button.metrica-bloque:focus-visible {
   background: none;
   padding: 2px 4px;
   color: var(--lc-text-muted);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -3597,7 +3597,7 @@ button.metrica-bloque:focus-visible {
 
 .elegir-titulo {
   margin: 22px 0 14px;
-  font-family: 'Fraunces', 'EB Garamond', serif;
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
   font-size: 1.4rem;
   font-weight: 600;
   color: var(--lc-text);
@@ -3631,7 +3631,7 @@ button.metrica-bloque:focus-visible {
 .elegir-opcion:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .elegir-opcion-titulo {
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--lc-text);
@@ -3650,7 +3650,7 @@ button.metrica-bloque:focus-visible {
 .elegir-pregunta-label {
   display: block;
   margin-bottom: 8px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--lc-text-muted);

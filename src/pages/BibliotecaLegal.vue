@@ -520,7 +520,7 @@ onMounted(() => {
 }
 
 .pdf-panel-titulo {
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.86rem;
   font-weight: 600;
   color: var(--ln-text);
@@ -574,7 +574,7 @@ onMounted(() => {
   border: none;
   cursor: pointer;
   color: var(--ln-accent);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.03em;
@@ -728,7 +728,7 @@ onMounted(() => {
   color: var(--ln-text);
   border: 1px solid var(--ln-border);
   border-radius: var(--border-radius-small);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.86rem;
   font-weight: 600;
   cursor: pointer;
@@ -770,7 +770,7 @@ onMounted(() => {
 .icon-orange { background: var(--ln-accent-soft); }
 
 .page-title {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'EB Garamond', serif;
   font-size: 2rem;
   font-weight: 600;
   margin: 0;
@@ -819,7 +819,7 @@ onMounted(() => {
   color: var(--ln-text-muted);
   border-radius: 999px;
   padding: 4px 10px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.7rem;
   font-weight: 600;
   cursor: pointer;
@@ -844,7 +844,7 @@ onMounted(() => {
 }
 
 .estado-titulo {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'EB Garamond', serif;
   font-size: 1.2rem;
   font-weight: 600;
   color: var(--ln-text);
@@ -878,7 +878,7 @@ onMounted(() => {
   background: var(--ln-accent);
   color: var(--ln-ink);
   border-radius: var(--border-radius-small);
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.92rem;
   font-weight: 600;
   cursor: pointer;
@@ -923,7 +923,7 @@ onMounted(() => {
 }
 
 .resumen-title {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'EB Garamond', serif;
   font-size: 1.2rem;
   font-weight: 600;
   color: var(--ln-text);
@@ -1053,7 +1053,7 @@ onMounted(() => {
 }
 
 .norma-sector {
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -1080,7 +1080,7 @@ onMounted(() => {
   border: none;
   padding: 0;
   cursor: pointer;
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'EB Garamond', serif;
   font-size: 1.15rem;
   font-weight: 600;
   color: var(--ln-text);

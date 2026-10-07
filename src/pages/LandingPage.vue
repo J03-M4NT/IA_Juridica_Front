@@ -132,7 +132,7 @@
       <section class="fuentes-section">
         <div class="section-header reveal">
           <span class="section-label">Base legal</span>
-          <h2 class="section-title">Respaldado por los códigos del Perú</h2>
+          <h2 class="section-title">Respaldado por la normativa peruana</h2>
           <p class="fuentes-subtitle">
             Las respuestas que citan artículos se basan en una base jurídica indexada por
             código y por número de artículo — no en un resumen genérico — para que la cita

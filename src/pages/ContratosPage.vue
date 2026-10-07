@@ -387,7 +387,7 @@ import { extraerHtmlWord } from '../utils/mammothExtractor'
 import { subirDocumentoTemporal, descargarWordEditado } from '../services/documentosTemporalesService'
 import { renderizarWord } from '../utils/vistaWord'
 import { calcularCambios } from '../utils/edicionWord'
-import { extraerTextoVisibleDeHtml, reemplazarEnHtmlFlexible } from '../utils/htmlTexto'
+import { extraerTextoVisibleDeHtml, aplicarCambiosIAEnHtml } from '../utils/htmlTexto'
 import EditorContrato from '../components/EditorContrato.vue'
 import VistaWord from '../components/VistaWord.vue'
 
@@ -910,17 +910,7 @@ const opcionesChatIA = (): { formato?: 'cambios' } =>
   modoWordFiel.value ? { formato: 'cambios' } : {}
 
 const aplicarCambiosIAEnWord = (cambios: { antes: string; despues: string }[]) => {
-  let html = htmlVistaWordEditado.value || htmlVistaWord.value
-  const fallidos: string[] = []
-  for (const cambio of cambios) {
-    // Un cambio nunca debe abarcar dos párrafos (rompería la
-    // correspondencia con el Word original).
-    const resultado = cambio.antes.includes('\n')
-      ? { html, ok: false }
-      : reemplazarEnHtmlFlexible(html, cambio.antes, cambio.despues)
-    if (resultado.ok) html = resultado.html
-    else fallidos.push(cambio.antes)
-  }
+  const { html, fallidos } = aplicarCambiosIAEnHtml(htmlVistaWordEditado.value || htmlVistaWord.value, cambios)
   htmlVistaWordEditado.value = html
   textoEditado.value = textoDelCuerpo(html)
   chatEdicionTerminado.value = true
@@ -1122,7 +1112,7 @@ watch(currentTemplate, async (newTemplate) => {
 .icon-purple { background: var(--lx-accent-soft); }
 
 .page-title {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'EB Garamond', serif;
   font-size: 2rem;
   font-weight: 600;
   margin: 0;
@@ -1158,7 +1148,7 @@ watch(currentTemplate, async (newTemplate) => {
 }
 
 .lx-card-header-title {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'EB Garamond', serif;
   font-size: 1.15rem;
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -1173,7 +1163,7 @@ watch(currentTemplate, async (newTemplate) => {
 }
 
 .lx-action-btn {
-  font-family: 'Figtree', sans-serif !important;
+  font-family: 'Baskervville', 'Figtree', sans-serif !important;
   border-radius: 10px !important;
 }
 
@@ -1317,7 +1307,7 @@ canvas {
 }
 
 .lx-tabs :deep(.q-tab) {
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-weight: 600;
   font-size: 0.88rem;
   min-height: 44px;
@@ -1432,7 +1422,7 @@ canvas {
 .chat-edicion-start-btn {
   border-radius: 12px !important;
   padding: 10px 0 !important;
-  font-family: 'Figtree', sans-serif !important;
+  font-family: 'Baskervville', 'Figtree', sans-serif !important;
   font-weight: 600 !important;
 }
 
@@ -1552,7 +1542,7 @@ canvas {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -1569,7 +1559,7 @@ canvas {
 
 .download-btn {
   border-radius: 10px !important;
-  font-family: 'Figtree', sans-serif !important;
+  font-family: 'Baskervville', 'Figtree', sans-serif !important;
   font-weight: 600 !important;
   padding: 0 18px !important;
 }

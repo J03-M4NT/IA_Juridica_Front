@@ -122,6 +122,20 @@
               ¿No tienes una cuenta?
               <a class="switch-link" @click="showLoginDialog = false; showRegisterDialog = true">Regístrate</a>
             </p>
+
+            <!-- Consideraciones (compactas, sin ventana aparte) -->
+            <ul class="consideraciones">
+              <li v-for="(item, idx) in CONSIDERACIONES" :key="idx">
+                <q-icon :name="item.icono" size="15px" class="consideraciones-icono" />
+                <span>{{ item.texto }}</span>
+              </li>
+            </ul>
+
+            <p class="terminos-text">
+              Al continuar, aceptas los
+              <a :href="URL_TERMINOS" target="_blank" rel="noopener" class="terminos-link">Términos y condiciones</a>
+              de LexIT.
+            </p>
           </form>
         </div>
       </div>
@@ -185,6 +199,20 @@
               ¿Ya tienes una cuenta?
               <a class="switch-link" @click="showRegisterDialog = false; showLoginDialog = true">Inicia sesión</a>
             </p>
+
+            <!-- Consideraciones (compactas, sin ventana aparte) -->
+            <ul class="consideraciones">
+              <li v-for="(item, idx) in CONSIDERACIONES" :key="idx">
+                <q-icon :name="item.icono" size="15px" class="consideraciones-icono" />
+                <span>{{ item.texto }}</span>
+              </li>
+            </ul>
+
+            <p class="terminos-text">
+              Al registrarte, aceptas los
+              <a :href="URL_TERMINOS" target="_blank" rel="noopener" class="terminos-link">Términos y condiciones</a>
+              de LexIT.
+            </p>
           </form>
         </div>
       </div>
@@ -235,6 +263,20 @@ const registerForm = ref({
 });
 
 const showProfileDialog = ref(false);
+
+// PDF de Términos y condiciones (public/terminos-y-condiciones.pdf). Con
+// BASE_URL funciona igual en desarrollo (/) y en GitHub Pages
+// (/IA_Juridica_Front/).
+// Se muestran en las ventanas de inicio de sesión y registro, junto a los
+// Términos y condiciones.
+const CONSIDERACIONES = [
+  { icono: 'lock', texto: 'No guardamos tus contratos.' },
+  { icono: 'description', texto: 'No guardamos una copia de los contratos generados.' },
+  { icono: 'schedule', texto: 'Las consultas se eliminan automáticamente en 7 días.' },
+  { icono: 'auto_awesome', texto: '¡Disfruta de LexIT!' }
+];
+
+const URL_TERMINOS = `${import.meta.env.BASE_URL}terminos-y-condiciones.pdf`;
 const cargandoGoogle = ref(false);
 
 // Permite que un componente padre (ej. un CTA en LandingPage.vue) abra estos
@@ -405,7 +447,7 @@ const handleLogout = async () => {
 }
 
 .auth-btn {
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-weight: 500;
   font-size: 0.95rem;
   padding: 8px 20px;
@@ -491,9 +533,16 @@ const handleLogout = async () => {
   background: #fff;
   border-radius: 20px;
   box-shadow: 0 30px 70px rgba(22, 22, 26, 0.28);
-  overflow: hidden;
+  /* Nunca más alta que la pantalla: si no entra (ventana no maximizada o
+     celular), se desplaza adentro y se llega a las consideraciones y a los
+     Términos y condiciones. Antes se cortaba (overflow: hidden). */
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   animation: floatUp 0.25s ease-out both;
-  font-family: 'Figtree', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Baskervville', 'Figtree', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .dialog-header {
@@ -504,7 +553,7 @@ const handleLogout = async () => {
 
 .dialog-wordmark {
   display: block;
-  font-family: 'Fraunces', 'EB Garamond', serif;
+  font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
   font-optical-sizing: auto;
   font-size: 1.1rem;
   font-weight: 600;
@@ -514,7 +563,7 @@ const handleLogout = async () => {
 }
 
 .dialog-title {
-  font-family: 'EB Garamond', serif;
+  font-family: 'Baskervville', 'EB Garamond', serif;
   font-size: 1.6rem;
   font-weight: 600;
   color: #16161a;
@@ -554,7 +603,7 @@ const handleLogout = async () => {
   justify-content: center;
   gap: 10px;
   padding: 12px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.95rem;
   font-weight: 600;
   color: #1b1b1e;
@@ -603,7 +652,7 @@ const handleLogout = async () => {
 .custom-input {
   width: 100%;
   padding: 12px 14px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 1rem;
   color: #1b1b1e;
   background: #FAFAF7;
@@ -656,7 +705,7 @@ const handleLogout = async () => {
   width: 100%;
   margin-top: 16px;
   padding: 13px;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 1rem;
   font-weight: 600;
   color: #fff;
@@ -691,11 +740,71 @@ const handleLogout = async () => {
   color: var(--accent-hover);
 }
 
+.consideraciones {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  background: #F8F7F2;
+  border: 1px solid rgba(23, 33, 27, 0.08);
+  border-radius: 10px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #3D473A;
+  text-align: left;
+}
+
+.consideraciones li {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 2px 0;
+}
+
+.consideraciones-icono {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #686A57;
+}
+
+.terminos-text {
+  text-align: center;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: #7a7a82;
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(23, 33, 27, 0.08);
+}
+
+.terminos-link {
+  font-weight: 600;
+  color: #3D473A;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.terminos-link:hover {
+  color: #17211B;
+}
+
 :deep(.q-btn) {
   text-transform: none;
 }
 
 :deep(.q-avatar) {
   background: var(--q-primary);
+}
+
+/* Pantallas bajas (ventana no maximizada, celular): ventana más compacta
+   para que en la mayoría de casos todo entre sin desplazarse. */
+@media (max-height: 760px), (max-width: 600px) {
+  .dialog-header { padding: 22px 22px 10px; }
+  .dialog-body { padding: 14px 22px 20px; }
+  .dialog-divider { margin: 12px 0; }
+  .custom-input { padding: 10px 12px; }
+  .submit-btn { margin-top: 12px; padding: 11px; }
+  .switch-text { margin-top: 12px; }
+  .consideraciones { margin-top: 12px; padding: 8px 10px; }
+  .terminos-text { margin-top: 10px; padding-top: 10px; }
 }
 </style>

@@ -208,7 +208,7 @@ function onPaste(event: ClipboardEvent) {
   justify-content: center;
   gap: 10px;
   background: #f3f1ec;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.9rem;
   color: #6a6a72;
 }
@@ -224,7 +224,7 @@ function onPaste(event: ClipboardEvent) {
   border-radius: 6px;
   background: #fdf1e6;
   color: #7a3d14;
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Baskervville', 'Figtree', sans-serif;
   font-size: 0.8rem;
 }
 

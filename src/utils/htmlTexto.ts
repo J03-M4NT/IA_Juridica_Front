@@ -123,16 +123,29 @@ function ubicarPorPosicion(mapa: EntradaMapa[], idx: number, finIdx: number): Ub
   }
 }
 
-// Patrón tolerante: cualquier espacio en blanco equivale a cualquier otro,
-// y una línea para completar ("……", "_____", "-----") equivale a otra de
-// distinto largo — la IA a veces no copia exacto la cantidad de puntos.
+// Patrón tolerante para ubicar lo que copió la IA, que no siempre copia
+// exacto:
+// - una línea para completar equivale a otra de cualquier largo y forma:
+//   en las plantillas hay tramos cortos ("….", "……", "……….y" pegado a la
+//   palabra) y la IA los devuelve como "…", "..." o con otra cantidad. Es
+//   línea todo tramo con "…", o de 3+ puntos/guiones bajos/guiones;
+// - los espacios son opcionales (la IA agrega o quita espacios junto a las
+//   líneas, o colapsa los dobles), y tras una línea puede haber espacio
+//   aunque la IA no lo puso — pero nunca un salto de párrafo ("\n");
+// - "N.°" = "N°" = "Nº", y comillas o guiones tipográficos = simples.
+const TOKEN_FLEXIBLE = /(\.?[°º]|[.…_\-–—]*…[.…_\-–—]*|[._\-–—]{3,}|\s+|["“”«»]|['‘’´]|[-–—])/
+
 function fuenteFlexible(texto: string): string {
   return texto
-    .split(/([.…_\-–]{3,}|\s+)/)
+    .split(TOKEN_FLEXIBLE)
     .filter(p => p !== '')
     .map(p => {
-      if (/^\s+$/.test(p)) return '\\s+'
-      if (/^[.…_\-–]{3,}$/.test(p)) return '[.…_\\-–]{2,}'
+      if (/^\s+$/.test(p)) return '[^\\S\\n]*'
+      if (/^\.?[°º]$/.test(p)) return '\\.?[^\\S\\n]*[°º]'
+      if (p.includes('…') || /^[._\-–—]{3,}$/.test(p)) return '[.…_\\-–—]+[^\\S\\n]*?'
+      if (/^["“”«»]$/.test(p)) return '["“”«»]'
+      if (/^['‘’´]$/.test(p)) return "['‘’´]"
+      if (/^[-–—]$/.test(p)) return '[-–—]'
       return p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     })
     .join('')
@@ -160,6 +173,13 @@ export function reemplazarEnHtmlFlexible(html: string, textoOriginal: string, te
     sufijo < nuevo.length - prefijo &&
     buscado[buscado.length - 1 - sufijo] === nuevo[nuevo.length - 1 - sufijo]
   ) sufijo++
+  // Nunca cortar una línea para completar por la mitad ("de …." → "de
+  // 2026." tiene el "." final en común): el pedazo suelto ya no se
+  // reconocería como línea en el patrón tolerante. Tampoco dejar un espacio
+  // en el borde: si el Word no lo tiene ("……….y") y la IA sí ("cinco mil
+  // y"), el espacio tiene que entrar con el texto nuevo.
+  while (prefijo > 0 && /[.…_\-–—\s]/.test(buscado[prefijo - 1] ?? '')) prefijo--
+  while (sufijo > 0 && /[.…_\-–—\s]/.test(buscado[buscado.length - sufijo] ?? '')) sufijo--
   // Si solo se inserta texto (tramo vacío), se toma un carácter vecino para
   // tener dónde ubicarlo.
   if (prefijo + sufijo >= buscado.length) {
@@ -203,6 +223,63 @@ export function reemplazarEnHtmlFlexible(html: string, textoOriginal: string, te
   range.deleteContents()
   range.insertNode(document.createTextNode(nuevo.slice(prefijo, nuevo.length - sufijo)))
   return { html: contenedor.innerHTML, ok: true }
+}
+
+// Un cambio de la IA que abarca varias líneas se aplica línea por línea
+// (cada una es un párrafo del Word), si "antes" y "después" tienen las
+// mismas líneas. Unir párrafos rompería la correspondencia con el Word.
+function aplicarCambioIA(html: string, antes: string, despues: string): ResultadoReemplazo {
+  if (!antes.includes('\n')) return reemplazarEnHtmlFlexible(html, antes, despues)
+  const lineasAntes = antes.split(/\n+/)
+  const lineasDespues = despues.split(/\n+/)
+  if (lineasAntes.length !== lineasDespues.length) return { html, ok: false }
+  let resultado = html
+  for (let i = 0; i < lineasAntes.length; i++) {
+    const a = lineasAntes[i] ?? ''
+    const d = lineasDespues[i] ?? ''
+    if (a.trim() === d.trim()) continue
+    const r = reemplazarEnHtmlFlexible(resultado, a, d)
+    if (!r.ok) return { html, ok: false }
+    resultado = r.html
+  }
+  return { html: resultado, ok: true }
+}
+
+// Aplica la lista de cambios de "Completar con IA" (Contratos) sobre el
+// HTML del Word. La IA a veces propone cambios que se superponen (ej. el
+// nombre del mutuatario en uno y, en otro, su DNI copiando también el
+// nombre como contexto): aplicado el primero, el "antes" del segundo ya no
+// existe tal cual. Si un cambio no se ubica, se reintenta con los cambios
+// ya aplicados incorporados en su "antes" (y en su "después", si lo copió
+// sin modificar).
+export function aplicarCambiosIAEnHtml(
+  html: string,
+  cambios: { antes: string; despues: string }[]
+): { html: string; fallidos: string[] } {
+  let resultado = html
+  const aplicados: { antes: string; despues: string }[] = []
+  const fallidos: string[] = []
+  for (const cambio of cambios) {
+    let r = aplicarCambioIA(resultado, cambio.antes, cambio.despues)
+    if (!r.ok) {
+      let antes = cambio.antes
+      let despues = cambio.despues
+      for (const previo of aplicados) {
+        const viejo = previo.antes.trim()
+        if (!viejo || !antes.includes(viejo)) continue
+        antes = antes.split(viejo).join(previo.despues.trim())
+        despues = despues.split(viejo).join(previo.despues.trim())
+      }
+      if (antes !== cambio.antes) r = aplicarCambioIA(resultado, antes, despues)
+    }
+    if (r.ok) {
+      resultado = r.html
+      aplicados.push(cambio)
+    } else {
+      fallidos.push(cambio.antes)
+    }
+  }
+  return { html: resultado, fallidos }
 }
 
 export interface SugerenciaParaResaltar {
