@@ -9,8 +9,8 @@
          costados en pantallas anchas. -->
     <div class="normas-content" :class="{ 'normas-content--split': normaSeleccionada }">
 
-    <!-- Section header -->
-    <div class="page-header">
+    <!-- Section header: banda corporativa (navy) con cifras del día -->
+    <div class="page-header normas-banner">
       <div class="section-icon-wrap icon-orange">
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
@@ -18,11 +18,24 @@
         </svg>
       </div>
       <div class="page-header-text">
+        <span class="normas-eyebrow">Normas legales · Fuente oficial</span>
         <h1 class="page-title">Normas del Diario Oficial El Peruano</h1>
         <p class="page-subtitle">
           <span v-if="fechaEdicion">Edición del {{ formatFecha(fechaEdicion) }}</span>
           <span v-else>Actualizaciones normativas · fuente oficial</span>
         </p>
+      </div>
+
+      <!-- Cifras de la edición (solo lectura de lo ya cargado) -->
+      <div v-if="normas.length" class="normas-cifras">
+        <div class="normas-cifra">
+          <span class="normas-cifra-num">{{ normas.length }}</span>
+          <span class="normas-cifra-label">{{ normas.length === 1 ? 'norma' : 'normas' }}</span>
+        </div>
+        <div v-if="sectores.length" class="normas-cifra">
+          <span class="normas-cifra-num">{{ sectores.length }}</span>
+          <span class="normas-cifra-label">{{ sectores.length === 1 ? 'sector' : 'sectores' }}</span>
+        </div>
       </div>
 
       <button class="refresh-btn" :disabled="actualizando" @click="actualizarAhora">
@@ -121,10 +134,20 @@
       </div>
 
       <div class="normas-grid">
-        <article v-for="norma in normasFiltradas" :key="norma.id" class="norma-card" :class="{ 'norma-card--activa': normaSeleccionada?.id === norma.id }">
+        <article
+          v-for="(norma, ni) in normasFiltradas"
+          :key="norma.id"
+          class="norma-card"
+          :class="{ 'norma-card--activa': normaSeleccionada?.id === norma.id }"
+          :style="{ '--i': Math.min(ni, 12) }"
+        >
           <div class="norma-card-head">
             <span class="norma-sector">{{ norma.sector }}</span>
-            <span class="norma-fecha">{{ norma.fecha }}</span>
+            <span v-if="normaSeleccionada?.id === norma.id" class="norma-abierta">
+              <span class="norma-abierta-punto" aria-hidden="true"></span>
+              Abierta
+            </span>
+            <span v-else class="norma-fecha">{{ norma.fecha }}</span>
           </div>
           <button type="button" class="norma-titulo" @click="verPdf(norma)">
             <span>{{ norma.titulo }}</span>
@@ -133,6 +156,14 @@
             </svg>
           </button>
           <p v-if="norma.sumilla" class="norma-sumilla">{{ norma.sumilla }}</p>
+          <!-- Toda la tarjeta abre el PDF (el botón del título se estira
+               sobre ella con CSS); esta etiqueta solo lo indica. -->
+          <span class="norma-cta" aria-hidden="true">
+            Ver documento
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M13 6l6 6-6 6"/>
+            </svg>
+          </span>
         </article>
       </div>
 
@@ -143,21 +174,26 @@
     <!-- Panel del PDF, al costado — se resuelve la URL real del archivo
          (no la página visor de El Peruano) para mostrarlo embebido acá
          mismo, sin salir de la plataforma. -->
+    <Transition name="panel-pdf">
     <div v-if="normaSeleccionada" class="pdf-panel">
       <div class="pdf-panel-header">
-        <span class="pdf-panel-titulo">{{ normaSeleccionada.titulo }}</span>
+        <div class="pdf-panel-encabezado">
+          <span class="pdf-panel-sector">{{ normaSeleccionada.sector }}</span>
+          <span class="pdf-panel-titulo" :title="normaSeleccionada.titulo">{{ normaSeleccionada.titulo }}</span>
+        </div>
         <div class="pdf-panel-acciones">
           <a
             v-if="urlPdfSeleccionada"
             :href="urlPdfSeleccionada"
             target="_blank"
             rel="noopener"
-            class="pdf-panel-boton"
+            class="pdf-panel-boton pdf-panel-boton--texto"
             title="Abrir en una pestaña nueva"
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
               <path d="M7 17L17 7M7 7h10v10"/>
             </svg>
+            <span>Abrir</span>
           </a>
           <button type="button" class="pdf-panel-boton" title="Cerrar" @click="cerrarPdf">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
@@ -219,6 +255,7 @@
         <iframe v-else-if="urlPdfSeleccionada" :src="urlPdfSeleccionada" class="pdf-panel-iframe" title="PDF de la norma"></iframe>
       </div>
     </div>
+    </Transition>
 
     </div>
 
@@ -499,13 +536,13 @@ onMounted(() => {
   background: var(--ln-surface);
   border: 1px solid var(--ln-border);
   border-radius: var(--border-radius);
-  box-shadow: 0 16px 40px -18px rgba(23, 33, 27, 0.22), 0 0 0 1px rgba(23, 33, 27, 0.05);
+  box-shadow: 0 16px 40px -18px rgba(var(--lexit-verde-rgb), 0.22), 0 0 0 1px rgba(var(--lexit-verde-rgb), 0.05);
   overflow: hidden;
   transition: box-shadow 0.25s ease;
 }
 
 .pdf-panel:hover {
-  box-shadow: 0 20px 48px -18px rgba(23, 33, 27, 0.26), 0 0 0 1px rgba(23, 33, 27, 0.08);
+  box-shadow: 0 20px 48px -18px rgba(var(--lexit-verde-rgb), 0.26), 0 0 0 1px rgba(var(--lexit-verde-rgb), 0.08);
 }
 
 .pdf-panel-header {
@@ -764,7 +801,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 0 0 1px rgba(23, 33, 27, 0.12), 0 8px 20px -10px rgba(23, 33, 27, 0.28);
+  box-shadow: 0 0 0 1px rgba(var(--lexit-verde-rgb), 0.12), 0 8px 20px -10px rgba(var(--lexit-verde-rgb), 0.28);
 }
 
 .icon-orange { background: var(--ln-accent-soft); color: var(--lexit-verde); }
@@ -788,7 +825,7 @@ onMounted(() => {
   background: var(--ln-surface);
   border: 1px solid var(--ln-border);
   border-radius: var(--border-radius);
-  box-shadow: 0 8px 24px -14px rgba(23, 33, 27, 0.18);
+  box-shadow: 0 8px 24px -14px rgba(var(--lexit-verde-rgb), 0.18);
   padding: 40px 28px;
   text-align: center;
   color: var(--ln-text-muted);
@@ -836,7 +873,7 @@ onMounted(() => {
   background: var(--ln-accent);
   border-color: var(--ln-accent);
   color: var(--ln-ink);
-  box-shadow: 0 4px 14px -4px rgba(23, 33, 27, 0.35);
+  box-shadow: 0 4px 14px -4px rgba(var(--lexit-verde-rgb), 0.35);
 }
 
 .sector-chip--activo:hover {
@@ -882,7 +919,7 @@ onMounted(() => {
   font-size: 0.92rem;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 14px -4px rgba(23, 33, 27, 0.32);
+  box-shadow: 0 4px 14px -4px rgba(var(--lexit-verde-rgb), 0.32);
   text-decoration: none;
   transition: background-color 0.18s, box-shadow 0.18s;
 }
@@ -897,7 +934,7 @@ onMounted(() => {
   background: linear-gradient(165deg, var(--ln-surface) 0%, var(--ln-surface-alt) 130%);
   border: 1px solid var(--ln-accent-soft-strong);
   border-radius: var(--border-radius);
-  box-shadow: 0 8px 24px -14px rgba(23, 33, 27, 0.20), 0 0 0 1px rgba(23, 33, 27, 0.04);
+  box-shadow: 0 8px 24px -14px rgba(var(--lexit-verde-rgb), 0.20), 0 0 0 1px rgba(var(--lexit-verde-rgb), 0.04);
   padding: 24px 26px;
   margin-bottom: 20px;
 }
@@ -1005,7 +1042,7 @@ onMounted(() => {
   background: var(--ln-surface);
   border: 1px solid var(--ln-border);
   border-radius: var(--border-radius);
-  box-shadow: 0 6px 18px -12px rgba(23, 33, 27, 0.16);
+  box-shadow: 0 6px 18px -12px rgba(var(--lexit-verde-rgb), 0.16);
   padding: 18px 22px 18px 25px;
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
   overflow: hidden;
@@ -1026,7 +1063,7 @@ onMounted(() => {
 
 .norma-card:hover {
   border-color: var(--ln-border-strong);
-  box-shadow: 0 14px 30px -16px rgba(23, 33, 27, 0.22);
+  box-shadow: 0 14px 30px -16px rgba(var(--lexit-verde-rgb), 0.22);
   transform: translateY(-2px);
 }
 
@@ -1037,7 +1074,7 @@ onMounted(() => {
 .norma-card--activa {
   border-color: var(--ln-accent);
   background: var(--ln-accent-soft);
-  box-shadow: 0 14px 30px -16px rgba(23, 33, 27, 0.22);
+  box-shadow: 0 14px 30px -16px rgba(var(--lexit-verde-rgb), 0.22);
 }
 
 .norma-card--activa::before {
@@ -1123,5 +1160,565 @@ onMounted(() => {
     align-items: flex-start;
     gap: 4px;
   }
+}
+
+/* ==========================================================================
+   DISEÑO CORPORATIVO DE NORMAS (paleta de funciones)
+   Navy #1B2632 (--lexit-verde dentro de la app), Blue Fantastic #2C3B4D,
+   Palladian #EEE9DF, Oatmeal (bordes), Burning Flame #FFB162 y Truffle
+   Trouble #A35139 como acentos. El contenido sigue sobre blanco.
+   Solo estilos: mismas clases y comportamiento de siempre.
+   ========================================================================== */
+.normas-page {
+  --ln-navy: var(--lexit-verde);
+  --ln-azul: var(--lexit-azul, #2C3B4D);
+  --ln-naranja: var(--lexit-piedra);
+  --ln-terracota: var(--lexit-terracota, #A35139);
+  --ln-palladian: var(--lexit-blanco-calido);
+  --ln-palladian-suave: rgba(238, 233, 223, 0.55);
+}
+
+/* ---- Banda del encabezado ---- */
+.normas-banner {
+  position: relative;
+  overflow: hidden;
+  gap: 20px;
+  padding: 26px 28px;
+  margin-bottom: 22px;
+  background: var(--ln-navy);
+  color: var(--ln-palladian);
+  border-bottom: 3px solid var(--ln-naranja);
+}
+
+/* Líneas finas en diagonal, muy sutiles, a la derecha de la banda */
+.normas-banner::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 45%;
+  background: repeating-linear-gradient(-45deg, rgba(238, 233, 223, 0.05) 0 1px, transparent 1px 14px);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 60%);
+  mask-image: linear-gradient(90deg, transparent, #000 60%);
+  pointer-events: none;
+}
+
+.normas-banner > * {
+  position: relative;
+  z-index: 1;
+}
+
+.normas-banner .section-icon-wrap {
+  width: 54px;
+  height: 54px;
+  background: var(--ln-naranja);
+  color: var(--ln-navy);
+}
+
+.normas-eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ln-naranja);
+}
+
+.normas-banner .page-title {
+  font-size: clamp(1.5rem, 2.6vw, 2.05rem);
+  line-height: 1.2;
+  color: #FFFFFF;
+}
+
+.normas-banner .page-subtitle {
+  margin-top: 4px;
+  color: rgba(238, 233, 223, 0.78);
+  font-size: 0.95rem;
+}
+
+/* Cifras del día */
+.normas-cifras {
+  display: flex;
+  flex-shrink: 0;
+  border-left: 1px solid rgba(238, 233, 223, 0.18);
+}
+
+.normas-cifra {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2px 20px;
+  border-right: 1px solid rgba(238, 233, 223, 0.18);
+}
+
+.normas-cifra-num {
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #FFFFFF;
+  font-variant-numeric: tabular-nums;
+}
+
+.normas-cifra-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(238, 233, 223, 0.7);
+}
+
+/* Botón Actualizar sobre la banda */
+.normas-banner .refresh-btn {
+  background: transparent;
+  color: var(--ln-palladian);
+  border-color: rgba(238, 233, 223, 0.4);
+}
+
+.normas-banner .refresh-btn:hover:not(:disabled) {
+  background: var(--ln-naranja);
+  border-color: var(--ln-naranja);
+  color: var(--ln-navy);
+}
+
+.normas-banner .refresh-btn:disabled {
+  color: rgba(238, 233, 223, 0.6);
+}
+
+.refresh-error {
+  margin: -10px 0 18px;
+}
+
+@media (max-width: 760px) {
+  .normas-banner {
+    flex-wrap: wrap;
+    padding: 20px;
+  }
+  .normas-cifras {
+    order: 3;
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid rgba(238, 233, 223, 0.18);
+    padding-top: 12px;
+  }
+  .normas-cifra:first-child { padding-left: 0; }
+}
+
+/* ---- Resumen del día con IA ---- */
+.resumen-card {
+  background: var(--ln-palladian-suave);
+  border: 1px solid var(--ln-border);
+  border-left: 4px solid var(--ln-terracota);
+}
+
+.resumen-icon-wrap {
+  background: var(--ln-navy);
+  color: var(--ln-naranja);
+}
+
+.resumen-title {
+  color: var(--ln-navy);
+}
+
+.resumen-destacadas-label {
+  color: var(--ln-terracota);
+  letter-spacing: 0.1em;
+}
+
+.destacada-item {
+  background: #FFFFFF;
+  border: 1px solid var(--ln-border);
+  border-left: 3px solid var(--ln-border);
+}
+
+.destacada-item:hover {
+  background: #FFFFFF;
+  border-left-color: var(--ln-naranja);
+}
+
+/* ---- Filtro por sector: etiquetas rectas ---- */
+.sector-chip {
+  padding: 5px 11px;
+  letter-spacing: 0.02em;
+  color: var(--ln-navy);
+}
+
+.sector-chip:hover {
+  background: var(--ln-palladian-suave);
+  border-color: var(--ln-azul);
+  transform: none;
+}
+
+.sector-chip--activo,
+.sector-chip--activo:hover {
+  background: var(--ln-navy);
+  border-color: var(--ln-navy);
+  color: #FFFFFF;
+}
+
+/* ---- Tarjetas de normas ---- */
+.norma-card {
+  padding: 18px 22px 18px 24px;
+}
+
+.norma-card::before {
+  width: 4px;
+  background: var(--ln-azul);
+}
+
+.norma-card:hover {
+  border-color: var(--ln-azul);
+  transform: none;
+}
+
+.norma-card--activa {
+  background: var(--ln-palladian-suave);
+  border-color: var(--ln-terracota);
+}
+
+.norma-card--activa::before {
+  background: var(--ln-terracota);
+}
+
+.norma-sector {
+  color: var(--ln-navy);
+  background: var(--ln-palladian);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.norma-fecha {
+  font-variant-numeric: tabular-nums;
+}
+
+.norma-titulo {
+  color: var(--ln-navy);
+  transition: color 0.18s;
+}
+
+.norma-titulo:hover {
+  color: var(--ln-terracota);
+}
+
+.norma-titulo-flecha {
+  color: var(--ln-terracota);
+}
+
+/* ---- Estados ---- */
+.spinner {
+  border-color: var(--ln-palladian);
+  border-top-color: var(--ln-terracota);
+}
+
+.open-btn {
+  background: var(--ln-navy);
+  color: #FFFFFF;
+}
+
+.open-btn:hover {
+  background: var(--ln-azul);
+}
+
+/* ---- Panel del PDF ---- */
+.pdf-panel {
+  border-color: var(--ln-border);
+  border-top: 3px solid var(--ln-naranja);
+}
+
+.pdf-panel-header {
+  background: var(--ln-navy);
+  border-bottom: none;
+}
+
+.pdf-panel-titulo {
+  color: #FFFFFF;
+}
+
+.pdf-panel-boton {
+  color: rgba(238, 233, 223, 0.8);
+}
+
+.pdf-panel-boton:hover {
+  background: rgba(238, 233, 223, 0.12);
+  color: var(--ln-naranja);
+  transform: none;
+}
+
+.norma-resumen {
+  background: var(--ln-palladian-suave);
+}
+
+.norma-resumen-toggle {
+  color: var(--ln-terracota);
+  letter-spacing: 0.08em;
+}
+
+.norma-resumen-toggle:hover {
+  background: var(--ln-palladian);
+}
+
+.norma-resumen-etiqueta {
+  color: var(--ln-navy);
+}
+
+.norma-resumen-puntos li::marker {
+  color: var(--ln-terracota);
+}
+
+/* ==========================================================================
+   NORMAS — ANCHO COMPLETO, PANEL DEL PDF A PANTALLA COMPLETA Y MÁS
+   INTERACCIÓN (solo estilos y marcado; misma funcionalidad)
+   ========================================================================== */
+
+/* Sin "transform" persistente: la animación de entrada deja la página
+   transformada y eso impedía que el panel del PDF se fije a la ventana. */
+.normas-page {
+  animation-fill-mode: backwards;
+}
+
+/* Todo el ancho disponible (antes una columna angosta y centrada) */
+.normas-content,
+.normas-content--split {
+  max-width: none;
+}
+
+/* ---- Lista: dos columnas cuando no hay PDF abierto ---- */
+.normas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 14px;
+}
+
+.normas-layout--split .normas-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* ---- Panel del PDF: fijo a la derecha, alto completo de la ventana ---- */
+.normas-page {
+  --ln-panel-ancho: min(58vw, 1040px);
+}
+
+.normas-layout--split .normas-col {
+  flex: 1 1 auto;
+  max-width: none;
+  margin-right: calc(var(--ln-panel-ancho) - 8px);
+}
+
+.pdf-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1500;
+  width: var(--ln-panel-ancho);
+  height: auto;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  border-left: 1px solid var(--ln-border);
+  background: #FFFFFF;
+}
+
+.pdf-panel-header {
+  padding: 14px 16px 14px 20px;
+  border-bottom: 3px solid var(--ln-naranja);
+}
+
+.pdf-panel-encabezado {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.pdf-panel-sector {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ln-naranja);
+}
+
+.pdf-panel-titulo {
+  font-size: 0.95rem;
+}
+
+.pdf-panel-boton--texto {
+  width: auto;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid rgba(238, 233, 223, 0.35);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.pdf-panel-boton--texto:hover {
+  border-color: var(--ln-naranja);
+}
+
+/* El resumen deja casi todo el alto al PDF */
+.norma-resumen-body {
+  max-height: 26vh;
+}
+
+.pdf-panel-body {
+  background: #525659; /* gris del visor de PDF, sin "saltos" de color al cargar */
+}
+
+.pdf-panel-status {
+  color: rgba(238, 233, 223, 0.85);
+}
+
+.panel-pdf-enter-active,
+.panel-pdf-leave-active {
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease;
+}
+
+.panel-pdf-enter-from,
+.panel-pdf-leave-to {
+  transform: translateX(40px);
+  opacity: 0;
+}
+
+@media (max-width: 900px) {
+  /* En pantallas chicas el PDF ocupa toda la pantalla */
+  .pdf-panel {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: auto;
+    border-left: none;
+  }
+  .normas-layout--split .normas-col {
+    margin-right: 0;
+  }
+  /* Espacio para el botón fijo que abre/cierra la barra lateral */
+  .pdf-panel-header {
+    padding-left: 60px;
+  }
+}
+
+/* ---- Filtro de sectores fijo arriba al desplazarse ---- */
+.sectores-filtro {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: 0 -4px 14px;
+  padding: 10px 4px;
+  background: rgba(255, 255, 255, 0.94);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--ln-border);
+}
+
+/* ---- Tarjetas interactivas ---- */
+.norma-card {
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  animation: normaEntrada 0.45s ease-out both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+@keyframes normaEntrada {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* El botón del título cubre toda la tarjeta: clic en cualquier parte */
+.norma-titulo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.norma-titulo:focus-visible {
+  outline: none;
+}
+
+.norma-card:has(.norma-titulo:focus-visible) {
+  outline: 2px solid var(--ln-naranja);
+  outline-offset: 2px;
+}
+
+.norma-card:hover .norma-titulo {
+  color: var(--ln-terracota);
+}
+
+.norma-card:hover .norma-titulo-flecha {
+  opacity: 1;
+  transform: none;
+}
+
+.norma-sumilla {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.norma-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  margin-top: 12px;
+  padding: 5px 12px;
+  border: 1px solid var(--ln-border);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ln-navy);
+  background: #FFFFFF;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s, gap 0.2s;
+}
+
+.norma-card:hover .norma-cta {
+  background: var(--ln-navy);
+  border-color: var(--ln-navy);
+  color: #FFFFFF;
+  gap: 10px;
+}
+
+.norma-card--activa .norma-cta {
+  background: var(--ln-terracota);
+  border-color: var(--ln-terracota);
+  color: #FFFFFF;
+}
+
+.norma-abierta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ln-terracota);
+}
+
+.norma-abierta-punto {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ln-terracota);
+  animation: abiertaPulso 1.6s ease-in-out infinite;
+}
+
+@keyframes abiertaPulso {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .norma-card,
+  .norma-abierta-punto { animation: none; }
 }
 </style>

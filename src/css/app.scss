@@ -21,6 +21,8 @@
   --lexit-texto-tenue: rgba(23, 33, 27, 0.65);     // 65%: ≥ 5:1, para fechas y etiquetas chicas
   --lexit-marfil: #D9D4C6;           // bordes, separadores, selección
   --lexit-marfil-suave: rgba(217, 212, 198, 0.5); // hover
+  --lexit-marfil-rgb: 217, 212, 198;  // marfil para usar con transparencia
+  --lexit-piedra-rgb: 189, 181, 155;  // piedra para usar con transparencia
   --lexit-piedra: #BDB59B;           // detalle sutil, casi nada
 
   // Superficie
@@ -81,6 +83,26 @@
   font-family: 'Baskervville';
   src: url('../assets/fonts/baskervville/Baskervville-Italic-VariableFont_wght.ttf') format('truetype');
   font-weight: 400 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+// Urbanist (SIL Open Font License, ver src/assets/fonts/urbanist/OFL.txt):
+// texto corrido de las funciones de la app (historial, respuestas del
+// chat, botones, etiquetas, listas). Se aplica desde MainLayout.vue, así
+// que la Landing no la usa. Variable: un archivo cubre los pesos 100-900.
+@font-face {
+  font-family: 'Urbanist';
+  src: url('../assets/fonts/urbanist/Urbanist-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Urbanist';
+  src: url('../assets/fonts/urbanist/Urbanist-Italic-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
   font-style: italic;
   font-display: swap;
 }

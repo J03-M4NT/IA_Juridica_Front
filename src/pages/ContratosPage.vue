@@ -1676,7 +1676,7 @@ onUnmounted(() => { if (temporizadorDocEnVivo) clearTimeout(temporizadorDocEnViv
   background: var(--lx-surface);
   border: 1px solid var(--lx-border);
   border-radius: 16px;
-  box-shadow: 0 1px 2px rgba(23, 33, 27, 0.06), 0 12px 32px -16px rgba(23, 33, 27, 0.18);
+  box-shadow: 0 1px 2px rgba(var(--lexit-verde-rgb), 0.06), 0 12px 32px -16px rgba(var(--lexit-verde-rgb), 0.18);
   overflow: hidden;
 }
 
@@ -1886,7 +1886,7 @@ onUnmounted(() => { if (temporizadorDocEnVivo) clearTimeout(temporizadorDocEnViv
   color: var(--lx-text-faint);
 }
 
-.template-item:hover { background: rgba(23, 33, 27, 0.05); }
+.template-item:hover { background: rgba(var(--lexit-verde-rgb), 0.05); }
 
 .template-item.q-item--active {
   background: var(--lx-accent-soft);
@@ -1938,7 +1938,7 @@ onUnmounted(() => { if (temporizadorDocEnVivo) clearTimeout(temporizadorDocEnViv
   border: 1px solid var(--lx-border);
   border-radius: 999px;
   background: var(--lx-surface);
-  box-shadow: 0 6px 18px -12px rgba(23, 33, 27, 0.4);
+  box-shadow: 0 6px 18px -12px rgba(var(--lexit-verde-rgb), 0.4);
 }
 
 .paginador-btn {
@@ -1954,7 +1954,7 @@ onUnmounted(() => { if (temporizadorDocEnVivo) clearTimeout(temporizadorDocEnViv
   max-height: 600px;
   border-radius: var(--border-radius-small);
   border: 1px solid var(--lx-border);
-  box-shadow: 0 12px 28px -10px rgba(23, 33, 27, 0.35);
+  box-shadow: 0 12px 28px -10px rgba(var(--lexit-verde-rgb), 0.35);
   background: white !important;
 }
 
@@ -1991,7 +1991,7 @@ canvas {
   background: white;
   border: 1px solid var(--lx-border);
   border-radius: var(--border-radius-small);
-  box-shadow: 0 12px 28px -10px rgba(23, 33, 27, 0.35);
+  box-shadow: 0 12px 28px -10px rgba(var(--lexit-verde-rgb), 0.35);
   padding: 2.5rem 3rem;
   max-height: 640px;
   overflow-y: auto;
@@ -2027,7 +2027,7 @@ canvas {
   background: #fff;
   border: 1px solid var(--lx-border);
   border-radius: 6px;
-  box-shadow: 0 14px 30px -16px rgba(23, 33, 27, 0.45);
+  box-shadow: 0 14px 30px -16px rgba(var(--lexit-verde-rgb), 0.45);
   display: flex;
   flex-direction: column;
   gap: 9px;
@@ -2100,7 +2100,7 @@ canvas {
 .lx-tabs :deep(.q-tab--active) {
   color: var(--lx-text) !important;
   background: var(--lx-surface);
-  box-shadow: 0 1px 2px rgba(23, 33, 27, 0.08), 0 4px 12px -6px rgba(23, 33, 27, 0.25);
+  box-shadow: 0 1px 2px rgba(var(--lexit-verde-rgb), 0.08), 0 4px 12px -6px rgba(var(--lexit-verde-rgb), 0.25);
 }
 
 .lx-tabs :deep(.q-tab__icon) { font-size: 18px; }
@@ -2113,7 +2113,7 @@ canvas {
 .chat-edicion-panel {
   /* Beige claro (no el #BDB59B de --lx-surface-sunken): sobre ese fondo
      oscuro los textos del chat casi no se leían. */
-  background: linear-gradient(165deg, #F8F7F2, var(--lx-surface-alt));
+  background: linear-gradient(165deg, var(--lexit-blanco-calido), var(--lx-surface-alt));
   border: 1px solid var(--lx-border);
   border-radius: 16px;
   padding: 1.6rem;
@@ -2218,7 +2218,7 @@ canvas {
   line-height: 1.55;
   max-width: 78%;
   white-space: pre-wrap;
-  box-shadow: 0 2px 8px rgba(23, 33, 27, 0.10);
+  box-shadow: 0 2px 8px rgba(var(--lexit-verde-rgb), 0.10);
 }
 
 .chat-edicion-burbuja--ia {
@@ -2274,7 +2274,7 @@ canvas {
   border-radius: 20px;
   padding: 28px;
   background:
-    radial-gradient(120% 80% at 50% -10%, rgba(217, 212, 198, 0.55), transparent 60%),
+    radial-gradient(120% 80% at 50% -10%, rgba(var(--lexit-marfil-rgb), 0.55), transparent 60%),
     linear-gradient(180deg, var(--lexit-blanco-calido), var(--lx-surface) 70%);
 }
 
@@ -2289,7 +2289,7 @@ canvas {
   height: 320px;
   transform: translateX(-50%);
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(189, 181, 155, 0.35), transparent);
+  background: radial-gradient(closest-side, rgba(var(--lexit-piedra-rgb), 0.35), transparent);
   animation: halo 7s ease-in-out infinite;
   pointer-events: none;
 }
@@ -2377,7 +2377,7 @@ canvas {
   bottom: 0.04em;
   height: 0.14em;
   border-radius: 2px;
-  background: rgba(189, 181, 155, 0.55);
+  background: rgba(var(--lexit-piedra-rgb), 0.55);
   z-index: -1;
   transform: scaleX(0);
   transform-origin: left;
@@ -2406,14 +2406,14 @@ canvas {
   background: var(--lx-surface);
   border: 1px solid var(--lx-border-strong);
   border-radius: 999px;
-  box-shadow: 0 12px 32px -18px rgba(23, 33, 27, 0.45);
+  box-shadow: 0 12px 32px -18px rgba(var(--lexit-verde-rgb), 0.45);
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   animation: floatUp 0.6s 0.24s ease-out both;
 }
 
 .asistente-composer:focus-within {
   border-color: var(--lx-accent);
-  box-shadow: 0 0 0 4px var(--lx-accent-soft), 0 16px 36px -18px rgba(23, 33, 27, 0.5);
+  box-shadow: 0 0 0 4px var(--lx-accent-soft), 0 16px 36px -18px rgba(var(--lexit-verde-rgb), 0.5);
   transform: translateY(-1px);
 }
 
@@ -2495,7 +2495,7 @@ canvas {
 .asistente-idea:hover,
 .asistente-idea:focus-visible {
   border-color: var(--lx-border-strong);
-  box-shadow: 0 14px 28px -18px rgba(23, 33, 27, 0.5);
+  box-shadow: 0 14px 28px -18px rgba(var(--lexit-verde-rgb), 0.5);
   transform: translateY(-3px);
   outline: none;
 }
@@ -2579,7 +2579,7 @@ canvas {
   font-family: 'Baskervville', 'EB Garamond', serif;
   font-size: 1.3rem;
   font-weight: 600;
-  box-shadow: 0 8px 18px -10px rgba(23, 33, 27, 0.6);
+  box-shadow: 0 8px 18px -10px rgba(var(--lexit-verde-rgb), 0.6);
 }
 
 .asistente-monograma--chico {
@@ -2619,7 +2619,7 @@ canvas {
 
 .asistente .chat-edicion-burbuja--ia {
   border-radius: 4px 16px 16px 16px;
-  box-shadow: 0 6px 18px -14px rgba(23, 33, 27, 0.45);
+  box-shadow: 0 6px 18px -14px rgba(var(--lexit-verde-rgb), 0.45);
 }
 
 .asistente .chat-edicion-fila--ia {
@@ -2673,7 +2673,7 @@ canvas {
 .asistente-plantilla:hover,
 .asistente-plantilla:focus-visible {
   border-color: var(--lx-accent);
-  box-shadow: 0 14px 28px -18px rgba(23, 33, 27, 0.55);
+  box-shadow: 0 14px 28px -18px rgba(var(--lexit-verde-rgb), 0.55);
   transform: translateY(-2px);
   outline: none;
 }
@@ -2888,7 +2888,7 @@ canvas {
   border: 1px solid var(--lx-border);
   border-radius: 20px;
   background: var(--lx-surface);
-  box-shadow: 0 30px 60px -30px rgba(23, 33, 27, 0.45);
+  box-shadow: 0 30px 60px -30px rgba(var(--lexit-verde-rgb), 0.45);
   text-align: center;
   animation: floatUp 0.4s ease-out both;
 }
@@ -2903,7 +2903,7 @@ canvas {
   border: 1px solid var(--lx-border);
   border-radius: 6px;
   background: #fff;
-  box-shadow: 0 14px 28px -16px rgba(23, 33, 27, 0.5);
+  box-shadow: 0 14px 28px -16px rgba(var(--lexit-verde-rgb), 0.5);
   display: flex;
   flex-direction: column;
   gap: 7px;
@@ -2935,7 +2935,7 @@ canvas {
   justify-content: center;
   background: var(--lx-accent);
   color: var(--lx-ink);
-  box-shadow: 0 8px 16px -8px rgba(23, 33, 27, 0.6);
+  box-shadow: 0 8px 16px -8px rgba(var(--lexit-verde-rgb), 0.6);
   animation: sello 1.8s ease-in-out infinite;
 }
 
@@ -3027,7 +3027,7 @@ canvas {
   background:
     radial-gradient(120% 140% at 0% 0%, rgba(47, 143, 91, 0.10), transparent 55%),
     var(--lexit-blanco-calido);
-  box-shadow: 0 18px 36px -24px rgba(23, 33, 27, 0.45);
+  box-shadow: 0 18px 36px -24px rgba(var(--lexit-verde-rgb), 0.45);
 }
 
 .contrato-listo-check {
@@ -3149,7 +3149,7 @@ canvas {
   color: var(--lx-text);
   font: inherit;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(23, 33, 27, 0.06), 0 12px 32px -16px rgba(23, 33, 27, 0.18);
+  box-shadow: 0 1px 2px rgba(var(--lexit-verde-rgb), 0.06), 0 12px 32px -16px rgba(var(--lexit-verde-rgb), 0.18);
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
@@ -3344,7 +3344,7 @@ canvas {
   top: 0;
   height: 90px;
   pointer-events: none;
-  background: linear-gradient(180deg, transparent, rgba(189, 181, 155, 0.28) 70%, rgba(47, 143, 91, 0.45) 98%, transparent);
+  background: linear-gradient(180deg, transparent, rgba(var(--lexit-piedra-rgb), 0.28) 70%, rgba(47, 143, 91, 0.45) 98%, transparent);
   animation: escaneo 2.2s ease-in-out infinite;
 }
 
@@ -3365,7 +3365,7 @@ canvas {
   max-width: 460px;
   border-radius: 16px;
   border: 1px solid var(--lexit-marfil);
-  box-shadow: 0 24px 48px -20px rgba(23, 33, 27, 0.4);
+  box-shadow: 0 24px 48px -20px rgba(var(--lexit-verde-rgb), 0.4);
 }
 
 .lx-dialogo-error-cabecera {
@@ -3417,6 +3417,241 @@ canvas {
 .contratos-page :deep(.text-grey-6),
 .contratos-page :deep(.text-grey-7) {
   color: var(--lx-text-muted) !important;
+}
+
+/* ==========================================================================
+   ASISTENTE Y CHAT — VERSIÓN CORPORATIVA COMPACTA
+   Menos aire, alineado a la izquierda, sin halos ni pulsos decorativos;
+   aprovecha el ancho de la tarjeta. Solo estilos (mismas clases).
+   ========================================================================== */
+
+/* La tarjeta ya tiene su borde: sin doble relleno alrededor del asistente */
+.editor-content {
+  padding: 16px;
+}
+
+.asistente,
+.asistente--inicio {
+  padding: 20px 22px;
+  background: #FFFFFF;
+  border: 1px solid var(--lx-border);
+}
+
+.asistente::before {
+  display: none;
+}
+
+/* ---- Portada: alineada a la izquierda, compacta ---- */
+.asistente-portada {
+  max-width: none;
+  margin: 0 0 14px;
+  text-align: left;
+}
+
+.asistente-insignia {
+  padding: 0;
+  border: none;
+  background: none;
+  gap: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  color: var(--lexit-terracota, var(--lx-text-muted));
+  animation: none;
+}
+
+.asistente-insignia-punto {
+  display: none;
+}
+
+.asistente-titular {
+  margin: 4px 0 4px;
+  font-size: clamp(1.35rem, 2.2vw, 1.7rem);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  animation: none;
+}
+
+.asistente-titular em::after {
+  display: none;
+}
+
+.asistente-bajada {
+  font-size: 0.92rem;
+  animation: none;
+}
+
+/* ---- Campo para escribir: todo el ancho ---- */
+.asistente-composer {
+  max-width: none;
+  margin: 0;
+  padding: 4px 4px 4px 14px;
+  gap: 8px;
+  animation: none;
+}
+
+.asistente-composer-input :deep(.q-field__control) {
+  min-height: 38px;
+  height: 38px;
+}
+
+.asistente-composer-input :deep(.q-field__native) {
+  font-size: 0.95rem;
+}
+
+.asistente-composer-enviar {
+  width: 36px;
+  height: 36px;
+}
+
+/* ---- Ideas: tarjetas chicas en fila (ícono + texto) ---- */
+.asistente-ideas-titulo {
+  max-width: none;
+  margin: 16px 0 8px;
+  text-align: left;
+}
+
+.asistente-ideas {
+  max-width: none;
+  margin: 0;
+  gap: 8px;
+}
+
+.asistente-idea {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  row-gap: 0;
+  align-items: center;
+  padding: 9px 12px;
+  animation: none;
+}
+
+.asistente-idea:hover,
+.asistente-idea:focus-visible {
+  border-color: var(--lx-text);
+  transform: none;
+}
+
+.asistente-idea-icono {
+  grid-row: 1 / span 2;
+  width: 30px;
+  height: 30px;
+  margin: 0;
+}
+
+.asistente-idea:hover .asistente-idea-icono,
+.asistente-idea--elegida .asistente-idea-icono {
+  transform: none;
+}
+
+.asistente-idea-titulo {
+  font-size: 0.92rem;
+  line-height: 1.25;
+}
+
+.asistente-idea-texto {
+  font-size: 0.76rem;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asistente-ventajas {
+  justify-content: flex-start;
+  gap: 6px 18px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--lx-border);
+  font-size: 0.78rem;
+  animation: none;
+}
+
+/* ---- Conversación compacta ---- */
+.asistente-chat-cabecera {
+  gap: 10px;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.asistente-monograma {
+  width: 32px;
+  height: 32px;
+  font-size: 1.05rem;
+}
+
+.asistente-monograma--chico {
+  width: 24px;
+  height: 24px;
+  font-size: 0.82rem;
+}
+
+.asistente-mensajes {
+  max-height: 460px;
+  margin-bottom: 12px;
+  gap: 10px;
+}
+
+.asistente-bloque {
+  max-width: 88%;
+}
+
+.asistente .chat-edicion-burbuja {
+  padding: 9px 13px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.asistente-plantillas {
+  gap: 6px;
+}
+
+.asistente-plantilla {
+  padding: 9px 10px;
+  gap: 10px;
+  animation: none;
+}
+
+.asistente-plantilla:hover,
+.asistente-plantilla:focus-visible {
+  transform: none;
+}
+
+.asistente-plantilla-icono {
+  width: 32px;
+  height: 32px;
+}
+
+/* ---- Chat "Completar con IA" (editor) ---- */
+.chat-edicion-panel {
+  background: #FFFFFF;
+  padding: 16px;
+}
+
+.chat-edicion-hint {
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+}
+
+.chat-edicion-mensajes {
+  gap: 8px;
+}
+
+.chat-edicion-burbuja {
+  padding: 9px 13px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .asistente-ideas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 600px) {
+  .asistente,
+  .asistente--inicio { padding: 16px 14px; }
+  .asistente-idea-texto { display: none; }
 }
 </style>
 

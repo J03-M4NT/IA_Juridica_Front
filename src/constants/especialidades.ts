@@ -6,7 +6,8 @@ export const ESPECIALIDADES = [
   { valor: 'derecho-penal', etiqueta: 'Derecho Penal' },
   { valor: 'derecho-civil', etiqueta: 'Derecho Civil' },
   { valor: 'derecho-tributario', etiqueta: 'Derecho Tributario' },
-  { valor: 'derecho-comercial', etiqueta: 'Derecho Comercial' }
+  { valor: 'derecho-comercial', etiqueta: 'Derecho Comercial' },
+  { valor: 'derecho-laboral', etiqueta: 'Derecho Laboral' }
 ] as const
 
 export type Especialidad = typeof ESPECIALIDADES[number]['valor']

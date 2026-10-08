@@ -1,5 +1,5 @@
 <template>
-  <q-page class="consultas-page">
+  <q-page class="consultas-page" :class="{ 'consultas-page--vacia': !hayConversacion }">
 
     <!-- Section header — se encoge y se atenúa al bajar en el chat, para
          devolverle espacio a la conversación sin perder el título del
@@ -35,8 +35,9 @@
           <div v-if="mensaje.esIA" class="msg-block msg-block--ai">
             <div class="msg-meta msg-meta--ai">LexIT · {{ formatTimestamp(mensaje.timestamp) }}</div>
 
-            <!-- Mientras llega el primer trozo del stream: "LexIT está pensando"
-                 con brillo, puntos y frases que rotan solo con CSS. -->
+            <!-- Mientras llega el primer trozo del stream: una sola línea que
+                 va diciendo "Pensando…", "Analizando tu consulta…", etc.
+                 (rotan solo con CSS). El nombre ya está arriba, en msg-meta. -->
             <div
               v-if="!mensaje.contenido && store.loading && index === mensajes.length - 1"
               class="pensando"
@@ -44,14 +45,13 @@
               aria-live="polite"
             >
               <span class="pensando-marca" aria-hidden="true"><span></span></span>
-              <div class="pensando-texto">
-                <span class="pensando-titulo">LexIT está pensando<span class="pensando-puntos" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></span>
-                <span class="pensando-fases" aria-hidden="true">
-                  <span>Analizando tu consulta</span>
-                  <span>Revisando la base jurídica</span>
-                  <span>Redactando la respuesta</span>
-                </span>
-              </div>
+              <span class="pensando-fases" aria-hidden="true">
+                <span>Pensando…</span>
+                <span>Analizando tu consulta…</span>
+                <span>Revisando la base jurídica…</span>
+                <span>Redactando la respuesta…</span>
+              </span>
+              <span class="pensando-lector">Pensando…</span>
             </div>
             <template v-else>
               <div
@@ -478,7 +478,7 @@ watch(mensajes, async () => {
   --lc-accent-soft: var(--lexit-marfil-suave);
   --lc-accent-soft-strong: var(--lexit-marfil);
   --lc-accent-warm: var(--lexit-piedra);
-  --lc-accent-warm-soft: rgba(189, 181, 155, 0.25);
+  --lc-accent-warm-soft: rgba(var(--lexit-piedra-rgb), 0.25);
   --lc-ink: var(--lexit-blanco-calido);
 
   /* El max-width:none real vive en ".q-page.consultas-page" más abajo —
@@ -601,7 +601,7 @@ watch(mensajes, async () => {
   font-family: 'Baskervville', 'Fraunces', 'EB Garamond', serif;
   font-optical-sizing: auto;
   font-size: clamp(3rem, 6vw, 4.4rem);
-  font-weight: 600;
+  font-weight: 400;
   line-height: 1.05;
   letter-spacing: -0.02em;
   margin: 0;
@@ -792,24 +792,20 @@ watch(mensajes, async () => {
   color: var(--lc-text);
 }
 
-/* "LexIT está pensando": marca que late, título con brillo que recorre
-   el texto, puntos suspensivos y tres frases que rotan (todo CSS). */
+/* "Pensando…": sin recuadro, una marca que late y una sola línea de texto
+   con brillo que va cambiando de frase (todo CSS). */
 .pensando {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 16px 10px 12px;
-  border: 1px solid var(--lc-border);
-  border-radius: 14px;
-  background: var(--lc-surface);
-  box-shadow: 0 6px 20px -14px rgba(23, 33, 27, 0.4);
+  gap: 10px;
+  padding: 2px 0;
   animation: floatUp 0.35s ease-out both;
 }
 
 .pensando-marca {
   position: relative;
-  width: 28px;
-  height: 28px;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -829,8 +825,8 @@ watch(mensajes, async () => {
 .pensando-marca::after { animation-delay: 0.9s; }
 
 .pensando-marca > span {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--lc-accent);
   animation: pensandoLatido 1.8s ease-in-out infinite;
@@ -838,7 +834,7 @@ watch(mensajes, async () => {
 
 @keyframes pensandoOnda {
   from { transform: scale(0.35); opacity: 0.9; }
-  to   { transform: scale(1.15); opacity: 0; }
+  to   { transform: scale(1.2); opacity: 0; }
 }
 
 @keyframes pensandoLatido {
@@ -846,55 +842,16 @@ watch(mensajes, async () => {
   50%      { transform: scale(0.75); }
 }
 
-.pensando-texto {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 190px;
-}
-
-.pensando-titulo {
-  font-family: 'Baskervville', 'EB Garamond', serif;
-  font-size: 0.98rem;
-  font-weight: 600;
-  background: linear-gradient(
-    90deg,
-    var(--lc-text) 0%,
-    var(--lc-text) 40%,
-    var(--lc-accent-warm) 50%,
-    var(--lc-text) 60%,
-    var(--lc-text) 100%
-  );
-  background-size: 250% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: pensandoBrillo 2.2s linear infinite;
-}
-
-@keyframes pensandoBrillo {
-  from { background-position: 100% 0; }
-  to   { background-position: -150% 0; }
-}
-
-.pensando-puntos span {
-  display: inline-block;
-  color: var(--lc-text);
-  -webkit-text-fill-color: var(--lc-text);
-  animation: blink 1.2s infinite;
-}
-
-.pensando-puntos span:nth-child(2) { animation-delay: 0.2s; }
-.pensando-puntos span:nth-child(3) { animation-delay: 0.4s; }
-
-/* Las tres frases ocupan el mismo lugar y se turnan (ciclo de 7.5s). */
+/* Las frases ocupan el mismo lugar y se turnan (ciclo de 10s). */
 .pensando-fases {
   position: relative;
   display: block;
-  height: 1.2em;
+  width: 260px;
+  height: 1.5em;
   overflow: hidden;
-  font-size: 0.8rem;
-  color: var(--lc-text-faint);
+  font-family: 'Baskervville', 'EB Garamond', serif;
+  font-size: 0.98rem;
+  font-weight: 600;
 }
 
 .pensando-fases span {
@@ -903,26 +860,54 @@ watch(mensajes, async () => {
   top: 0;
   white-space: nowrap;
   opacity: 0;
-  animation: pensandoFase 7.5s ease-in-out infinite;
+  background: linear-gradient(
+    90deg,
+    var(--lc-text-muted) 0%,
+    var(--lc-text-muted) 40%,
+    var(--lc-text) 50%,
+    var(--lc-text-muted) 60%,
+    var(--lc-text-muted) 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation:
+    pensandoFase 10s ease-in-out infinite,
+    pensandoBrillo 2.2s linear infinite;
 }
 
-.pensando-fases span:nth-child(2) { animation-delay: 2.5s; }
-.pensando-fases span:nth-child(3) { animation-delay: 5s; }
+.pensando-fases span:nth-child(2) { animation-delay: 2.5s, 0s; }
+.pensando-fases span:nth-child(3) { animation-delay: 5s, 0s; }
+.pensando-fases span:nth-child(4) { animation-delay: 7.5s, 0s; }
+
+@keyframes pensandoBrillo {
+  from { background-position: 100% 0; }
+  to   { background-position: -150% 0; }
+}
 
 @keyframes pensandoFase {
-  0%   { opacity: 0; transform: translateY(70%); }
-  6%   { opacity: 1; transform: none; }
-  28%  { opacity: 1; transform: none; }
-  34%  { opacity: 0; transform: translateY(-70%); }
-  100% { opacity: 0; transform: translateY(-70%); }
+  0%   { opacity: 0; transform: translateY(60%); }
+  4%   { opacity: 1; transform: none; }
+  22%  { opacity: 1; transform: none; }
+  26%  { opacity: 0; transform: translateY(-60%); }
+  100% { opacity: 0; transform: translateY(-60%); }
+}
+
+/* Texto solo para lectores de pantalla */
+.pensando-lector {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .pensando-marca::before,
   .pensando-marca::after,
   .pensando-marca > span,
-  .pensando-titulo,
-  .pensando-puntos span,
   .page-title-letra { animation: none; }
 
   .pensando-fases span { animation: none; }
@@ -1106,6 +1091,9 @@ watch(mensajes, async () => {
 }
 
 .input-area {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
   padding: 8px 2px 0;
   flex-shrink: 0;
 }
@@ -1113,12 +1101,12 @@ watch(mensajes, async () => {
 .composer-pill {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   background: var(--lc-surface);
   border: 1px solid var(--lc-border-strong);
-  border-radius: 24px;
-  padding: 10px 10px 8px 18px;
-  box-shadow: 0 4px 18px -6px rgba(23, 33, 27, 0.16);
+  border-radius: 20px;
+  padding: 6px 8px 6px 16px;
+  box-shadow: 0 4px 18px -6px rgba(var(--lexit-verde-rgb), 0.16);
   transition: border-color 0.18s, box-shadow 0.18s;
 }
 
@@ -1146,8 +1134,8 @@ watch(mensajes, async () => {
 :deep(.composer-textarea-pill .q-field__native) {
   color: var(--lc-text) !important;
   font-family: 'Baskervville', 'Figtree', sans-serif !important;
-  font-size: 1rem !important;
-  padding: 7px 0 !important;
+  font-size: 0.97rem !important;
+  padding: 5px 0 !important;
   line-height: 1.45 !important;
   resize: none !important;
 }
@@ -1160,8 +1148,8 @@ watch(mensajes, async () => {
 :deep(.composer-textarea-pill .q-field__bottom) { display: none !important; }
 
 .ask-btn-round {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--lc-accent);
   color: var(--lc-ink);
@@ -1241,6 +1229,68 @@ watch(mensajes, async () => {
   }
 
   .msg-bubble-user { max-width: 88%; }
+}
+
+/* Sin conversación: el saludo y el campo de consulta quedan juntos y
+   centrados en la pantalla (como portada); al empezar a conversar, el
+   campo vuelve abajo. */
+.consultas-page--vacia {
+  justify-content: center;
+}
+
+.consultas-page--vacia .page-header {
+  flex: 0 0 auto;
+  margin-bottom: 38px;
+  gap: 16px;
+}
+
+.consultas-page--vacia .chat-wrapper {
+  height: auto;
+  padding-top: 0;
+}
+
+.consultas-page--vacia .messages-area {
+  flex: 0 0 auto;
+  padding: 0;
+}
+
+/* Todo el bloque (LexIT + saludo + campo) en el centro EXACTO de la
+   pantalla. La página trae relleno desparejo de MainLayout (34px arriba,
+   60px abajo) que corría el centro hacia arriba: en la portada se quita el
+   relleno vertical y la página ocupa todo el alto visible. */
+.q-page.consultas-page.consultas-page--vacia {
+  height: 100vh;
+  min-height: 100vh;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* Clave del centrado: sin esto, ".consultas-layout { flex: 1 }" (más
+   abajo en el archivo, misma especificidad que .consultas-layout--vacio)
+   le ganaba y el bloque del campo se estiraba ocupando todo el alto que
+   sobra, dejando saludo + campo pegados arriba. */
+.consultas-page--vacia .consultas-layout {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+
+.consultas-page--vacia .page-header {
+  margin-top: 0;
+}
+
+/* Más presencia en la portada */
+.consultas-page--vacia .page-title {
+  font-size: clamp(3.6rem, 7.5vw, 5.6rem);
+  letter-spacing: -0.025em;
+}
+
+.consultas-page--vacia .page-saludo {
+  font-size: clamp(1.3rem, 2.6vw, 1.7rem);
+}
+
+/* El campo aparece justo después del saludo */
+.consultas-page--vacia .input-area {
+  animation: saludoEntrada 0.7s 0.65s ease both;
 }
 
 /* Selector de especialización dentro del campo de consulta */
@@ -1392,6 +1442,6 @@ watch(mensajes, async () => {
   border: 1px solid var(--lexit-marfil);
   border-radius: 14px;
   background: var(--lexit-blanco);
-  box-shadow: 0 18px 40px -18px rgba(23, 33, 27, 0.35);
+  box-shadow: 0 18px 40px -18px rgba(var(--lexit-verde-rgb), 0.35);
 }
 </style>

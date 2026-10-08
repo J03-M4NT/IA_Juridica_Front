@@ -16,7 +16,6 @@
       <div class="sidebar-inner">
 
         <div class="sidebar-brand" @click="$router.push('/')">
-          <span class="sidebar-brand-marca" aria-hidden="true">L</span>
           <span class="sidebar-brand-text">LexIT</span>
         </div>
 
@@ -131,8 +130,6 @@
       <!-- Fondo de la app: blanco con retícula de puntos muy suave y una luz
            que sigue al mouse (solo decorativo, ver moverLuzFondo). -->
       <div ref="fondoRef" class="app-fondo" aria-hidden="true">
-        <span class="app-fondo-mancha app-fondo-mancha--1"></span>
-        <span class="app-fondo-mancha app-fondo-mancha--2"></span>
         <span class="app-fondo-luz"></span>
       </div>
 
@@ -271,6 +268,11 @@ onMounted(() => {
   document.documentElement.addEventListener('mouseleave', apagarLuzFondo)
 })
 
+// Estilo plano (2D) también en menús, diálogos y avisos que Quasar monta
+// en <body>: solo mientras se está dentro de la app (no en la Landing).
+onMounted(() => document.body.classList.add('lexit-app-plana'))
+onUnmounted(() => document.body.classList.remove('lexit-app-plana'))
+
 onUnmounted(() => {
   window.removeEventListener('pointermove', moverLuzFondo)
   document.documentElement.removeEventListener('mouseleave', apagarLuzFondo)
@@ -350,33 +352,11 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
-.sidebar-brand-marca {
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--lexit-verde);
-  color: var(--lexit-blanco-calido);
-  font-family: 'Times New Roman', Times, serif;
-  font-size: 1.3rem;
-  font-weight: 700;
-  box-shadow: 0 8px 18px -10px rgba(var(--lexit-verde-rgb), 0.7);
-  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
-}
-
-.sidebar-brand:hover .sidebar-brand-marca {
-  transform: rotate(-8deg) scale(1.05);
-  box-shadow: 0 12px 22px -10px rgba(var(--lexit-verde-rgb), 0.75);
-}
-
 .sidebar-brand-text {
   position: relative;
   font-family: 'Times New Roman', Times, serif;
   font-size: 1.75rem;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: -0.01em;
   color: var(--lexit-verde);
 }
@@ -495,7 +475,7 @@ onUnmounted(() => {
   bottom: 8px;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background: var(--lexit-verde);
+  background: var(--lexit-terracota, var(--lexit-verde));
   animation: barraActiva 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -504,19 +484,11 @@ onUnmounted(() => {
   to   { transform: scaleY(1); }
 }
 
+/* Sin recuadro: solo el nombre del usuario (con su menú). */
 .sidebar-footer {
   position: relative;
   margin-top: auto;
-  padding: 10px 6px 4px;
-  border: 1px solid var(--lexit-marfil);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.7);
-  transition: box-shadow 0.25s ease, background-color 0.25s ease;
-}
-
-.sidebar-footer:hover {
-  background: var(--lexit-blanco);
-  box-shadow: 0 10px 22px -16px rgba(var(--lexit-verde-rgb), 0.45);
+  padding: 8px 0 0;
 }
 
 .sidebar-separator {
@@ -696,9 +668,16 @@ onUnmounted(() => {
   background: var(--lexit-marfil-suave);
 }
 
-.sidebar-footer :deep(.q-avatar) {
-  background: var(--lexit-verde) !important;
-  color: var(--lexit-blanco) !important;
+/* En el panel solo se muestra el nombre (sin el cuadro del avatar). */
+.sidebar-footer :deep(.user-profile-btn .avatar-usuario) {
+  display: none;
+}
+
+.sidebar-footer :deep(.user-profile-btn .text-profile-name) {
+  margin-left: 0 !important;
+  font-family: 'Baskervville', 'EB Garamond', serif;
+  font-size: 0.98rem;
+  font-weight: 600;
 }
 
 /* ==============================
@@ -746,66 +725,36 @@ onUnmounted(() => {
 
 /* Retícula base, visible sobre todo arriba */
 .app-fondo::before {
-  background-image: radial-gradient(rgba(var(--lexit-verde-rgb), 0.10) 1px, transparent 1.3px);
+  background-image: radial-gradient(rgba(var(--lexit-verde-rgb), 0.07) 1px, transparent 1.3px);
   -webkit-mask-image: radial-gradient(ellipse 90% 70% at 60% 0%, #000 0%, transparent 75%);
   mask-image: radial-gradient(ellipse 90% 70% at 60% 0%, #000 0%, transparent 75%);
 }
 
 /* Retícula más marcada solo alrededor del mouse */
 .app-fondo::after {
-  background-image: radial-gradient(rgba(var(--lexit-verde-rgb), 0.22) 1.1px, transparent 1.4px);
-  -webkit-mask-image: radial-gradient(220px circle at var(--mx) var(--my), #000 0%, transparent 70%);
-  mask-image: radial-gradient(220px circle at var(--mx) var(--my), #000 0%, transparent 70%);
-  opacity: var(--foco);
-  transition: opacity 0.5s ease;
+  background-image: radial-gradient(rgba(var(--lexit-verde-rgb), 0.12) 1px, transparent 1.3px);
+  -webkit-mask-image: radial-gradient(170px circle at var(--mx) var(--my), #000 0%, transparent 70%);
+  mask-image: radial-gradient(170px circle at var(--mx) var(--my), #000 0%, transparent 70%);
+  /* Muy sutil: apenas se insinúa alrededor del mouse */
+  opacity: calc(var(--foco) * 0.7);
+  transition: opacity 0.8s ease;
 }
 
 .app-fondo-luz {
   position: absolute;
   left: 0;
   top: 0;
-  width: 680px;
-  height: 680px;
+  width: 560px;
+  height: 560px;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(217, 212, 198, 0.42), rgba(217, 212, 198, 0.12) 55%, transparent);
+  background: radial-gradient(closest-side, rgba(var(--lexit-marfil-rgb), 0.13), rgba(var(--lexit-marfil-rgb), 0.04) 55%, transparent);
   transform: translate3d(calc(var(--mx) - 50%), calc(var(--my) - 50%), 0);
   opacity: var(--foco);
-  transition: opacity 0.5s ease;
+  transition: opacity 0.8s ease;
   will-change: transform;
 }
 
-.app-fondo-mancha {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.55;
-}
-
-.app-fondo-mancha--1 {
-  width: 520px;
-  height: 420px;
-  top: -160px;
-  right: -120px;
-  background: rgba(217, 212, 198, 0.65);
-  animation: manchaFlota 26s ease-in-out infinite alternate;
-}
-
-.app-fondo-mancha--2 {
-  width: 460px;
-  height: 380px;
-  bottom: -180px;
-  left: 18%;
-  background: rgba(189, 181, 155, 0.35);
-  animation: manchaFlota 32s ease-in-out infinite alternate-reverse;
-}
-
-@keyframes manchaFlota {
-  from { transform: translate3d(0, 0, 0) scale(1); }
-  to   { transform: translate3d(-60px, 40px, 0) scale(1.12); }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .app-fondo-mancha { animation: none; }
   .app-fondo-luz,
   .app-fondo::after { display: none; }
 }
@@ -877,7 +826,7 @@ onUnmounted(() => {
 
 .app-sidebar .q-drawer__content {
   border-right: 1px solid var(--lexit-marfil);
-  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.8), 8px 0 24px -20px rgba(23, 33, 27, 0.35);
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.8), 8px 0 24px -20px rgba(var(--lexit-verde-rgb), 0.35);
 }
 
 /* Cada página pintaba su propio fondo blanco encima del de la app; solo la
@@ -894,5 +843,297 @@ onUnmounted(() => {
 .borrar-consulta-dialog .q-dialog__title,
 .borrar-consulta-dialog .q-dialog__message {
   color: var(--lexit-verde) !important;
+}
+
+/* ==========================================================================
+   PALETA DE LAS FUNCIONES (Consultas, Análisis, Contratos, Normas, Admin)
+   Paleta corporativa (Documentos_Lexit/PaletasColores):
+     Abyssal Anchorfish Blue #1B2632  texto, íconos y botones principales
+     Blue Fantastic          #2C3B4D  hover de botones principales
+     Palladian               #EEE9DF  barra lateral y superficies suaves
+     Oatmeal                 #C9C1B1  bordes y separadores (en tinte)
+     Burning Flame           #FFB162  detalles puntuales (subrayados, foco)
+     Truffle Trouble         #A35139  indicador de la sección activa
+   Se redefinen las mismas variables --lexit-* que ya usan todas las
+   pantallas, solo mientras se está dentro de la app (clase del <body>
+   que pone este layout): la Landing no las usa y no cambia. Las páginas
+   siguen blancas. Los colores de estado (éxito, error, riesgo) no cambian.
+   ========================================================================== */
+body.lexit-app-plana {
+  --lexit-blanco: #FFFFFF;
+  --lexit-blanco-calido: #EEE9DF;
+  --lexit-verde: #1B2632;
+  --lexit-verde-rgb: 27, 38, 50;
+  --lexit-texto-secundario: rgba(27, 38, 50, 0.72);
+  --lexit-texto-tenue: rgba(27, 38, 50, 0.64);
+  --lexit-marfil: #DFD9CE;
+  --lexit-marfil-rgb: 201, 193, 177;
+  --lexit-marfil-suave: rgba(238, 233, 223, 0.8);
+  --lexit-piedra: #FFB162;
+  --lexit-piedra-rgb: 255, 177, 98;
+  --lexit-azul: #2C3B4D;
+  --lexit-terracota: #A35139;
+
+  /* Variables globales derivadas (app.scss las resuelve en :root con la
+     paleta anterior; aquí se recalculan con la nueva). */
+  --ink: #1B2632;
+  --ink-soft: rgba(27, 38, 50, 0.85);
+  --text-secondary: rgba(27, 38, 50, 0.72);
+  --text-muted: rgba(27, 38, 50, 0.64);
+  --accent: #1B2632;
+  --accent-hover: #2C3B4D;
+  --accent-soft: rgba(238, 233, 223, 0.8);
+  --accent-soft-strong: #DFD9CE;
+  --border-color: #DFD9CE;
+  --border-color-strong: rgba(27, 38, 50, 0.18);
+  --surface-alt: #EEE9DF;
+  --surface-sunken: rgba(238, 233, 223, 0.8);
+
+  /* Colores de marca de Quasar (botones color="primary"/"accent", etc.) */
+  --q-primary: #1B2632;
+  --q-secondary: #2C3B4D;
+  --q-accent: #1B2632;
+}
+
+/* --------------------------------------------------------------------------
+   Barra lateral en Abyssal Anchorfish Blue (navy), texto Palladian y la
+   sección activa en Blue Fantastic con acento Burning Flame. Se hace
+   redefiniendo las mismas variables solo dentro del panel, así todas sus
+   reglas (hover, activo, historial, usuario) toman los colores nuevos.
+   -------------------------------------------------------------------------- */
+body.lexit-app-plana .app-sidebar {
+  --lexit-blanco-calido: #1B2632;          /* fondo del panel */
+  --lexit-blanco: #2C3B4D;                 /* ítem activo */
+  --lexit-verde: #EEE9DF;                  /* texto e íconos */
+  --lexit-verde-rgb: 238, 233, 223;
+  --lexit-texto-secundario: rgba(238, 233, 223, 0.74);
+  --lexit-texto-tenue: rgba(238, 233, 223, 0.56);
+  --lexit-marfil: rgba(238, 233, 223, 0.14);      /* bordes y separadores */
+  --lexit-marfil-suave: rgba(238, 233, 223, 0.07); /* hover */
+  --lexit-piedra: #FFB162;
+  --lexit-terracota: #FFB162;              /* barrita de la sección activa */
+}
+
+body.lexit-app-plana .app-sidebar .sidebar-inner {
+  background: #1B2632;
+}
+
+body.lexit-app-plana .app-sidebar .q-drawer__content {
+  border-right-color: #1B2632;
+}
+
+/* Ícono de la sección activa y "+" en Burning Flame */
+body.lexit-app-plana .app-sidebar .sidebar-link--active svg,
+body.lexit-app-plana .app-sidebar .new-chat-btn {
+  color: #FFB162 !important;
+}
+
+/* Punto de la conversación abierta en Burning Flame */
+body.lexit-app-plana .app-sidebar .history-item--active::before {
+  background: #FFB162;
+}
+
+/* Botón para abrir/cerrar el panel, a juego */
+body.lexit-app-plana .sidebar-toggle-btn {
+  background: #1B2632;
+  color: #EEE9DF !important;
+  border-color: #1B2632;
+}
+
+body.lexit-app-plana .sidebar-toggle-btn:hover {
+  background: #2C3B4D;
+}
+
+/* --------------------------------------------------------------------------
+   Contenido (blanco predominante) con acentos de la paleta
+   -------------------------------------------------------------------------- */
+/* Botones principales de Quasar en Blue Fantastic */
+body.lexit-app-plana {
+  --q-primary: #2C3B4D;
+  --q-accent: #2C3B4D;
+}
+
+/* "LexIT" del saludo de Consultas: "IT" en Truffle Trouble */
+body.lexit-app-plana .page-title .page-title-letra:nth-child(n + 4),
+body.lexit-app-plana .page-title:hover .page-title-letra:nth-child(n + 4) {
+  color: #A35139;
+}
+
+/* Línea bajo el saludo en Burning Flame */
+body.lexit-app-plana .consultas-page .page-header:not(.page-header--compact)::after {
+  height: 2px;
+  background: #FFB162;
+}
+
+/* Foco de los campos de escritura: anillo Burning Flame suave */
+body.lexit-app-plana .page-container.page-container.page-container :is(.composer-pill, .asistente-composer):focus-within {
+  border-color: #FFB162 !important;
+  box-shadow: 0 0 0 3px rgba(255, 177, 98, 0.22) !important;
+}
+
+/* Botón de enviar del chat en Blue Fantastic, hover en Truffle */
+body.lexit-app-plana .page-container .ask-btn-round {
+  background: #2C3B4D;
+  color: #FFFFFF;
+}
+
+body.lexit-app-plana .page-container .ask-btn-round:hover:not(:disabled) {
+  background: #A35139;
+}
+
+/* Paso actual (Contratos) y número de cita en Burning Flame / Truffle */
+body.lexit-app-plana .page-container .paso--actual .paso-num {
+  background: #FFB162;
+  border-color: #FFB162;
+  color: #1B2632;
+}
+
+body.lexit-app-plana .page-container .fuente-chip-num {
+  background: #A35139;
+  color: #FFFFFF;
+}
+
+/* Encabezados de tarjetas en Palladian (franja suave sobre el blanco) */
+body.lexit-app-plana .page-container .lx-card-header {
+  background: #F6F3ED;
+}
+
+/* --------------------------------------------------------------------------
+   Tipografía corporativa: todo el texto corrido de la interfaz en
+   Urbanist (fuente local, @font-face en app.scss; Figtree de respaldo) y
+   serif solo para los títulos grandes de cada página y la marca. Los documentos (vista del Word, documento de Análisis, editor y
+   vista previa del contrato) conservan su propia fuente, y los íconos
+   (Material Icons) no se tocan.
+   -------------------------------------------------------------------------- */
+body.lexit-app-plana.lexit-app-plana.lexit-app-plana :is(.page-container, .app-sidebar, .q-menu, .q-dialog .q-card, .q-tooltip, .q-notification) *:not(:where(
+  .q-icon, .material-icons, [class*="material-icons"], [class*="material-symbols"],
+  .page-title, .page-title *, .sidebar-brand-text, .asistente-titular, .asistente-titular *,
+  .vista-word, .vista-word *, .documento-word, .documento-word *, .documento-page, .documento-page *,
+  .documento-texto, .documento-texto *, .documento-original, .documento-original *,
+  .tiptap-editor, .tiptap-editor *, .document-preview, .document-preview *
+)) {
+  font-family: 'Urbanist', 'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+/* --------------------------------------------------------------------------
+   Títulos y subtítulos en Baskervville (serif); el resto del texto queda en
+   Urbanist (regla anterior). Se declara explícito porque varios subtítulos
+   no tienen fuente propia y heredarían Urbanist de su contenedor.
+   Las etiquetas chicas en mayúsculas (contadores, "Editando", "Plantillas"
+   del menú, etc.) siguen en Urbanist.
+   -------------------------------------------------------------------------- */
+body.lexit-app-plana.lexit-app-plana.lexit-app-plana :is(.page-container, .app-sidebar, .q-menu, .q-dialog .q-card, .q-tooltip, .q-notification) :is(
+  h1, h2, h3, h4,
+  .page-title, .page-subtitle, .page-saludo,
+  .sidebar-brand-text,
+  .lx-card-header-title, .vista-titulo-nombre,
+  .asistente-titular, .asistente-bajada, .asistente-idea-titulo, .asistente-chat-nombre,
+  .contrato-listo-titulo, .download-bar-titulo, .finalizando-titulo,
+  .doc-en-vivo-titulo, .lx-dialogo-error-titulo,
+  .analisis-vacio-titulo, .documento-panel-titulo, .elegir-titulo, .elegir-opcion-titulo,
+  .subir-titulo, .sugerencias-aplicadas-titulo, .sugerencias-cargando-titulo, .sugerencias-error-titulo,
+  .estado-titulo, .norma-titulo, .resumen-title, .destacada-titulo, .pdf-panel-titulo,
+  .lx-dialog-title, .normas-grupo-titulo, .pd-title
+):not(:where(.vista-word *, .documento-word *, .documento-page *, .documento-texto *, .documento-original *, .tiptap-editor *, .document-preview *)),
+body.lexit-app-plana.lexit-app-plana.lexit-app-plana :is(.page-container, .app-sidebar, .q-menu, .q-dialog .q-card, .q-tooltip, .q-notification) :is(
+  h1, h2, h3, h4,
+  .page-title, .page-subtitle, .page-saludo,
+  .sidebar-brand-text,
+  .lx-card-header-title, .vista-titulo-nombre,
+  .asistente-titular, .asistente-bajada, .asistente-idea-titulo, .asistente-chat-nombre,
+  .contrato-listo-titulo, .download-bar-titulo, .finalizando-titulo,
+  .doc-en-vivo-titulo, .lx-dialogo-error-titulo,
+  .analisis-vacio-titulo, .documento-panel-titulo, .elegir-titulo, .elegir-opcion-titulo,
+  .subir-titulo, .sugerencias-aplicadas-titulo, .sugerencias-cargando-titulo, .sugerencias-error-titulo,
+  .estado-titulo, .norma-titulo, .resumen-title, .destacada-titulo, .pdf-panel-titulo,
+  .lx-dialog-title, .normas-grupo-titulo, .pd-title
+) *:not(:where(
+  .q-icon, .material-icons, [class*="material-icons"], [class*="material-symbols"],
+  .lx-contador, .lx-formato, .vista-titulo-etiqueta
+)):not(:where(.vista-word *, .documento-word *, .documento-page *, .documento-texto *, .documento-original *, .tiptap-editor *, .document-preview *)) {
+  font-family: 'Baskervville', 'EB Garamond', Georgia, serif !important;
+}
+
+/* Aviso discreto dentro de la app con la paleta nueva (en la Landing
+   sigue el de siempre). */
+body.lexit-app-plana .q-notification.lexit-toast:not(.lexit-toast--error) {
+  background: #EEE9DF;
+  color: #1B2632;
+  border-color: rgba(27, 38, 50, 0.14);
+}
+
+body.lexit-app-plana .q-notification.lexit-toast:not(.lexit-toast--error) .q-notification__icon {
+  color: #A35139;
+}
+
+/* ==========================================================================
+   ESTILO PLANO (2D) EN LAS FUNCIONES DE LA APP
+   Rectángulos con las puntas apenas redondeadas (4px) y sin sombras en las
+   pantallas de la app (Consultas, Análisis, Contratos, Normas, Admin), la
+   barra lateral y los menús, diálogos, tooltips y avisos que abren.
+   Excepción: el "dock" del chat (campo para escribir de Consultas y
+   Análisis, y el del asistente de Contratos) conserva su forma redonda.
+   No alcanza a la Landing: depende de .page-container / .app-sidebar (solo
+   existen en este layout) o de la clase lexit-app-plana del <body> (se
+   quita al salir de la app). El selector repite la clase para ganarle a
+   las reglas de cada página (algunas usan !important).
+   ========================================================================== */
+.page-container.page-container.page-container,
+.page-container.page-container.page-container *:not(:where(.composer-pill, .composer-pill *, .asistente-composer, .asistente-composer *)),
+.page-container.page-container.page-container *:not(:where(.composer-pill, .composer-pill *, .asistente-composer, .asistente-composer *))::before,
+.page-container.page-container.page-container *:not(:where(.composer-pill, .composer-pill *, .asistente-composer, .asistente-composer *))::after,
+.app-sidebar.app-sidebar.app-sidebar,
+.app-sidebar.app-sidebar.app-sidebar *,
+.app-sidebar.app-sidebar.app-sidebar *::before,
+.app-sidebar.app-sidebar.app-sidebar *::after,
+.sidebar-toggle-btn.sidebar-toggle-btn.sidebar-toggle-btn,
+.sidebar-toggle-btn.sidebar-toggle-btn.sidebar-toggle-btn *,
+.sidebar-toggle-btn.sidebar-toggle-btn.sidebar-toggle-btn *::before,
+.sidebar-toggle-btn.sidebar-toggle-btn.sidebar-toggle-btn *::after,
+body.lexit-app-plana.lexit-app-plana :is(.q-menu, .q-dialog .q-card, .q-tooltip, .q-notification),
+body.lexit-app-plana.lexit-app-plana :is(.q-menu, .q-dialog .q-card, .q-tooltip, .q-notification) *,
+body.lexit-app-plana.lexit-app-plana :is(.q-menu, .q-dialog .q-card, .q-tooltip, .q-notification) *::before,
+body.lexit-app-plana.lexit-app-plana :is(.q-menu, .q-dialog .q-card, .q-tooltip, .q-notification) *::after {
+  border-radius: 4px !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* Dock del chat: forma redonda de siempre, pero plano (sin sombra); al
+   escribir, solo un anillo suave. */
+.page-container.page-container.page-container :is(.composer-pill, .asistente-composer),
+.page-container.page-container.page-container :is(.composer-pill, .asistente-composer) * {
+  box-shadow: none !important;
+}
+
+.page-container.page-container.page-container :is(.composer-pill, .asistente-composer):focus-within {
+  box-shadow: 0 0 0 3px var(--lexit-marfil-suave) !important;
+}
+
+/* Se mantienen circulares solo los puntitos animados, el spinner de Normas,
+   el check de "contrato listo" y la luz/manchas del fondo (si fueran
+   rectángulos dejarían de leerse como lo que son). */
+.page-container.page-container.page-container :is(
+  .pensando-marca > span,
+  .lx-pensando-puntos span,
+  .typing-dots span,
+  .asistente-insignia-punto,
+  .asistente-estado-punto,
+  .spinner,
+  .contrato-listo-check,
+  .app-fondo-luz
+),
+.page-container.page-container.page-container :is(
+  .pensando-marca,
+  .asistente-insignia-punto,
+  .asistente-estado-punto--activo
+)::before,
+.page-container.page-container.page-container :is(
+  .pensando-marca,
+  .asistente-insignia-punto,
+  .asistente-estado-punto--activo
+)::after,
+.app-sidebar.app-sidebar.app-sidebar .history-item::before {
+  border-radius: 50% !important;
 }
 </style>

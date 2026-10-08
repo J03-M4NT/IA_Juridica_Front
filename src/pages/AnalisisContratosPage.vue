@@ -1764,7 +1764,7 @@ watch(mensajes, async () => {
   --lc-accent-soft: var(--lexit-marfil-suave);
   --lc-accent-soft-strong: var(--lexit-marfil);
   --lc-accent-warm: var(--lexit-piedra);
-  --lc-accent-warm-soft: rgba(189, 181, 155, 0.25);
+  --lc-accent-warm-soft: rgba(var(--lexit-piedra-rgb), 0.25);
   --lc-ink: var(--lexit-blanco-calido);
 
   /* El max-width:none real vive en ".q-page.analisis-page" más abajo —
@@ -2300,7 +2300,7 @@ watch(mensajes, async () => {
   background: var(--lc-surface);
   border: 1px solid var(--lc-border);
   border-radius: var(--border-radius);
-  box-shadow: 0 8px 26px -14px rgba(23, 33, 27, 0.20);
+  box-shadow: 0 8px 26px -14px rgba(var(--lexit-verde-rgb), 0.20);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -2406,7 +2406,7 @@ button.metrica-bloque {
 }
 
 button.metrica-bloque:hover {
-  border-color: rgba(23, 33, 27, 0.28);
+  border-color: rgba(var(--lexit-verde-rgb), 0.28);
 }
 
 button.metrica-bloque:focus-visible {
@@ -2415,8 +2415,8 @@ button.metrica-bloque:focus-visible {
 }
 
 .metrica-bloque--activo {
-  border-color: #17211B;
-  box-shadow: inset 0 0 0 1px #17211B;
+  border-color: var(--lexit-verde);
+  box-shadow: inset 0 0 0 1px var(--lexit-verde);
 }
 
 .metrica-bloque--alto.metrica-bloque--activo { border-color: #C23B2E; box-shadow: inset 0 0 0 1px #C23B2E; background: rgba(194, 59, 46, 0.06); }
@@ -2601,7 +2601,7 @@ button.metrica-bloque:focus-visible {
 .panel-tab--activa {
   background: var(--lc-surface);
   color: var(--lc-text);
-  box-shadow: 0 2px 8px -4px rgba(23, 33, 27, 0.22);
+  box-shadow: 0 2px 8px -4px rgba(var(--lexit-verde-rgb), 0.22);
 }
 
 .panel-tab-cuenta {
@@ -3030,7 +3030,7 @@ button.metrica-bloque:focus-visible {
   border: 1px solid var(--lc-border-strong);
   border-radius: 26px;
   padding: 7px 7px 7px 8px;
-  box-shadow: 0 4px 18px -6px rgba(23, 33, 27, 0.16);
+  box-shadow: 0 4px 18px -6px rgba(var(--lexit-verde-rgb), 0.16);
   transition: border-color 0.18s, box-shadow 0.18s;
 }
 
@@ -3556,7 +3556,7 @@ button.metrica-bloque:focus-visible {
   border: 1px solid var(--lc-border);
   border-radius: 18px;
   background: var(--lc-surface);
-  box-shadow: 0 12px 40px -18px rgba(23, 33, 27, 0.20);
+  box-shadow: 0 12px 40px -18px rgba(var(--lexit-verde-rgb), 0.20);
 }
 
 .elegir-archivo {

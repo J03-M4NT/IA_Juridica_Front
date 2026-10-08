@@ -375,6 +375,37 @@ function filtrarFragmentosCitados(
 // =========================
 // CLOUD FUNCTION
 // =========================
+// =========================
+// BLOQUEO POR "RECITATION" (Gemini)
+// =========================
+function esBloqueoPorRecitacion(err: unknown): boolean {
+  const mensaje = err instanceof Error ? err.message : String(err)
+  return /RECITATION/i.test(mensaje)
+}
+
+// Se agrega al mensaje en el reintento.
+const INSTRUCCION_SIN_COPIA_LITERAL = [
+  'IMPORTANTE: tu respuesta anterior no se pudo mostrar porque reproducía demasiado texto literal de normas.',
+  'Esta vez NO transcribas artículos ni párrafos de leyes: explícalos con tus propias palabras.',
+  'Si necesitas citar, usa como máximo una frase breve entre comillas por artículo y remite a su número de cita [n], donde el usuario puede ver el texto completo.',
+  'Mantén la misma profundidad y el mismo formato de respuesta.'
+].join('\n')
+
+// Lo que ve el usuario si la respuesta se bloquea dos veces seguidas.
+function mensajeBloqueoAmable(hayFuentes: boolean): string {
+  return [
+    'No pude mostrarte esta respuesta completa: incluía una cita muy extensa de un texto legal y el filtro de seguridad de la IA la detuvo. No es un problema con tu pregunta.',
+    '',
+    '**Puedes intentar así:**',
+    '- Pídeme que te **explique** el artículo o la figura con mis palabras.',
+    '- Pregunta por un **punto específico** (requisitos, plazos, sanciones, excepciones).',
+    '- Divide la consulta en partes más pequeñas.',
+    ...(hayFuentes
+      ? ['', 'Mientras tanto, el **texto oficial** de las normas relacionadas está en las fuentes de abajo: haz clic en cada una para leerlo.']
+      : [])
+  ].join('\n')
+}
+
 export const consultarLexit = onRequest(
   { cors: ORIGENES_PERMITIDOS, secrets: [PINECONE_API_KEY, GEMINI_API_KEY], timeoutSeconds: TIMEOUT_FUNCIONES_IA_SEGUNDOS },
   async (req, res) => {
@@ -584,10 +615,11 @@ export const consultarLexit = onRequest(
               '- Los fragmentos marcados como "comentario o nota" no son texto de ley: puedes usarlos como apoyo doctrinal citándolos, pero nunca presentarlos como el texto de un artículo.',
               '- Si un fragmento no sirve, NO pongas su número [n] en ninguna parte de la respuesta, ni siquiera para decir que no sirve.',
               '- Un artículo largo puede venir en varios fragmentos consecutivos (los que dicen "Artículo N (continuación).-"): son partes del mismo artículo, en orden. Úsalos juntos y, al transcribir, no copies la marca "Artículo N (continuación).-".',
-              '- Si transcribes un artículo, titula esa parte "Texto del artículo" (nunca "del fragmento" ni "proporcionado").',
+              '- Si citas texto de un artículo, titula esa parte "Texto del artículo" (nunca "del fragmento" ni "proporcionado").',
+              '- No transcribas artículos completos ni párrafos largos: entre comillas copia solo la parte clave (máximo 2 oraciones, unas 40 palabras) y pon su número de cita [n]. El usuario puede abrir el texto completo del artículo haciendo clic en ese número.',
               '- El usuario no ve este contexto: nunca hables de "fragmentos", "contexto", "base de datos proporcionada" ni "información proporcionada". Menciona las normas por su nombre y artículo (ej. "según el artículo 1681° del Código Civil [2]").',
               hayFuentePrimaria
-                ? '- Si el usuario pregunta por un artículo específico, o qué artículo regula un tema, y está en estos fragmentos, incluye: el número de artículo, una explicación desarrollada y la cita textual exacta del artículo (copiada tal cual del fragmento) con su número de cita.'
+                ? '- Si el usuario pregunta por un artículo específico, o qué artículo regula un tema, y está en estos fragmentos, incluye: el número de artículo, una explicación desarrollada y la cita textual de la parte clave del artículo (máximo 2 oraciones, copiadas tal cual del fragmento) con su número de cita [n], que abre el texto completo.'
                 : '',
               '---\n'
             ].join('\n')
@@ -605,7 +637,7 @@ export const consultarLexit = onRequest(
               'CONTEXTO LEGAL DE LA BASE DE DATOS JURÍDICA (usa ÚNICAMENTE esta información para citar artículos o transcribir texto legal; no completes con conocimiento propio):',
               textoFragmentos,
               hayFuentePrimaria
-                ? '\nEstos fragmentos vienen de una fuente primaria (código legal completo, subido y verificado). Si el usuario pregunta por un artículo específico, o qué artículo regula un tema, responde EXACTAMENTE en este formato:\n1. Número de artículo\n2. Interpretación en lenguaje simple\n3. Cita textual exacta del artículo (copiada tal cual del fragmento de arriba, sin resumir ni parafrasear esa parte)'
+                ? '\nEstos fragmentos vienen de una fuente primaria (código legal completo, subido y verificado). Si el usuario pregunta por un artículo específico, o qué artículo regula un tema, responde EXACTAMENTE en este formato:\n1. Número de artículo\n2. Interpretación en lenguaje simple\n3. Cita textual de la parte clave del artículo (máximo 2 oraciones, copiadas tal cual del fragmento de arriba, sin parafrasear esa parte). No transcribas el artículo completo: su texto íntegro se le muestra al usuario junto a la respuesta.'
                 : '',
               '---\n'
             ].join('\n')
@@ -689,7 +721,7 @@ export const consultarLexit = onRequest(
 
       // El chat se arma dentro del callback: si el modelo principal está
       // saturado, se vuelve a armar con el modelo de respaldo.
-      const result = await conModeloDeRespaldo(model => model.startChat({
+      const enviarAlChat = (mensaje: string) => conModeloDeRespaldo(model => model.startChat({
         history: historialMensajes.map(m => ({
           role: m.esIA ? 'model' : 'user',
           parts: [{ text: m.esIA ? sinIndicador(m.contenido) : m.contenido }]
@@ -719,8 +751,40 @@ export const consultarLexit = onRequest(
             ].join('\n')
           }]
         }
-      }).sendMessage(mensajeFinal))
-      const respuestaCompleta = result.response.text()
+      }).sendMessage(mensaje))
+
+      // Gemini bloquea la respuesta ("RECITATION") si reproduce demasiado
+      // texto literal parecido a obras existentes — pasa con artículos de
+      // ley largos. Se reintenta una vez pidiendo explicar con palabras
+      // propias; si vuelve a bloquearse, se responde con un aviso amable
+      // (y las fuentes, para que el texto oficial siga a mano) en vez del
+      // error técnico en inglés.
+      let respuestaCompleta: string
+      try {
+        respuestaCompleta = (await enviarAlChat(mensajeFinal)).response.text()
+      } catch (err) {
+        if (!esBloqueoPorRecitacion(err)) throw err
+        logger.warn('🔁 Respuesta bloqueada por RECITATION: se reintenta pidiendo parafrasear')
+        try {
+          respuestaCompleta = (await enviarAlChat(`${mensajeFinal}\n\n${INSTRUCCION_SIN_COPIA_LITERAL}`)).response.text()
+        } catch (errReintento) {
+          if (!esBloqueoPorRecitacion(errReintento)) throw errReintento
+          logger.warn('⚠️ Bloqueada otra vez por RECITATION: se responde con un aviso amable')
+          const hayFuentes = !tratarComoTrivial && fragmentosEncontrados.length > 0
+          const respuestaAviso: ConsultarLexitResponse = {
+            respuesta: mensajeBloqueoAmable(hayFuentes),
+            usandoPinecone: hayFuentes,
+            fragmentosEncontrados: hayFuentes ? fragmentosEncontrados.length : 0,
+            fragmentos: hayFuentes
+              ? fragmentosEncontrados.map(({ esComentario, ...f }) => esComentario
+                ? { ...f, nombreDocumento: `${f.nombreDocumento} · Comentario o nota` }
+                : f)
+              : []
+          }
+          res.json(respuestaAviso)
+          return
+        }
+      }
 
       if (!respuestaCompleta) {
         res.status(502).json({ error: 'La respuesta de la IA está vacía' })
