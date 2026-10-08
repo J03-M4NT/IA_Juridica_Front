@@ -43,6 +43,12 @@ export async function consultarLexit(
 
   const data = await response.json() as Partial<ConsultaLexitResultado> & { error?: string }
   if (!response.ok || !data.respuesta) {
+    // Bloqueo de Gemini por "RECITATION" (cita literal demasiado larga):
+    // la Cloud Function ya lo resuelve, esto es solo un respaldo para no
+    // mostrarle al usuario el error técnico en inglés.
+    if (/RECITATION/i.test(data.error ?? '')) {
+      throw new Error('La respuesta incluía una cita muy extensa de un texto legal y el filtro de seguridad de la IA la detuvo. Intenta pedir que te explique el artículo con sus palabras o pregunta por un punto específico.')
+    }
     throw new Error(data.error ?? 'No se pudo consultar a la IA jurídica')
   }
 

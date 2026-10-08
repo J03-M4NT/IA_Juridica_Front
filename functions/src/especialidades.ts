@@ -5,7 +5,7 @@ import * as logger from 'firebase-functions/logger'
 // ESPECIALIZACIONES (áreas del derecho) Y CATÁLOGO DE NORMAS
 //
 // - Cada documento subido desde Admin lleva un "area" (las carpetas del
-//   compartido: Derecho Penal, Civil, Tributario, Comercial). En Consultas
+//   compartido: Derecho Penal, Civil, Tributario, Comercial, Laboral). En Consultas
 //   el usuario elige una especialización y la búsqueda se limita a ella.
 // - Los códigos subidos antes de que existieran las áreas no tienen ese
 //   campo: se reconocen por su tipoDocumento (TIPOS_POR_AREA). La
@@ -17,14 +17,15 @@ import * as logger from 'firebase-functions/logger'
 // no puede importar archivos del front).
 // =========================
 
-export const AREAS = ['derecho-penal', 'derecho-civil', 'derecho-tributario', 'derecho-comercial'] as const
+export const AREAS = ['derecho-penal', 'derecho-civil', 'derecho-tributario', 'derecho-comercial', 'derecho-laboral'] as const
 export type Area = typeof AREAS[number]
 
 export const NOMBRE_AREA: Record<Area, string> = {
   'derecho-penal': 'Derecho Penal',
   'derecho-civil': 'Derecho Civil',
   'derecho-tributario': 'Derecho Tributario',
-  'derecho-comercial': 'Derecho Comercial'
+  'derecho-comercial': 'Derecho Comercial',
+  'derecho-laboral': 'Derecho Laboral'
 }
 
 export function esArea(valor: unknown): valor is Area {
@@ -35,7 +36,9 @@ const TIPOS_POR_AREA: Record<Area, string[]> = {
   'derecho-penal': ['codigo-penal', 'constitucion'],
   'derecho-civil': ['codigo-civil', 'constitucion'],
   'derecho-tributario': ['codigo-tributario', 'constitucion'],
-  'derecho-comercial': ['constitucion']
+  'derecho-comercial': ['constitucion'],
+  // Códigos laborales subidos antes de existir las áreas (tipo codigo-laboral)
+  'derecho-laboral': ['codigo-laboral', 'constitucion']
 }
 
 // Filtro de Pinecone para una especialización: documentos con ese área, o
