@@ -321,6 +321,37 @@
               <button type="button" class="sugerencias-reintentar-btn" @click="generarSugerencias">Reintentar</button>
             </div>
             <template v-else>
+              <!-- Matriz de desviaciones: exporta los riesgos ya analizados
+                   (sin volver a llamar a la IA) a Word o Excel. -->
+              <div class="matriz-barra">
+                <span class="matriz-barra-texto">Resumen de riesgos</span>
+                <button
+                  type="button"
+                  class="matriz-boton"
+                  :disabled="filasMatrizActual.length === 0 || exportandoMatriz !== null"
+                  :title="filasMatrizActual.length === 0 ? 'No hay cláusulas con nivel de riesgo para exportar' : 'Exportar la matriz de desviaciones'"
+                >
+                  <q-spinner v-if="exportandoMatriz" size="13px" />
+                  <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/>
+                  </svg>
+                  {{ exportandoMatriz ? 'Exportando…' : 'Exportar matriz' }}
+                  <q-menu anchor="bottom right" self="top right" :offset="[0, 6]" class="matriz-menu">
+                    <q-list dense style="min-width: 190px">
+                      <q-item v-close-popup clickable @click="exportarMatriz('docx')">
+                        <q-item-section avatar><q-icon name="description" size="18px" /></q-item-section>
+                        <q-item-section>Word (.docx)</q-item-section>
+                      </q-item>
+                      <q-item v-close-popup clickable @click="exportarMatriz('xlsx')">
+                        <q-item-section avatar><q-icon name="grid_on" size="18px" /></q-item-section>
+                        <q-item-section>Excel (.xlsx)</q-item-section>
+                      </q-item>
+                    </q-list>
+                  </q-menu>
+                </button>
+              </div>
+              <p v-if="errorMatriz" class="sugerencia-error">{{ errorMatriz }}</p>
+
               <!-- Cada bloque filtra la lista por ese nivel; "Total" muestra todas. -->
               <div class="sugerencias-metricas">
                 <button
@@ -617,6 +648,7 @@
 </template>
 
 <script setup lang="ts">
+import { filasMatriz, matrizAWord, matrizAExcel, nombreArchivoMatriz } from '../utils/matrizDesviaciones'
 import { ref, shallowRef, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useAnalisisContratosStore, esSolicitudDeAnalisisDeRiesgos } from '../stores/analisis-contratos-store'
 import { useAuthStore } from '../stores/auth'
@@ -716,6 +748,31 @@ const NIVELES_RIESGO: { valor: NivelRiesgo; etiqueta: string }[] = [
   { valor: 'bajo', etiqueta: 'Bajo' }
 ]
 const filtroNivel = ref<NivelRiesgo | null>(null)
+// =========================
+// MATRIZ DE DESVIACIONES (exportación, solo lectura de las sugerencias)
+// =========================
+const filasMatrizActual = computed(() => filasMatriz(sugerencias.value, sugerenciasAplicadas.value))
+const exportandoMatriz = ref<'docx' | 'xlsx' | null>(null)
+const errorMatriz = ref('')
+
+async function exportarMatriz(formato: 'docx' | 'xlsx') {
+  if (exportandoMatriz.value || filasMatrizActual.value.length === 0) return
+  const nombre = store.archivoAdjunto?.nombre ?? 'contrato'
+  exportandoMatriz.value = formato
+  errorMatriz.value = ''
+  try {
+    const blob = formato === 'docx'
+      ? await matrizAWord(filasMatrizActual.value, nombre)
+      : await matrizAExcel(filasMatrizActual.value, nombre)
+    descargarBlob(blob, nombreArchivoMatriz(nombre, formato))
+  } catch (err) {
+    console.error('Error al exportar la matriz de desviaciones:', err)
+    errorMatriz.value = 'No se pudo exportar la matriz. Intenta de nuevo.'
+  } finally {
+    exportandoMatriz.value = null
+  }
+}
+
 const sugerenciasVisibles = computed(() =>
   filtroNivel.value ? sugerencias.value.filter(s => s.nivel === filtroNivel.value) : sugerencias.value
 )
@@ -738,10 +795,17 @@ async function verObservacion(s: SugerenciaConError) {
     return
   }
   marca.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  documentoEditableRef.value?.querySelectorAll('.hl-foco').forEach(m => m.classList.remove('hl-foco'))
+  const contenedor = documentoEditableRef.value
+  contenedor?.querySelectorAll('.hl-foco').forEach(m => m.classList.remove('hl-foco'))
   marca.classList.add('hl-foco')
+  // Mientras dura el foco, las demás marcas se atenúan para que esta resalte
+  // (la clase va en el contenedor, no entra en el HTML del documento).
+  contenedor?.classList.add('hl-enfocando')
   if (temporizadorObservacion) clearTimeout(temporizadorObservacion)
-  temporizadorObservacion = setTimeout(() => marca.classList.remove('hl-foco'), 2400)
+  temporizadorObservacion = setTimeout(() => {
+    marca.classList.remove('hl-foco')
+    contenedor?.classList.remove('hl-enfocando')
+  }, 3600)
 }
 
 function limpiarSugerencias() {
@@ -2271,15 +2335,32 @@ watch(mensajes, async () => {
 .documento-word :deep(.hl-riesgo--medio) { background: #FCE3D6; }
 .documento-word :deep(.hl-riesgo--bajo) { background: #FDEFD6; }
 
-/* "Ver observación": la marca destaca un momento al llegar a ella. */
+/* "Ver observación": la marca se resalta en ámbar con un contorno que
+   late, y el resto de marcas se atenúa mientras dura el foco. Contorno y
+   fondo (no box-shadow): el estilo plano de la app anula las sombras. */
 .documento-word :deep(mark.hl-foco),
 .documento-texto :deep(mark.hl-foco) {
-  animation: hlFoco 0.8s ease-in-out 3;
+  background: rgba(255, 177, 98, 0.55) !important;
+  color: #1B2632 !important;
+  outline: 2px solid #A35139;
+  outline-offset: 2px;
+  animation: hlFoco 0.9s ease-in-out 3;
+}
+
+.documento-word.hl-enfocando :deep(mark:not(.hl-foco)),
+.documento-texto.hl-enfocando :deep(mark:not(.hl-foco)) {
+  opacity: 0.4;
+  transition: opacity 0.3s ease;
 }
 
 @keyframes hlFoco {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(194, 59, 46, 0); }
-  50% { box-shadow: 0 0 0 4px rgba(194, 59, 46, 0.45); }
+  0%, 100% { outline-color: rgba(163, 81, 57, 1); outline-offset: 2px; }
+  50% { outline-color: rgba(163, 81, 57, 0.25); outline-offset: 6px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .documento-word :deep(mark.hl-foco),
+  .documento-texto :deep(mark.hl-foco) { animation: none; }
 }
 
 .documento-texto--editable {
@@ -3671,5 +3752,141 @@ button.metrica-bloque:focus-visible {
   .elegir-opciones { grid-template-columns: 1fr; }
   .elegir-tarjeta { padding: 20px; }
   .subir-zona { padding: 40px 20px; }
+}
+
+/* ==========================================================================
+   DISEÑO LOVABLE: encabezado alineado a la izquierda y zona de carga
+   ========================================================================== */
+.page-header:not(.page-header--compact) {
+  width: 100%;
+  max-width: 820px;
+  margin: 28px auto 22px;
+  padding-bottom: 0;
+  border-bottom: none;
+  align-items: flex-start;
+  text-align: left;
+  gap: 0;
+}
+
+.page-header .section-icon-wrap {
+  display: none;
+}
+
+.page-header .page-title {
+  font-size: clamp(1.7rem, 2.6vw, 2.1rem);
+  font-weight: 500;
+}
+
+.page-header .page-subtitle {
+  margin-top: 6px;
+  font-size: 1rem;
+}
+
+.etapa-centro {
+  justify-content: flex-start;
+  padding-top: 0;
+}
+
+.subir-zona {
+  max-width: 820px;
+  gap: 6px;
+  padding: 64px 32px;
+  border: 1px dashed #CFC8B9;
+  background: #FFFFFF;
+}
+
+.subir-zona:hover,
+.subir-zona--arrastrando {
+  border-color: #1B2632;
+  background: #FAF9F6;
+}
+
+.subir-icono {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 18px;
+  background: #F4F3EF;
+  color: #1B2632;
+}
+
+.subir-titulo {
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.subir-sub {
+  margin-top: 10px;
+  font-size: 0.85rem;
+}
+
+.subir-boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 11px 20px;
+  border-radius: 6px;
+  background: #1B2632;
+  color: #FFFFFF;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: background-color 0.15s;
+}
+
+.subir-boton::after {
+  content: '→';
+}
+
+.subir-zona:hover .subir-boton {
+  background: #2C3B4D;
+}
+
+/* ==========================================================================
+   MATRIZ DE DESVIACIONES: botón "Exportar matriz" junto al resumen
+   ========================================================================== */
+.matriz-barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.matriz-barra-texto {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(var(--lexit-verde-rgb), 0.6);
+}
+
+.matriz-boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border: 1px solid var(--lexit-marfil);
+  background: var(--lexit-blanco-calido);
+  color: var(--lexit-verde);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.matriz-boton:hover:not(:disabled) {
+  background: var(--lexit-verde);
+  border-color: var(--lexit-verde);
+  color: var(--lexit-blanco-calido);
+}
+
+.matriz-boton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.matriz-boton:focus-visible {
+  outline: 2px solid var(--lexit-verde);
+  outline-offset: 2px;
 }
 </style>

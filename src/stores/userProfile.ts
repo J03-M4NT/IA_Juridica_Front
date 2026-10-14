@@ -18,6 +18,12 @@ export const useUserProfileStore = defineStore('userProfile', () => {
     const photoURL = computed(() => profile.value?.photoURL || null);
     const userEmail = computed(() => profile.value?.email || '');
     const isAdmin = computed(() => profile.value?.role === 'admin');
+    const area = computed(() => profile.value?.area ?? null);
+
+    // Área elegida en el formulario de registro: la cuenta se crea primero
+    // y el perfil después (boot/auth-sync.ts), así que se guarda aquí hasta
+    // que initializeProfile la escribe en el perfil nuevo.
+    const areaPendiente = ref<string | null>(null);
 
     /**
      * Carga el perfil del usuario desde Firestore
@@ -50,7 +56,8 @@ export const useUserProfileStore = defineStore('userProfile', () => {
         error.value = null;
 
         try {
-            const result = await createUserProfile(uid, email, displayName, photoURL);
+            const result = await createUserProfile(uid, email, displayName, photoURL, areaPendiente.value);
+            areaPendiente.value = null;
 
             if (result.success) {
                 // Cargar el perfil recién creado
@@ -90,6 +97,32 @@ export const useUserProfileStore = defineStore('userProfile', () => {
         } catch (err) {
             console.error('Error updating display name:', err);
             error.value = 'Error al actualizar el nombre';
+            return false;
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    /**
+     * Actualiza el área de trabajo (null = sin área)
+     */
+    async function updateArea(uid: string, nuevaArea: string | null): Promise<boolean> {
+        loading.value = true;
+        error.value = null;
+
+        try {
+            const result = await updateUserProfile(uid, { area: nuevaArea });
+
+            if (result.success && profile.value) {
+                profile.value.area = nuevaArea;
+                return true;
+            } else {
+                error.value = result.message || 'Error al actualizar el área';
+                return false;
+            }
+        } catch (err) {
+            console.error('Error updating area:', err);
+            error.value = 'Error al actualizar el área';
             return false;
         } finally {
             loading.value = false;
@@ -143,11 +176,14 @@ export const useUserProfileStore = defineStore('userProfile', () => {
         photoURL,
         userEmail,
         isAdmin,
+        area,
+        areaPendiente,
 
         // Acciones
         loadProfile,
         initializeProfile,
         updateDisplayName,
+        updateArea,
         updatePhoto,
         clearProfile
     };

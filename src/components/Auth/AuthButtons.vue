@@ -85,6 +85,19 @@
             {{ cargandoGoogle ? 'Conectando…' : 'Continuar con Google' }}
           </button>
 
+          <div v-if="navegadorIntegrado" class="aviso-navegador" role="note">
+            <p>
+              Estás en el navegador de otra app. Para entrar con Google, abre LexIT en
+              {{ esAndroid ? 'Chrome' : 'Safari' }}. Con tu email puedes entrar aquí mismo.
+            </p>
+            <div class="aviso-navegador-acciones">
+              <a v-if="esAndroid" :href="urlAbrirEnChrome" class="aviso-navegador-btn">Abrir en Chrome</a>
+              <button type="button" class="aviso-navegador-btn" @click="copiarEnlace">
+                {{ enlaceCopiado ? 'Enlace copiado' : 'Copiar enlace' }}
+              </button>
+            </div>
+          </div>
+
           <div class="dialog-divider"><span>o continúa con tu email</span></div>
 
           <form @submit.prevent="handleLogin">
@@ -92,6 +105,12 @@
             <input
               v-model="loginForm.email"
               type="email"
+              inputmode="email"
+              autocomplete="email"
+              autocapitalize="none"
+              autocorrect="off"
+              spellcheck="false"
+              enterkeyhint="next"
               placeholder="tucorreo@ejemplo.com"
               class="custom-input"
               required
@@ -102,11 +121,16 @@
               <input
                 v-model="loginForm.password"
                 :type="showPassword ? 'text' : 'password'"
+                autocomplete="current-password"
+                autocapitalize="none"
+                autocorrect="off"
+                spellcheck="false"
+                enterkeyhint="go"
                 placeholder="••••••••"
                 class="custom-input"
                 required
               />
-              <button type="button" class="pw-toggle" @click="showPassword = !showPassword">
+              <button type="button" class="pw-toggle" :aria-label="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'" @click="showPassword = !showPassword">
                 <svg v-if="!showPassword" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>
                 </svg>
@@ -116,7 +140,7 @@
               </button>
             </div>
 
-            <button type="submit" class="submit-btn">Iniciar Sesión</button>
+            <button type="submit" class="submit-btn" :disabled="enviando">{{ enviando ? 'Ingresando…' : 'Iniciar Sesión' }}</button>
 
             <p class="switch-text">
               ¿No tienes una cuenta?
@@ -151,7 +175,15 @@
         </div>
 
         <div class="dialog-body">
-          <button type="button" class="google-btn" :disabled="cargandoGoogle" @click="handleGoogleSignIn">
+          <!-- Área de trabajo (opcional): vale para Google y para email -->
+          <label class="input-label" for="registro-area">Área en la que trabajas <span class="input-opcional">(opcional)</span></label>
+          <select id="registro-area" v-model="areaRegistro" class="custom-input custom-select">
+            <option value="">Sin especificar</option>
+            <option v-for="a in AREAS_TRABAJO" :key="a.valor" :value="a.valor">{{ a.etiqueta }}</option>
+          </select>
+          <p class="input-hint input-hint--area">Enfoca el resumen de Normas en tu área. Puedes cambiarla en tu perfil.</p>
+
+          <button type="button" class="google-btn" :disabled="cargandoGoogle" @click="areaPendienteDeRegistro(); handleGoogleSignIn()">
             <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
               <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
               <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
@@ -161,6 +193,19 @@
             {{ cargandoGoogle ? 'Conectando…' : 'Continuar con Google' }}
           </button>
 
+          <div v-if="navegadorIntegrado" class="aviso-navegador" role="note">
+            <p>
+              Estás en el navegador de otra app. Para entrar con Google, abre LexIT en
+              {{ esAndroid ? 'Chrome' : 'Safari' }}. Con tu email puedes entrar aquí mismo.
+            </p>
+            <div class="aviso-navegador-acciones">
+              <a v-if="esAndroid" :href="urlAbrirEnChrome" class="aviso-navegador-btn">Abrir en Chrome</a>
+              <button type="button" class="aviso-navegador-btn" @click="copiarEnlace">
+                {{ enlaceCopiado ? 'Enlace copiado' : 'Copiar enlace' }}
+              </button>
+            </div>
+          </div>
+
           <div class="dialog-divider"><span>o regístrate con tu email</span></div>
 
           <form @submit.prevent="handleRegister">
@@ -168,6 +213,12 @@
             <input
               v-model="registerForm.email"
               type="email"
+              inputmode="email"
+              autocomplete="email"
+              autocapitalize="none"
+              autocorrect="off"
+              spellcheck="false"
+              enterkeyhint="next"
               placeholder="tucorreo@ejemplo.com"
               class="custom-input"
               required
@@ -178,11 +229,16 @@
               <input
                 v-model="registerForm.password"
                 :type="showPasswordReg ? 'text' : 'password'"
+                autocomplete="new-password"
+                autocapitalize="none"
+                autocorrect="off"
+                spellcheck="false"
+                enterkeyhint="go"
                 placeholder="••••••••"
                 class="custom-input"
                 required
               />
-              <button type="button" class="pw-toggle" @click="showPasswordReg = !showPasswordReg">
+              <button type="button" class="pw-toggle" :aria-label="showPasswordReg ? 'Ocultar contraseña' : 'Mostrar contraseña'" @click="showPasswordReg = !showPasswordReg">
                 <svg v-if="!showPasswordReg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>
                 </svg>
@@ -193,7 +249,7 @@
             </div>
             <p class="input-hint">La contraseña debe tener al menos 6 caracteres.</p>
 
-            <button type="submit" class="submit-btn">Registrarse</button>
+            <button type="submit" class="submit-btn" :disabled="enviando">{{ enviando ? 'Creando tu cuenta…' : 'Registrarse' }}</button>
 
             <p class="switch-text">
               ¿Ya tienes una cuenta?
@@ -238,6 +294,7 @@ import { FirebaseError } from 'firebase/app';
 import { useQuasar } from 'quasar';
 import ProfileDialog from '../Profile/ProfileDialog.vue';
 import { useBienvenidaStore } from '../../stores/bienvenida';
+import { AREAS_TRABAJO } from '../../constants/areasTrabajo';
 
 const $q = useQuasar();
 const router = useRouter();
@@ -264,6 +321,14 @@ const registerForm = ref({
   password: ''
 });
 
+// Área de trabajo elegida al registrarse (opcional). Se deja "pendiente" en
+// el store justo antes de crear la cuenta: el perfil lo crea después
+// boot/auth-sync.ts y la toma de ahí. Si la cuenta ya existía, no se usa.
+const areaRegistro = ref('');
+function areaPendienteDeRegistro() {
+  profileStore.areaPendiente = areaRegistro.value || null;
+}
+
 const showProfileDialog = ref(false);
 
 // Inicial del nombre para el avatar (cuando no hay foto de perfil).
@@ -283,6 +348,77 @@ const CONSIDERACIONES = [
 
 const URL_TERMINOS = `${import.meta.env.BASE_URL}terminos-y-condiciones.pdf`;
 const cargandoGoogle = ref(false);
+// Envío de email/contraseña en curso: desactiva el botón para no repetir la
+// petición al tocar varias veces (frecuente en celular con conexión lenta).
+const enviando = ref(false);
+
+// =========================
+// CELULAR: NAVEGADOR INTERNO DE OTRAS APPS
+// Al abrir el enlace desde WhatsApp, Instagram, Facebook, TikTok, etc., la
+// página se abre en el navegador interno de esa app y Google bloquea ahí el
+// inicio de sesión ("403 disallowed_useragent"). Se detecta para avisar y
+// ofrecer abrir en Chrome (Android) o copiar el enlace (iPhone). Con email
+// y contraseña se puede entrar igual.
+// =========================
+const agente = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+const navegadorIntegrado = /FBAN|FBAV|FB_IAB|Instagram|Line\/|WhatsApp|TikTok|musical_ly|BytedanceWebview|LinkedInApp|Snapchat|Twitter|; wv\)/i.test(agente);
+const esAndroid = /Android/i.test(agente);
+const urlAbrirEnChrome = typeof window !== 'undefined'
+  ? `intent://${window.location.host}${window.location.pathname}${window.location.search}#Intent;scheme=https;package=com.android.chrome;end`
+  : '';
+const enlaceCopiado = ref(false);
+
+async function copiarEnlace() {
+  try {
+    await navigator.clipboard.writeText(window.location.href);
+  } catch {
+    // Algunos navegadores internos no permiten el portapapeles: respaldo.
+    const campo = document.createElement('textarea');
+    campo.value = window.location.href;
+    document.body.appendChild(campo);
+    campo.select();
+    document.execCommand('copy');
+    campo.remove();
+  }
+  enlaceCopiado.value = true;
+  setTimeout(() => { enlaceCopiado.value = false }, 2500);
+}
+
+// Mensajes claros para los errores de Firebase más comunes (antes se
+// mostraba el texto técnico en inglés, ej. "auth/invalid-credential").
+function mensajeErrorAuth(error: unknown, porDefecto: string): string {
+  if (!(error instanceof FirebaseError)) return porDefecto;
+  switch (error.code) {
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+    case 'auth/user-not-found':
+    case 'auth/invalid-login-credentials':
+      return 'El email o la contraseña no son correctos. Revisa que estén bien escritos.';
+    case 'auth/invalid-email':
+      return 'El email no es válido. Revisa que esté bien escrito.';
+    case 'auth/missing-password':
+      return 'Escribe tu contraseña.';
+    case 'auth/too-many-requests':
+      return 'Demasiados intentos. Espera unos minutos y vuelve a intentarlo.';
+    case 'auth/user-disabled':
+      return 'Esta cuenta está desactivada. Escríbenos a lexitiajuridica@gmail.com.';
+    case 'auth/network-request-failed':
+      return 'Error de conexión. Por favor, verifica tu conexión a internet.';
+    case 'auth/email-already-in-use':
+      return 'Este email ya está registrado. Inicia sesión.';
+    case 'auth/weak-password':
+      return 'La contraseña es demasiado débil: usa al menos 6 caracteres.';
+    case 'auth/operation-not-allowed':
+      return 'Operación no permitida';
+    case 'auth/popup-blocked':
+      return 'El navegador bloqueó la ventana de Google. Permite las ventanas emergentes e inténtalo de nuevo.';
+    case 'auth/operation-not-supported-in-this-environment':
+    case 'auth/web-storage-unsupported':
+      return 'Este navegador no permite entrar con Google. Ábrelo en Chrome o Safari, o entra con tu email.';
+    default:
+      return porDefecto;
+  }
+}
 
 // Permite que un componente padre (ej. un CTA en LandingPage.vue) abra estos
 // diálogos sin duplicar el estado de login/registro fuera de este componente.
@@ -293,9 +429,11 @@ defineExpose({
 
 // Manejadores de autenticación
 const handleLogin = async () => {
+  if (enviando.value) return;
+  enviando.value = true;
   try {
     const { email, password } = loginForm.value;
-    await signInWithEmailAndPassword(auth, email, password);
+    await signInWithEmailAndPassword(auth, email.trim(), password);
     showLoginDialog.value = false;
     loginForm.value = { email: '', password: '' };
     // Redirigir al analizador después del login exitoso
@@ -303,23 +441,7 @@ const handleLogin = async () => {
     bienvenida.mostrar();
     await router.replace('/app/consultas');
   } catch (error) {
-    let errorMessage = 'Error al iniciar sesión';
-
-    if (error instanceof FirebaseError) {
-      switch (error.code) {
-        case 'auth/network-request-failed':
-          errorMessage = 'Error de conexión. Por favor, verifica tu conexión a internet.';
-          break;
-        case 'auth/wrong-password':
-          errorMessage = 'Contraseña incorrecta';
-          break;
-        case 'auth/user-not-found':
-          errorMessage = 'No existe una cuenta con este email';
-          break;
-        default:
-          errorMessage = `Error: ${error.message}`;
-      }
-    }
+    const errorMessage = mensajeErrorAuth(error, 'No se pudo iniciar sesión. Inténtalo de nuevo.');
 
     $q.notify({
       message: errorMessage,
@@ -328,6 +450,8 @@ const handleLogin = async () => {
       classes: 'lexit-toast lexit-toast--error',
       timeout: 4500
     });
+  } finally {
+    enviando.value = false;
   }
 };
 
@@ -335,6 +459,16 @@ const handleLogin = async () => {
 // la cuenta automáticamente si el email de Google no existía aún, así que
 // es el mismo flujo (popup nativo de Google → elegir cuenta → entra).
 const handleGoogleSignIn = async () => {
+  if (navegadorIntegrado) {
+    $q.notify({
+      message: `Para entrar con Google, abre LexIT en ${esAndroid ? 'Chrome' : 'Safari'}. Con tu email puedes entrar aquí mismo.`,
+      icon: 'open_in_browser',
+      position: 'bottom',
+      classes: 'lexit-toast',
+      timeout: 5000
+    });
+    return;
+  }
   cargandoGoogle.value = true;
   try {
     await signInWithPopup(auth, new GoogleAuthProvider());
@@ -350,9 +484,12 @@ const handleGoogleSignIn = async () => {
       return;
     }
 
-    const errorMessage = error instanceof FirebaseError
-      ? `Error: ${error.message}`
-      : 'No se pudo iniciar sesión con Google';
+    // También es una cancelación: se abrió otra ventana de Google encima.
+    if (error instanceof FirebaseError && error.code === 'auth/cancelled-popup-request') {
+      return;
+    }
+
+    const errorMessage = mensajeErrorAuth(error, 'No se pudo iniciar sesión con Google. Inténtalo de nuevo.');
 
     $q.notify({
       message: errorMessage,
@@ -367,9 +504,13 @@ const handleGoogleSignIn = async () => {
 };
 
 const handleRegister = async () => {
+  if (enviando.value) return;
+  enviando.value = true;
   try {
     const { email, password } = registerForm.value;
-    await createUserWithEmailAndPassword(auth, email, password);
+    areaPendienteDeRegistro();
+    await createUserWithEmailAndPassword(auth, email.trim(), password);
+    areaRegistro.value = '';
     showRegisterDialog.value = false;
     registerForm.value = { email: '', password: '' };
     // Redirigir al analizador después del registro exitoso
@@ -377,26 +518,7 @@ const handleRegister = async () => {
     bienvenida.mostrar();
     await router.replace('/app/consultas');
   } catch (error) {
-    let errorMessage = 'Error al registrarse';
-
-    if (error instanceof FirebaseError) {
-      switch (error.code) {
-        case 'auth/email-already-in-use':
-          errorMessage = 'Este email ya está registrado';
-          break;
-        case 'auth/invalid-email':
-          errorMessage = 'Email inválido';
-          break;
-        case 'auth/operation-not-allowed':
-          errorMessage = 'Operación no permitida';
-          break;
-        case 'auth/weak-password':
-          errorMessage = 'La contraseña es demasiado débil';
-          break;
-        default:
-          errorMessage = `Error: ${error.message}`;
-      }
-    }
+    const errorMessage = mensajeErrorAuth(error, 'No se pudo crear la cuenta. Inténtalo de nuevo.');
 
     $q.notify({
       message: errorMessage,
@@ -405,6 +527,8 @@ const handleRegister = async () => {
       classes: 'lexit-toast lexit-toast--error',
       timeout: 4500
     });
+  } finally {
+    enviando.value = false;
   }
 };
 
@@ -817,17 +941,282 @@ const handleLogout = async () => {
   background: var(--q-primary);
 }
 
+/* ==========================================================================
+   INICIO DE SESIÓN / REGISTRO — COMPACTO Y SOBRIO
+   Una columna estrecha, espacios ajustados y la paleta de la Landing:
+   azul #1B2632 para la acción principal, marfil para bordes, beige oliva
+   para íconos y crema para estados. Solo estilos (contenido y orden igual).
+   ========================================================================== */
+.new-dialog-card {
+  width: 380px;
+  border-radius: 6px;
+  border: 1px solid rgba(23, 33, 27, 0.10);
+  box-shadow: 0 18px 48px -18px rgba(27, 38, 50, 0.35);
+  animation-duration: 0.18s;
+}
+
+.dialog-header {
+  padding: 22px 52px 0 24px;
+  text-align: left;
+}
+
+.dialog-wordmark {
+  margin-bottom: 6px;
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  color: #1B2632;
+}
+
+.dialog-title {
+  font-size: 1.35rem;
+  line-height: 1.2;
+  color: #17211B;
+}
+
+.dialog-close {
+  top: 16px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(23, 33, 27, 0.55);
+  font-size: 0.9rem;
+}
+
+.dialog-close:hover {
+  background: #F8F7F2;
+  color: #17211B;
+}
+
+.dialog-body {
+  padding: 16px 24px 18px;
+}
+
+.google-btn {
+  padding: 9px 12px;
+  font-size: 0.9rem;
+  border: 1px solid #D9D4C6;
+  border-radius: 6px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.google-btn:hover:not(:disabled) {
+  background: #F8F7F2;
+  border-color: #BDB59B;
+  box-shadow: none;
+}
+
+.dialog-divider {
+  margin: 12px 0;
+  font-size: 0.74rem;
+  color: rgba(23, 33, 27, 0.5);
+}
+
+.dialog-divider::before,
+.dialog-divider::after {
+  background: #D9D4C6;
+}
+
+.input-label {
+  margin-bottom: 5px;
+  font-size: 0.78rem;
+  color: rgba(23, 33, 27, 0.72);
+}
+
+.custom-input {
+  padding: 9px 12px;
+  margin-bottom: 12px;
+  font-size: 0.95rem;
+  background: #FFFFFF;
+  border: 1px solid #D9D4C6;
+  border-radius: 6px;
+}
+
+.custom-input::placeholder {
+  color: rgba(23, 33, 27, 0.38);
+}
+
+.custom-input:focus {
+  border-color: #1B2632;
+  box-shadow: 0 0 0 3px rgba(27, 38, 50, 0.08);
+}
+
+.password-wrap {
+  margin-bottom: 0;
+}
+
+.pw-toggle {
+  color: rgba(23, 33, 27, 0.45);
+}
+
+.input-hint {
+  margin-top: 5px;
+  font-size: 0.74rem;
+  color: rgba(23, 33, 27, 0.55);
+}
+
+.submit-btn {
+  margin-top: 14px;
+  padding: 10px;
+  font-size: 0.95rem;
+  border-radius: 6px;
+  background: #1B2632;
+  box-shadow: none;
+  transition: background 0.15s;
+}
+
+.submit-btn:hover {
+  background: #2C3B4D;
+  box-shadow: none;
+}
+
+.switch-text {
+  margin-top: 12px;
+  font-size: 0.84rem;
+  color: rgba(23, 33, 27, 0.6);
+}
+
+.switch-link {
+  color: #1B2632;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: #BDB59B;
+}
+
+.switch-link:hover {
+  color: #2C3B4D;
+  text-decoration-color: #1B2632;
+}
+
+/* Consideraciones como notas discretas, sin caja */
+.consideraciones {
+  margin-top: 14px;
+  padding: 12px 0 0;
+  background: none;
+  border: none;
+  border-top: 1px solid #D9D4C6;
+  border-radius: 0;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: rgba(23, 33, 27, 0.62);
+}
+
+.consideraciones li {
+  gap: 6px;
+  padding: 1px 0;
+}
+
+.consideraciones-icono {
+  color: #9C9275;
+}
+
+.terminos-text {
+  margin-top: 8px;
+  padding-top: 0;
+  border-top: none;
+  font-size: 0.72rem;
+  text-align: left;
+  color: rgba(23, 33, 27, 0.55);
+}
+
+.terminos-link {
+  color: #1B2632;
+  text-decoration-color: #BDB59B;
+}
+
+/* ---- Aviso de navegador interno (WhatsApp, Instagram...) ---- */
+.aviso-navegador {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid #D9D4C6;
+  border-left: 3px solid #1B2632;
+  border-radius: 6px;
+  background: #F8F7F2;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: rgba(23, 33, 27, 0.78);
+}
+
+.aviso-navegador p {
+  margin: 0;
+}
+
+.aviso-navegador-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.aviso-navegador-btn {
+  padding: 7px 12px;
+  border: 1px solid #1B2632;
+  border-radius: 6px;
+  background: #FFFFFF;
+  color: #1B2632;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.submit-btn:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+/* ---- Celular ---- */
+@media (max-width: 600px) {
+  /* 16px como mínimo: con menos, iPhone acerca la pantalla al tocar el
+     campo y la página queda ampliada y descuadrada. */
+  .custom-input {
+    font-size: 16px;
+    padding: 11px 12px;
+  }
+
+  /* Botones cómodos para el dedo (44px) */
+  .google-btn,
+  .submit-btn {
+    min-height: 44px;
+  }
+
+  .pw-toggle {
+    width: 44px;
+    height: 44px;
+    right: 0;
+  }
+
+  .password-wrap .custom-input {
+    padding-right: 48px;
+  }
+
+  .dialog-close {
+    width: 40px;
+    height: 40px;
+    top: 10px;
+    right: 8px;
+  }
+
+  /* La ventana usa casi todo el ancho del celular */
+  .new-dialog-card {
+    width: calc(100vw - 24px);
+    max-width: 420px;
+  }
+}
+
 /* Pantallas bajas (ventana no maximizada, celular): ventana más compacta
    para que en la mayoría de casos todo entre sin desplazarse. */
 @media (max-height: 760px), (max-width: 600px) {
-  .dialog-header { padding: 22px 22px 10px; }
-  .dialog-body { padding: 14px 22px 20px; }
+  .dialog-header { padding: 18px 48px 0 20px; }
+  .dialog-body { padding: 12px 20px 16px; }
   .dialog-divider { margin: 12px 0; }
-  .custom-input { padding: 10px 12px; }
-  .submit-btn { margin-top: 12px; padding: 11px; }
+  .custom-input { padding: 8px 12px; margin-bottom: 10px; }
+  @media (max-width: 600px) { .custom-input { font-size: 16px; padding: 11px 12px; } }
+  .submit-btn { margin-top: 12px; padding: 9px; }
   .switch-text { margin-top: 12px; }
-  .consideraciones { margin-top: 12px; padding: 8px 10px; }
-  .terminos-text { margin-top: 10px; padding-top: 10px; }
+  .consideraciones { margin-top: 12px; padding: 10px 0 0; }
+  .terminos-text { margin-top: 8px; padding-top: 0; }
 }
 </style>
 
@@ -855,5 +1244,26 @@ const handleLogout = async () => {
 
 .user-profile-menu .q-separator {
   background: var(--lexit-marfil) !important;
+}
+
+/* Selector del área de trabajo en el registro */
+.custom-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%231B2632' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+}
+
+.input-opcional {
+  font-weight: 400;
+  opacity: 0.6;
+}
+
+.input-hint--area {
+  margin-top: -4px;
+  margin-bottom: 14px;
 }
 </style>

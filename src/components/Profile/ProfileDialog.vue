@@ -73,6 +73,13 @@
           class="pd-input"
         />
 
+        <label class="pd-label" for="pd-area">Área en la que trabajas</label>
+        <select id="pd-area" v-model="area" class="pd-input pd-select">
+          <option value="">Sin especificar</option>
+          <option v-for="a in AREAS_TRABAJO" :key="a.valor" :value="a.valor">{{ a.etiqueta }}</option>
+        </select>
+        <p class="pd-hint">El resumen de Normas se enfoca en lo que le importa a tu área.</p>
+
         <div class="pd-actions">
           <button
             type="button"
@@ -100,6 +107,7 @@ import { ref, watch } from 'vue';
 import { useUserProfileStore } from '../../stores/userProfile';
 import { useAuthStore } from '../../stores/auth';
 import { useQuasar } from 'quasar';
+import { AREAS_TRABAJO } from '../../constants/areasTrabajo';
 
 // Props
 const props = defineProps<{
@@ -119,6 +127,7 @@ const $q = useQuasar();
 // Estado local
 const isOpen = ref(props.modelValue);
 const displayName = ref(profileStore.displayName);
+const area = ref(profileStore.area ?? '');
 const photoFile = ref<File | null>(null);
 const photoPreview = ref<string | null>(null);
 const fileInput = ref<{ pickFiles: () => void } | null>(null);
@@ -129,6 +138,7 @@ watch(() => props.modelValue, (newValue) => {
   if (newValue) {
     // Resetear valores al abrir
     displayName.value = profileStore.displayName;
+    area.value = profileStore.area ?? '';
     photoFile.value = null;
     photoPreview.value = null;
   }
@@ -199,6 +209,14 @@ async function handleSave() {
     if (displayName.value !== profileStore.displayName) {
       const nameResult = await profileStore.updateDisplayName(uid, displayName.value);
       if (!nameResult) {
+        success = false;
+      }
+    }
+
+    // Actualizar área si cambió
+    if (area.value !== (profileStore.area ?? '')) {
+      const areaResult = await profileStore.updateArea(uid, area.value || null);
+      if (!areaResult) {
         success = false;
       }
     }
@@ -456,5 +474,22 @@ function closeDialog() {
 @media (max-width: 480px) {
   .pd-card { padding: 22px 18px 20px; }
   .pd-title { font-size: 1.25rem; }
+}
+
+/* Selector del área de trabajo */
+.pd-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%231B2632' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+}
+
+.pd-hint {
+  margin: -6px 0 16px;
+  font-size: 0.78rem;
+  color: rgba(27, 38, 50, 0.6);
 }
 </style>
