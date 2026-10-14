@@ -461,7 +461,7 @@ const RESPUESTA_DEMO = 'Según el artículo 140° del Código Civil, el acto jur
 
 // Solo normas que existen en la base jurídica (no cifras ni nombres inventados).
 const CIFRAS = [
-  { valor: 4, prefijo: '', etiqueta: 'especializaciones del derecho' },
+  { valor: 5, prefijo: '', etiqueta: 'especializaciones del derecho' },
   { valor: 3700, prefijo: '+', etiqueta: 'artículos citables, uno por uno' },
   { valor: 365, prefijo: '', etiqueta: 'resúmenes al año de El Peruano' }
 ]
@@ -523,6 +523,11 @@ const ESPECIALIDADES_LANDING = [
     id: 'comercial', tono: 'beige', titulo: 'Derecho Comercial',
     descripcion: 'Sociedades, mercado de valores, concursal y consumidor.',
     normas: ['Ley General de Sociedades', 'Ley del Mercado de Valores', 'Ley General del Sistema Concursal', 'Ley de Protección de Datos Personales']
+  },
+  {
+    id: 'laboral', tono: 'azul', titulo: 'Derecho Laboral',
+    descripcion: 'Contratos de trabajo, derechos laborales y proceso laboral.',
+    normas: ['Ley de Productividad y Competitividad Laboral', 'Ley de Seguridad y Salud en el Trabajo', 'Nueva Ley Procesal del Trabajo', 'Constitución Política (régimen laboral)']
   }
 ]
 
@@ -796,6 +801,10 @@ onUnmounted(() => {
   /* Tonos intermedios entre crema y marfil, para variar las bandas */
   --crema-2: #F1EEE6;
   --marfil-claro: #E9E5DA;
+  /* Azul de las funciones de la app (Abyssal / Blue Fantastic): acento
+     para hover, foco, selección y la especialización laboral. */
+  --azul: #1B2632;
+  --azul-2: #2C3B4D;
 
   /* 75%: contraste ≥ 4.5:1 incluso sobre piedra */
   --texto: var(--bosque);
@@ -810,6 +819,8 @@ onUnmounted(() => {
   --ancho: 1200px;
   --gutter: clamp(20px, 5vw, 56px);
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Ease-out marcado para interacciones cortas (hover, pulsar) */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 
   min-height: 100vh;
   background: var(--crema);
@@ -830,7 +841,7 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   height: 2px;
-  background: var(--beige-oliva);
+  background: var(--azul-2);
   transform-origin: 0 50%;
   transform: scaleX(0);
   z-index: 60;
@@ -936,18 +947,22 @@ onUnmounted(() => {
   font-weight: 500;
   cursor: pointer;
   border: 1px solid transparent;
-  transition: background-color 0.25s, color 0.25s, border-color 0.25s, transform 0.25s var(--ease);
+  transition:
+    background-color 0.2s var(--ease-out),
+    color 0.2s var(--ease-out),
+    border-color 0.2s var(--ease-out),
+    transform 0.16s var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
 }
 
-.btn:hover { transform: translateY(-2px); }
-.btn:focus-visible { outline: 2px solid var(--beige-oliva); outline-offset: 3px; }
+/* Al pulsar se encoge apenas: respuesta inmediata al clic */
+.btn:active { transform: scale(0.97); }
+.btn:focus-visible { outline: 2px solid var(--azul-2); outline-offset: 3px; }
 
 .btn--primario {
   background: var(--bosque);
   color: var(--crema);
 }
-
-.btn--primario:hover { background: var(--grisaceo); }
 
 .btn--contorno {
   background: var(--blanco);
@@ -955,10 +970,16 @@ onUnmounted(() => {
   border-color: var(--borde-fuerte);
 }
 
-.btn--contorno:hover { border-color: var(--texto); }
+.btn-flecha { transition: transform 0.2s var(--ease-out); }
 
-.btn-flecha { transition: transform 0.3s var(--ease); }
-.btn:hover .btn-flecha { transform: translateX(4px); }
+/* Hover solo con mouse (en táctil quedaba "pegado") */
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover { transform: translateY(-1px); }
+  .btn:active { transform: scale(0.97); }
+  .btn--primario:hover { background: var(--azul-2); }
+  .btn--contorno:hover { border-color: var(--azul); color: var(--azul); }
+  .btn:hover .btn-flecha { transform: translateX(3px); }
+}
 
 /* ==============================
    HERO (crema, con luces suaves de piedra y marfil)
@@ -1690,9 +1711,13 @@ onUnmounted(() => {
   max-width: var(--ancho);
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  /* 5 áreas: tres arriba y dos abajo, sin una tarjeta suelta */
+  grid-template-columns: repeat(6, 1fr);
   gap: 18px;
 }
+
+.esp-grid > .esp { grid-column: span 2; }
+.esp-grid > .esp:nth-child(n + 4) { grid-column: span 3; }
 
 .esp {
   position: relative;
@@ -1702,7 +1727,7 @@ onUnmounted(() => {
   border-radius: var(--radio);
   border: 1px solid var(--borde);
   background: var(--blanco);
-  transition: transform 0.4s var(--ease), box-shadow 0.4s var(--ease), border-color 0.3s;
+  transition: transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out), border-color 0.2s var(--ease-out);
 }
 
 /* Franja de color arriba: cada área con un tono de la paleta */
@@ -1720,11 +1745,16 @@ onUnmounted(() => {
 .esp--grisaceo::before { background: var(--oliva); }
 .esp--oliva::before { background: var(--beige-oliva); }
 .esp--beige::before { background: var(--piedra); }
+.esp--azul::before { background: var(--azul-2); }
+.esp--azul .esp-icono { background: var(--azul); color: var(--crema); }
 
-.esp:hover {
-  transform: translateY(-6px);
-  border-color: var(--borde-fuerte);
-  box-shadow: 0 24px 50px -28px rgba(23, 33, 27, 0.35);
+@media (hover: hover) and (pointer: fine) {
+  .esp:hover {
+    transform: translateY(-4px);
+    border-color: var(--borde-fuerte);
+    box-shadow: 0 20px 44px -28px rgba(27, 38, 50, 0.38);
+  }
+  .esp--azul:hover .esp-icono { background: var(--azul-2); }
 }
 
 .esp-cabecera {
@@ -1807,9 +1837,14 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
-.esp-cta span { display: inline-block; transition: transform 0.3s var(--ease); }
-.esp-cta:hover span { transform: translateX(4px); }
-.esp-cta:focus-visible { outline: 2px solid var(--beige-oliva); outline-offset: 3px; }
+.esp-cta { transition: color 0.2s var(--ease-out); }
+.esp-cta span { display: inline-block; transition: transform 0.2s var(--ease-out); }
+.esp-cta:focus-visible { outline: 2px solid var(--azul-2); outline-offset: 3px; }
+
+@media (hover: hover) and (pointer: fine) {
+  .esp-cta:hover { color: var(--azul-2); }
+  .esp-cta:hover span { transform: translateX(3px); }
+}
 
 /* ==============================
    CÓMO FUNCIONA (marfil)
@@ -2168,8 +2203,8 @@ onUnmounted(() => {
    ============================== */
 .reveal {
   opacity: 0;
-  transform: translateY(28px);
-  transition: opacity 0.9s var(--ease), transform 0.9s var(--ease);
+  transform: translateY(16px);
+  transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
 }
 
 .reveal.is-visible { opacity: 1; transform: none; }
@@ -2178,6 +2213,255 @@ onUnmounted(() => {
 .esp-grid .esp.reveal:nth-child(2) { transition-delay: 0.08s; }
 .esp-grid .esp.reveal:nth-child(3) { transition-delay: 0.16s; }
 .esp-grid .esp.reveal:nth-child(4) { transition-delay: 0.24s; }
+.esp-grid .esp.reveal:nth-child(5) { transition-delay: 0.32s; }
+
+
+/* ==============================
+   AZUL CORPORATIVO (Abyssal #1B2632 / Blue Fantastic #2C3B4D)
+   El resto de la paleta (verdes, beiges, cremas) no cambia: el azul entra
+   en superficies grandes (cinta de normas, Misión y Visión, llamado final
+   y pie de página), en los botones principales y en los acentos, con
+   animaciones sobrias (solo transform, opacity y fondos).
+   ============================== */
+.landing-page {
+  --azul-rgb: 27, 38, 50;
+  --crema-sobre-azul: rgba(248, 247, 242, 0.78);
+}
+
+/* ---- Botones principales en azul, con un brillo que cruza cada tanto ---- */
+.btn--primario {
+  position: relative;
+  overflow: hidden;
+  background: var(--azul);
+  color: var(--crema);
+}
+
+.btn--primario::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -60%;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  transform: skewX(-18deg);
+  animation: brilloBoton 5.5s var(--ease-out) infinite;
+  pointer-events: none;
+}
+
+@keyframes brilloBoton {
+  0%, 70% { left: -60%; }
+  100% { left: 130%; }
+}
+
+:deep(.auth-buttons .register-btn) { background: var(--azul) !important; }
+:deep(.auth-buttons .register-btn:hover) { background: var(--azul-2) !important; }
+
+/* ---- Hero: acento azul ---- */
+.hero-title em {
+  background: linear-gradient(100deg, var(--azul) 0%, var(--azul-2) 35%, #4A6078 50%, var(--azul-2) 65%, var(--azul) 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: tintaAzul 7s ease-in-out infinite;
+}
+
+@keyframes tintaAzul {
+  0%, 100% { background-position: 100% 0; }
+  50% { background-position: 0% 0; }
+}
+
+/* Halo azul suave detrás del hero, además de la luz que sigue al cursor */
+.hero-foco::after {
+  content: '';
+  position: absolute;
+  right: -10%;
+  top: -20%;
+  width: 60%;
+  height: 90%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(var(--azul-rgb), 0.10), transparent);
+  animation: haloAzul 14s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes haloAzul {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(-8%, 10%, 0) scale(1.12); }
+}
+
+.hero-badge-punto { background: var(--azul-2) !important; }
+
+/* Barra de título de la ventana de demostración en azul */
+.demo-barra {
+  background: var(--azul) !important;
+  border-bottom-color: var(--azul) !important;
+}
+
+.demo-barra-titulo { color: var(--crema-sobre-azul) !important; }
+.demo-punto { background: rgba(248, 247, 242, 0.35) !important; }
+
+/* ---- Etiquetas de sección: línea azul que se dibuja al aparecer ---- */
+.section-label {
+  position: relative;
+  padding-top: 14px;
+  color: var(--azul-2);
+}
+
+.section-label::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 36px;
+  height: 2px;
+  margin-left: -18px;
+  background: var(--azul-2);
+  transform: scaleX(0);
+  transition: transform 0.7s var(--ease) 0.15s;
+}
+
+.section-header.is-visible .section-label::before { transform: scaleX(1); }
+
+.section-title em { color: var(--azul-2); }
+
+/* ---- Cifras y cinta de normas ---- */
+.cifra-numero { color: var(--azul); }
+
+.cinta {
+  background: var(--azul);
+  border-top-color: var(--azul);
+  color: var(--crema);
+}
+
+.cinta-sep { color: var(--crema); opacity: 0.45; }
+
+/* ---- Producto y pasos ---- */
+.herr--activa .herr-num { color: var(--azul-2) !important; }
+.herr--activa { box-shadow: inset 2px 0 0 var(--azul-2); }
+.pasos-linea-relleno { background: var(--azul-2) !important; }
+.paso--hecho .paso-punto {
+  background: var(--azul) !important;
+  border-color: var(--azul) !important;
+  color: var(--crema) !important;
+}
+
+/* ---- Misión y Visión: banda azul a todo el ancho ---- */
+.mv {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(800px circle at 0% 0%, rgba(74, 96, 120, 0.35), transparent 60%),
+    radial-gradient(700px circle at 100% 100%, rgba(44, 59, 77, 0.9), transparent 60%),
+    var(--azul);
+  color: var(--crema);
+}
+
+.mv-bloque { border-left-color: rgba(248, 247, 242, 0.35); transition: border-color 0.3s var(--ease-out); }
+.mv-label { color: rgba(248, 247, 242, 0.65); }
+.mv-texto { color: var(--crema); }
+
+@media (hover: hover) and (pointer: fine) {
+  .mv-bloque:hover { border-left-color: var(--crema); }
+}
+
+/* ---- Llamado final: azul con resplandor que se mueve lento ---- */
+.cta {
+  background: var(--azul);
+  color: var(--crema);
+  isolation: isolate;
+}
+
+.cta::before {
+  content: '';
+  position: absolute;
+  inset: -30%;
+  z-index: -1;
+  background:
+    radial-gradient(40% 40% at 20% 30%, rgba(74, 96, 120, 0.55), transparent 70%),
+    radial-gradient(35% 35% at 80% 70%, rgba(189, 181, 155, 0.18), transparent 70%),
+    radial-gradient(30% 30% at 60% 20%, rgba(44, 59, 77, 0.9), transparent 70%);
+  animation: auroraAzul 16s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes auroraAzul {
+  from { transform: translate3d(-4%, -2%, 0) rotate(0deg); }
+  to { transform: translate3d(4%, 3%, 0) rotate(8deg); }
+}
+
+.cta-titulo em { color: #C9D3DF; }
+.cta-texto { color: var(--crema-sobre-azul); }
+
+.cta .btn--primario {
+  background: var(--crema);
+  color: var(--azul);
+}
+
+.cta .btn--primario::after {
+  background: linear-gradient(100deg, transparent, rgba(var(--azul-rgb), 0.12), transparent);
+}
+
+.cta .btn--contorno {
+  background: transparent;
+  color: var(--crema);
+  border-color: rgba(248, 247, 242, 0.45);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cta .btn--primario:hover { background: var(--blanco); color: var(--azul); }
+  .cta .btn--contorno:hover { border-color: var(--crema); color: var(--crema); }
+}
+
+.cta .btn:focus-visible { outline-color: var(--crema); }
+
+/* ---- Pie de página en azul ---- */
+.landing-footer {
+  background: var(--azul);
+  border-top-color: var(--azul);
+  color: var(--crema);
+}
+
+.footer-inner { border-bottom-color: rgba(248, 247, 242, 0.14); }
+.footer-lema,
+.footer-copy,
+.footer-nav a { color: var(--crema-sobre-azul); }
+
+@media (hover: hover) and (pointer: fine) {
+  .footer-nav a:hover { color: var(--crema); }
+}
+
+.landing-footer :is(a, button):focus-visible { outline-color: var(--crema); }
+
+/* ==============================
+   PULIDO DE DISEÑO (sin cambiar contenido)
+   - Títulos equilibrados (sin palabras sueltas en la última línea) y
+     párrafos con cortes de línea cuidados.
+   - Cifras con dígitos de ancho fijo: no "bailan" al contar.
+   - Foco visible y selección de texto con el azul de las funciones.
+   ============================== */
+.landing-page :is(.hero-title, .section-title, .cta-titulo, .esp-titulo, .paso-titulo, .equipo-subtitulo) {
+  text-wrap: balance;
+}
+
+.landing-page :is(.hero-description, .section-subtitle, .esp-desc, .paso-desc, .mv-texto, .proposito-quote, .cta-texto, .vista-frase) {
+  text-wrap: pretty;
+}
+
+.section-subtitle { max-width: 60ch; }
+
+.cifra-numero { font-variant-numeric: tabular-nums; }
+
+.landing-page ::selection {
+  background: var(--azul);
+  color: var(--crema);
+}
+
+.landing-page :is(a, button):focus-visible {
+  outline: 2px solid var(--azul-2);
+  outline-offset: 3px;
+}
 
 /* ==============================
    RESPONSIVE
@@ -2192,6 +2476,10 @@ onUnmounted(() => {
   .demo { max-width: 620px; }
 
   .esp-grid { grid-template-columns: repeat(2, 1fr); }
+  .esp-grid > .esp,
+  .esp-grid > .esp:nth-child(n + 4) { grid-column: auto; }
+  /* La quinta ocupa todo el ancho para no quedar sola a medias */
+  .esp-grid > .esp:nth-child(5) { grid-column: 1 / -1; }
   .equipo-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
@@ -2210,6 +2498,7 @@ onUnmounted(() => {
 
 @media (max-width: 560px) {
   .esp-grid { grid-template-columns: 1fr; }
+  .esp-grid > .esp:nth-child(5) { grid-column: auto; }
 }
 
 @media (max-width: 520px) {

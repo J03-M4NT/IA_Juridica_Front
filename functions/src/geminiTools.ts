@@ -15,6 +15,7 @@ import {
 } from './seguridad'
 import { dividirEnSecciones } from './seccionesContrato'
 import { asignarBaseLegal, PINECONE_API_KEY } from './baseLegal'
+import { ENFOQUE_POR_AREA } from './areasTrabajo'
 
 // ================================
 // SUGERENCIAS DE CAMBIOS (redline) PARA UN CONTRATO
@@ -256,9 +257,11 @@ interface RespuestaChatEdicion {
   tipo: 'pregunta' | 'documento_final'
   mensaje: string
   textoModificado?: string
-  // Solo con formato "cambios" (plantillas Word): en vez del contrato
+  // Con formato "cambios" (plantillas Word), al final: en vez del contrato
   // reescrito, los reemplazos puntuales, para aplicarlos sobre el Word
-  // original sin perder su formato.
+  // original sin perder su formato. En cualquier formato, con tipo
+  // "pregunta": los reemplazos que aplican la última respuesta del usuario,
+  // para que el contrato se vea actualizándose en vivo mientras conversa.
   cambios?: CambioTextoContrato[]
 }
 
@@ -269,7 +272,7 @@ const MAX_CAMBIOS_CHAT_EDICION = 300
 // "]" o "}", o una clave sin comillas. Se reparan esos dos errores típicos
 // antes de dar la respuesta por perdida. Si aun así no es JSON, lanza
 // SyntaxError.
-function parsearJsonTolerante(texto: string): unknown {
+export function parsearJsonTolerante(texto: string): unknown {
   const inicio = texto.indexOf('{')
   const fin = texto.lastIndexOf('}')
   const cuerpo = inicio !== -1 && fin > inicio ? texto.slice(inicio, fin + 1) : texto
@@ -291,6 +294,15 @@ function normalizarCambios(crudo: unknown): CambioTextoContrato[] {
     .slice(0, MAX_CAMBIOS_CHAT_EDICION)
     .map(c => ({ antes: c.antes as string, despues: c.despues as string }))
 }
+
+// Documento en vivo: en cada turno la IA devuelve, junto con la siguiente
+// pregunta, los reemplazos que aplican el dato que el usuario acaba de dar.
+// El front los aplica al momento y vuelve a mandar el contrato ya
+// actualizado en el turno siguiente.
+const INSTRUCCION_CAMBIOS_EN_VIVO = `DOCUMENTO EN VIVO: el usuario ve el contrato al lado del chat. Cada vez que te dé un dato o pida un cambio, en esa MISMA respuesta (aunque sea tipo pregunta) incluye en "cambios" los reemplazos que aplican ESE dato al contrato de arriba, en todos los lugares donde corresponda, para que vea el contrato actualizarse en tiempo real. Cada cambio es un reemplazo dentro de un mismo párrafo:
+   - "antes": fragmento COPIADO EXACTAMENTE del contrato de arriba (mismas palabras, puntos, guiones y espacios), con las palabras de alrededor necesarias para que aparezca UNA sola vez. Nunca abarques dos párrafos.
+   - "despues": ese mismo fragmento con el dato completado, sin cambiar nada más.
+   El CONTRATO ACTUAL de arriba ya incluye los datos de respuestas anteriores: no vuelvas a aplicarlos.`
 
 export const chatEdicionContratoIA = onRequest(
   { cors: ORIGENES_PERMITIDOS, secrets: [GEMINI_API_KEY], timeoutSeconds: TIMEOUT_FUNCIONES_IA_SEGUNDOS },
@@ -343,6 +355,7 @@ Tu trabajo:
 1. Analiza el contrato de arriba: identifica qué datos faltan por completar (espacios en blanco, líneas de puntos, placeholders tipo XXXX, campos vacíos) y qué el usuario podría querer modificar.
 2. Pregunta UNA sola cosa a la vez, en lenguaje natural y claro (ej. "¿Cuál es el nombre completo del arrendador?"), nunca varias preguntas juntas.
 3. No repitas una pregunta que ya fue respondida en la conversación.
+${INSTRUCCION_CAMBIOS_EN_VIVO}
 ${enCambios
   ? `4. Cuando ya tengas suficiente información, o el usuario diga que ya terminó, que no quiere completar más, o pida ver el resultado, devuelve la LISTA DE CAMBIOS a aplicar sobre el contrato (NO el contrato completo). Cada cambio es un reemplazo dentro de un mismo párrafo:
    - "antes": fragmento COPIADO EXACTAMENTE del contrato de arriba (mismas palabras, puntos, guiones y espacios), con las palabras de alrededor necesarias para que aparezca UNA sola vez en el contrato. Nunca abarques dos párrafos.
@@ -355,7 +368,7 @@ Responde SIEMPRE y ÚNICAMENTE en JSON, con esta estructura exacta, sin texto fu
   "mensaje": "el mensaje conversacional para mostrarle al usuario (la pregunta a hacer, o un breve resumen de que terminaste)",
   "cambios": [{ "antes": "fragmento exacto del contrato", "despues": "fragmento con el cambio" }]
 }
-("cambios" SOLO si tipo es documento_final; omítelo si tipo es pregunta.)
+(Con tipo pregunta, "cambios" lleva lo que aplica la última respuesta del usuario —lista vacía si no dio ningún dato—. Con documento_final, solo lo que todavía no esté aplicado en el contrato de arriba —puede ir vacía—.)
 `
   : `4. Cuando ya tengas suficiente información, o el usuario diga que ya terminó, que no quiere completar más, o pida ver el resultado, genera el CONTRATO COMPLETO actualizado con todos los cambios aplicados, conservando el resto del texto, la estructura y las cláusulas originales tal cual.
 
@@ -363,8 +376,10 @@ Responde SIEMPRE y ÚNICAMENTE en JSON, con esta estructura exacta, sin texto fu
 {
   "tipo": "pregunta" o "documento_final",
   "mensaje": "el mensaje conversacional para mostrarle al usuario (la pregunta a hacer, o un breve resumen de que terminaste)",
+  "cambios": [{ "antes": "fragmento exacto del contrato", "despues": "fragmento con el cambio" }],
   "textoModificado": "SOLO si tipo es documento_final: el contrato completo con todos los cambios aplicados, listo para reemplazar al original. Omite este campo si tipo es pregunta."
 }
+("cambios" SOLO si tipo es pregunta: lo que aplica la última respuesta del usuario, lista vacía si no dio ningún dato.)
 `}`
 
       const mensajeUsuario = respuestaUsuario?.trim() ||
@@ -408,12 +423,14 @@ Responde SIEMPRE y ÚNICAMENTE en JSON, con esta estructura exacta, sin texto fu
         throw new Error('Respuesta de la IA sin mensaje')
       }
 
-      const cambios = enCambios && parsed.tipo === 'documento_final' ? normalizarCambios(parsed.cambios) : []
+      const cambios = normalizarCambios(parsed.cambios)
       const respuesta: RespuestaChatEdicion = {
         tipo: parsed.tipo,
         mensaje: parsed.mensaje,
         ...(!enCambios && parsed.textoModificado !== undefined ? { textoModificado: parsed.textoModificado } : {}),
-        ...(enCambios && parsed.tipo === 'documento_final' ? { cambios } : {})
+        ...(enCambios && parsed.tipo === 'documento_final' ? { cambios } : {}),
+        // Documento en vivo: lo que aplica la respuesta que acaba de dar el usuario
+        ...(parsed.tipo === 'pregunta' && cambios.length > 0 ? { cambios } : {})
       }
       res.json(respuesta)
     } catch (err) {
@@ -439,7 +456,10 @@ export const resumirNormasDelDiaIA = onRequest(
     if (!uid) return
 
     try {
-      const { normas } = req.body as { normas?: { titulo: string; sumilla: string }[] }
+      const { normas, area } = req.body as { normas?: { titulo: string; sumilla: string }[]; area?: unknown }
+      // Área de trabajo del usuario: solo se aceptan las de la lista (nada
+      // de texto libre en el prompt). Desconocida o ausente = resumen general.
+      const enfoque = typeof area === 'string' && Object.prototype.hasOwnProperty.call(ENFOQUE_POR_AREA, area) ? ENFOQUE_POR_AREA[area] : undefined
       if (!Array.isArray(normas) || normas.length === 0) {
         res.status(400).json({ error: 'Falta normas' })
         return
@@ -458,7 +478,7 @@ export const resumirNormasDelDiaIA = onRequest(
       // la Biblioteca Legal no gasta Gemini ni el cupo del usuario.
       const cacheRef = getFirestore()
         .collection('resumenes_normas')
-        .doc(createHash('sha256').update(listado).digest('hex'))
+        .doc(createHash('sha256').update(enfoque ? `${listado}\n#area:${String(area)}` : listado).digest('hex'))
       const cache = await cacheRef.get()
       if (cache.exists) {
         res.json(cache.get('resultado'))
@@ -467,18 +487,29 @@ export const resumirNormasDelDiaIA = onRequest(
 
       if (!(await consumirCuotaIA(uid, res))) return
 
+      const instruccionArea = enfoque
+        ? `
+    El lector trabaja en el área ${enfoque.nombre} de una empresa. Enfoca el
+    resumen y las destacadas en lo que le importa a esa área (${enfoque.enfoque}).
+    En "razon" explica en una frase por qué le importa a esa área. Si ninguna
+    norma del día afecta a esa área, dilo en el resumen y elige como
+    destacadas las de mayor impacto general para una empresa.
+    Usa solo los títulos tal como aparecen en el listado.
+`
+        : ''
+
       const prompt = `
     Eres un abogado experto en derecho peruano.
     Estas son las normas publicadas hoy en el Diario Oficial El Peruano:
 
     ${listado}
-
+${instruccionArea}
     Responde SOLO en JSON con esta estructura:
     {
       "resumen": "resumen breve (2-3 frases) de las normas del día",
       "destacadas": [
-        { "titulo": "título exacto de la norma más relevante", "razon": "por qué le importa a un abogado en ejercicio, en una frase" },
-        { "titulo": "título exacto de la segunda norma más relevante", "razon": "por qué le importa a un abogado en ejercicio, en una frase" }
+        { "titulo": "título exacto de la norma más relevante", "razon": "por qué le importa ${enfoque ? `al área ${enfoque.nombre}` : 'a un abogado en ejercicio'}, en una frase" },
+        { "titulo": "título exacto de la segunda norma más relevante", "razon": "por qué le importa ${enfoque ? `al área ${enfoque.nombre}` : 'a un abogado en ejercicio'}, en una frase" }
       ]
     }
   `

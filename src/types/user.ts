@@ -7,6 +7,8 @@ export interface UserProfile {
     displayName: string;
     photoURL: string | null;
     role?: 'user' | 'admin';
+    // Área de la empresa en la que trabaja (constants/areasTrabajo.ts)
+    area?: string | null;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -17,6 +19,7 @@ export interface UserProfile {
 export interface UpdateProfileData {
     displayName?: string;
     photoURL?: string | null;
+    area?: string | null;
 }
 
 /**

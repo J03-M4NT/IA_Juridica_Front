@@ -31,6 +31,7 @@ export { resumirNormaIA } from './resumenNorma'
 // Asistente de Gestión de Contratos: interpreta qué contrato necesita el
 // usuario y recomienda plantillas.
 export { recomendarPlantillaIA } from './recomendarPlantilla'
+export { explicarCambiosContratoIA } from './compararVersiones'
 
 if (getApps().length === 0) {
   initializeApp()

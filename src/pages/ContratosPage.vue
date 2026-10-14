@@ -1,149 +1,13 @@
 <template>
   <q-page class="contratos-page">
 
-    <!-- Section header -->
-    <div class="page-header">
-      <div class="page-header-texto">
-        <span class="page-eyebrow">Contratos</span>
-        <h1 class="page-title">Gestión de Contratos</h1>
-        <p class="page-subtitle">Elige una plantilla, complétala y descárgala lista en Word.</p>
-      </div>
-
-      <!-- Guía de 3 pasos: solo muestra en qué parte del flujo está el
-           usuario (no navega); se deriva del estado que ya existe. -->
-      <ol class="pasos" aria-label="Pasos">
-        <li
-          class="paso"
-          :class="{ 'paso--actual': !currentTemplate, 'paso--hecho': !!currentTemplate }"
-          :aria-current="!currentTemplate ? 'step' : undefined"
-        >
-          <span class="paso-num">
-            <q-icon v-if="currentTemplate" name="check" size="14px" />
-            <template v-else>1</template>
-          </span>
-          <span class="paso-texto">Elige</span>
-        </li>
-        <li class="paso-linea" :class="{ 'paso-linea--llena': !!currentTemplate }" aria-hidden="true"></li>
-        <li
-          class="paso"
-          :class="{ 'paso--actual': !!currentTemplate && !modoEdicion, 'paso--hecho': modoEdicion }"
-          :aria-current="currentTemplate && !modoEdicion ? 'step' : undefined"
-        >
-          <span class="paso-num">
-            <q-icon v-if="modoEdicion" name="check" size="14px" />
-            <template v-else>2</template>
-          </span>
-          <span class="paso-texto">Revisa</span>
-        </li>
-        <li class="paso-linea" :class="{ 'paso-linea--llena': modoEdicion }" aria-hidden="true"></li>
-        <li
-          class="paso"
-          :class="{ 'paso--actual': modoEdicion }"
-          :aria-current="modoEdicion ? 'step' : undefined"
-        >
-          <span class="paso-num">3</span>
-          <span class="paso-texto">Edita y descarga</span>
-        </li>
-      </ol>
-    </div>
-
     <div class="row q-col-gutter-md">
-      <!-- Columna Izquierda: Templates (se puede plegar para ganar espacio) -->
-      <div class="col-12 col-md-4 col-plantillas" :class="{ 'col-plantillas--cerrada': !plantillasAbiertas }">
-        <Transition name="plegar" mode="out-in">
-        <!-- Plegada: riel angosto para volver a abrirla -->
-        <button
-          v-if="!plantillasAbiertas"
-          key="riel"
-          type="button"
-          class="plantillas-riel"
-          aria-label="Mostrar plantillas"
-          @click="plantillasAbiertas = true"
-        >
-          <span class="plantillas-riel-boton">
-            <q-icon name="chevron_right" size="20px" />
-          </span>
-          <span class="plantillas-riel-texto">Plantillas</span>
-          <span v-if="templates.length" class="lx-contador">{{ templates.length }}</span>
-          <q-tooltip class="lx-tooltip" anchor="center right" self="center left">Mostrar plantillas</q-tooltip>
-        </button>
-
-        <div v-else key="lista" class="lx-card">
-          <div class="lx-card-header">
-            <div class="lx-card-header-title">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <path d="M14 2v6h6"/>
-              </svg>
-              Plantillas
-              <span v-if="templates.length" class="lx-contador">{{ templates.length }}</span>
-            </div>
-            <div class="row no-wrap items-center">
-              <q-btn flat round dense icon="refresh" class="lx-icon-btn" @click="store.fetchTemplates()" :loading="isLoading" size="sm">
-                <q-tooltip class="lx-tooltip">Actualizar lista</q-tooltip>
-              </q-btn>
-              <q-btn flat round dense icon="chevron_left" class="lx-icon-btn-plegar" size="sm" aria-label="Ocultar plantillas" @click="plantillasAbiertas = false">
-                <q-tooltip class="lx-tooltip">Ocultar lista</q-tooltip>
-              </q-btn>
-            </div>
-          </div>
-
-          <div class="lx-card-body q-pa-none">
-            <!-- Cargando la primera vez: renglones fantasma en vez de vacío -->
-            <div v-if="isLoading && templates.length === 0" class="templates-skeleton" aria-hidden="true">
-              <div v-for="n in 4" :key="n" class="templates-skeleton-fila">
-                <q-skeleton type="rect" width="38px" height="38px" class="templates-skeleton-icono" />
-                <div class="col">
-                  <q-skeleton type="text" width="70%" />
-                  <q-skeleton type="text" width="45%" />
-                </div>
-              </div>
-            </div>
-
-            <q-list v-else class="templates-list">
-              <q-item
-                v-for="template in templates"
-                :key="template.id"
-                clickable v-ripple
-                class="template-item"
-                :active="currentTemplate?.id === template.id"
-                @click="selectTemplate(template)"
-              >
-                <q-item-section avatar>
-                  <div class="template-icon-wrap">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                      <path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/>
-                    </svg>
-                  </div>
-                </q-item-section>
-                <q-item-section>
-                  <q-item-label class="text-weight-medium template-item-name">{{ template.name }}</q-item-label>
-                  <q-item-label caption lines="2" class="template-item-desc">{{ template.description }}</q-item-label>
-                </q-item-section>
-                <q-item-section side>
-                  <q-icon name="chevron_right" class="template-item-flecha" />
-                </q-item-section>
-              </q-item>
-
-              <q-item v-if="templates.length === 0 && !isLoading">
-                <q-item-section class="text-center empty-state-text">
-                  <q-icon name="inventory_2" size="30px" class="q-mb-sm empty-state-icono" />
-                  No hay plantillas disponibles
-                </q-item-section>
-              </q-item>
-            </q-list>
-          </div>
-        </div>
-        </Transition>
-      </div>
-
-      <!-- Columna Derecha -->
-      <div class="col-12 col-md-8 col-trabajo" :class="{ 'col-trabajo--amplia': !plantillasAbiertas }">
+      <!-- Columna única, centrada -->
+      <div class="col-12 contratos-columna">
 
         <!-- VISTA PREVIA DEL PDF -->
         <div class="lx-card" v-if="!modoEdicion">
-          <div class="lx-card-header lx-card-header--wrap">
+          <div v-if="currentTemplate" class="lx-card-header lx-card-header--wrap">
             <div class="lx-card-header-title">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>
@@ -153,7 +17,6 @@
                 <span class="vista-titulo-nombre">{{ currentTemplate.name }}</span>
               </span>
               <template v-else>Asistente de contratos</template>
-              <span v-if="currentTemplate" class="lx-formato">{{ esWordTemplate ? 'Word' : 'PDF' }}</span>
             </div>
             <div v-if="currentTemplate" class="vista-acciones">
               <q-btn
@@ -200,10 +63,6 @@
             >
               <!-- Portada: solo antes de la primera pregunta -->
               <div v-if="asistenteMensajes.length === 1" class="asistente-portada">
-                <span class="asistente-insignia">
-                  <span class="asistente-insignia-punto" aria-hidden="true"></span>
-                  Asistente con IA
-                </span>
                 <h2 class="asistente-titular">
                   ¿Qué <em>contrato</em> necesitas hoy?
                 </h2>
@@ -215,16 +74,6 @@
               <!-- Conversación: aparece desde la primera pregunta. Se oculta
                    (no se quita) en la portada porque el script hace scroll
                    sobre este elemento. -->
-              <div v-show="asistenteMensajes.length > 1" class="asistente-chat-cabecera">
-                <span class="asistente-monograma" aria-hidden="true">L</span>
-                <div class="asistente-chat-cabecera-texto">
-                  <span class="asistente-chat-nombre">LexIT</span>
-                  <span class="asistente-chat-estado">
-                    <span class="asistente-estado-punto" :class="{ 'asistente-estado-punto--activo': asistenteCargando }" aria-hidden="true"></span>
-                    {{ asistenteCargando ? 'Buscando plantillas…' : 'Listo para ayudarte' }}
-                  </span>
-                </div>
-              </div>
 
               <div
                 v-show="asistenteMensajes.length > 1"
@@ -301,41 +150,104 @@
                 />
               </div>
 
-              <!-- Ideas rápidas: solo escriben el ejemplo en el campo; el
-                   usuario lo envía (o lo ajusta) como siempre. -->
-              <template v-if="asistenteMensajes.length === 1 && !asistenteCargando">
-                <div class="asistente-ideas-titulo">O empieza con una idea</div>
-                <div class="asistente-ideas">
+              <!-- Plantillas disponibles (antes en la columna lateral) -->
+              <section v-if="asistenteMensajes.length === 1 && !asistenteCargando" class="plantillas-disponibles" aria-label="Plantillas disponibles">
+                <div class="plantillas-disponibles-cabecera">
+                  <span class="plantillas-disponibles-titulo">Plantillas disponibles</span>
+                  <span class="plantillas-disponibles-meta">
+                    {{ templates.length }} {{ templates.length === 1 ? 'plantilla' : 'plantillas' }}
+                    <button
+                      type="button"
+                      class="plantillas-actualizar"
+                      :class="{ 'plantillas-actualizar--girando': isLoading }"
+                      :disabled="isLoading"
+                      title="Actualizar lista"
+                      aria-label="Actualizar lista de plantillas"
+                      @click="store.fetchTemplates()"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                      </svg>
+                    </button>
+                  </span>
+                </div>
+                <div v-if="isLoading && templates.length === 0" class="carrusel-esqueleto" role="status" aria-label="Cargando plantillas">
+                  <div class="carrusel-esqueleto-tarjeta">
+                    <span class="carrusel-esqueleto-portada"></span>
+                    <span class="carrusel-esqueleto-linea carrusel-esqueleto-linea--titulo"></span>
+                    <span class="carrusel-esqueleto-linea"></span>
+                    <span class="carrusel-esqueleto-linea carrusel-esqueleto-linea--media"></span>
+                  </div>
+                </div>
+                <p v-else-if="templates.length === 0" class="plantillas-disponibles-vacio">No hay plantillas disponibles</p>
+                <!-- Selector tipo "elegir personaje": una plantilla al frente y
+                     las vecinas a los costados; flechas, teclado o deslizar. -->
+                <div
+                  v-else
+                  class="carrusel"
+                  tabindex="0"
+                  role="group"
+                  aria-roledescription="carrusel"
+                  :aria-label="`Plantilla ${indicePlantilla + 1} de ${templates.length}`"
+                  @keydown.left.prevent="moverPlantilla(-1)"
+                  @keydown.right.prevent="moverPlantilla(1)"
+                  @keydown.enter.prevent="plantillaActual && selectTemplate(plantillaActual)"
+                  @pointerdown="inicioDeslizar"
+                  @pointerup="finDeslizar"
+                >
                   <button
-                    v-for="(idea, ii) in [
-                      { icono: 'home_work', titulo: 'Alquiler', texto: 'Quiero alquilar mi departamento' },
-                      { icono: 'directions_car', titulo: 'Compraventa', texto: 'Quiero vender mi auto' },
-                      { icono: 'badge', titulo: 'Trabajo', texto: 'Necesito contratar a un trabajador' },
-                      { icono: 'payments', titulo: 'Préstamo', texto: 'Quiero prestarle dinero a un amigo' },
-                      { icono: 'storefront', titulo: 'Local comercial', texto: 'Voy a alquilar un local para mi negocio' },
-                      { icono: 'handshake', titulo: 'Servicios', texto: 'Quiero contratar los servicios de un profesional' }
-                    ]"
-                    :key="idea.titulo"
+                    v-if="templates.length > 1"
                     type="button"
-                    class="asistente-idea"
-                    :class="{ 'asistente-idea--elegida': asistenteRespuesta === idea.texto }"
-                    :style="{ '--d': `${ii * 60}ms` }"
-                    @click="asistenteRespuesta = idea.texto"
+                    class="carrusel-flecha carrusel-flecha--izq"
+                    aria-label="Plantilla anterior"
+                    @click="moverPlantilla(-1)"
                   >
-                    <span class="asistente-idea-icono">
-                      <q-icon :name="idea.icono" size="20px" />
-                    </span>
-                    <span class="asistente-idea-titulo">{{ idea.titulo }}</span>
-                    <span class="asistente-idea-texto">{{ idea.texto }}</span>
+                    <q-icon name="chevron_left" size="26px" />
+                  </button>
+
+                  <div class="carrusel-escenario">
+                    <article
+                      v-for="(template, i) in templates"
+                      v-show="Math.abs(desfasePlantilla(i)) <= 2"
+                      :key="template.id"
+                      class="carrusel-tarjeta"
+                      :class="{ 'carrusel-tarjeta--actual': desfasePlantilla(i) === 0 }"
+                      :style="estiloTarjeta(i)"
+                      :aria-hidden="desfasePlantilla(i) !== 0"
+                      @click="clicTarjeta(i, template)"
+                    >
+                      <div class="carrusel-portada">
+                        <q-icon class="carrusel-icono" :name="iconoPlantilla(template.name)" size="26px" aria-hidden="true" />
+                        <span class="carrusel-formato">{{ formatoPlantilla(template) }}</span>
+                      </div>
+                      <div class="carrusel-cuerpo">
+                        <h3 class="carrusel-nombre">{{ template.name }}</h3>
+                        <p class="carrusel-desc">{{ template.description || 'Plantilla jurídica lista para completar y editar.' }}</p>
+                        <p class="carrusel-meta">
+                          {{ formatoPlantilla(template) === 'Word' ? 'Documento Word' : 'Documento PDF' }} · Edición manual o asistida
+                        </p>
+                      </div>
+                    </article>
+                  </div>
+
+                  <button
+                    v-if="templates.length > 1"
+                    type="button"
+                    class="carrusel-flecha carrusel-flecha--der"
+                    aria-label="Plantilla siguiente"
+                    @click="moverPlantilla(1)"
+                  >
+                    <q-icon name="chevron_right" size="26px" />
                   </button>
                 </div>
 
-                <ul class="asistente-ventajas">
-                  <li v-if="templates.length"><q-icon name="folder_open" size="16px" />{{ templates.length }} plantillas disponibles</li>
-                  <li><q-icon name="edit_note" size="16px" />Complétalas a mano o con IA</li>
-                  <li><q-icon name="file_download" size="16px" />Descarga en Word</li>
-                </ul>
-              </template>
+                <div v-if="plantillaActual" class="carrusel-pie">
+                  <span class="carrusel-contador">{{ indicePlantilla + 1 }} de {{ templates.length }}</span>
+                  <button type="button" class="carrusel-usar" @click="selectTemplate(plantillaActual)">
+                    Usar esta plantilla
+                  </button>
+                </div>
+              </section>
             </div>
 
             <div v-else-if="loadingPdf" class="pdf-loading">
@@ -601,6 +513,10 @@
                       <q-icon name="check_circle" size="14px" />
                       {{ cambiosEnVivo ? `Actualizado · ${cambiosEnVivo} ${cambiosEnVivo === 1 ? 'cambio' : 'cambios'}` : 'Documento actualizado' }}
                     </span>
+                    <span v-else-if="cambiosEnVivo" key="vivo" class="doc-en-vivo-estado doc-en-vivo-estado--listo">
+                      <span class="doc-en-vivo-latido" aria-hidden="true"></span>
+                      En vivo · {{ cambiosEnVivo }} {{ cambiosEnVivo === 1 ? 'cambio' : 'cambios' }}
+                    </span>
                     <span v-else key="espera" class="doc-en-vivo-estado">
                       Se completará con tus respuestas
                     </span>
@@ -623,29 +539,6 @@
 
           </div>
 
-          <!-- Barra final: terminar de editar (la descarga aparece arriba) -->
-          <div v-if="!contratoListo" class="download-bar">
-            <div class="download-bar-info">
-              <div class="download-bar-icono">
-                <q-icon name="description" size="22px" />
-              </div>
-              <div>
-                <div class="download-bar-titulo">¿Terminaste de editar?</div>
-                <div class="download-bar-desc">Finaliza el contrato y descárgalo en Word (.docx).</div>
-              </div>
-            </div>
-            <div class="download-bar-actions">
-              <q-btn
-                color="accent"
-                icon="task_alt"
-                label="Finalizar contrato"
-                @click="finalizarContrato"
-                :disable="finalizando"
-                unelevated no-caps
-                class="download-btn download-btn--primary"
-              />
-            </div>
-          </div>
         </div>
 
       </div>
@@ -700,6 +593,96 @@ GlobalWorkerOptions.workerSrc = `${import.meta.env.BASE_URL}pdf.worker.min.js`
 // =========================
 const store = useContratosStore()
 const { templates, currentTemplate, isLoading, error } = storeToRefs(store)
+
+// =========================
+// SELECTOR DE PLANTILLAS EN CARRUSEL (solo presentación)
+// Una plantilla al frente y las vecinas a los costados, como elegir un
+// personaje: flechas, teclado (← →, Enter) o deslizar en el celular.
+// "Usar esta plantilla" llama a selectTemplate como antes.
+// =========================
+const indicePlantilla = ref(0)
+const plantillaActual = computed(() => templates.value[indicePlantilla.value] ?? null)
+
+watch(() => templates.value.length, (total) => {
+  if (indicePlantilla.value >= total) indicePlantilla.value = Math.max(0, total - 1)
+})
+
+// Distancia (con vuelta circular) de cada tarjeta a la del frente
+function desfasePlantilla(i: number): number {
+  const total = templates.value.length
+  if (total === 0) return 0
+  let d = i - indicePlantilla.value
+  if (d > total / 2) d -= total
+  if (d < -total / 2) d += total
+  return d
+}
+
+function moverPlantilla(paso: number) {
+  const total = templates.value.length
+  if (total < 2) return
+  indicePlantilla.value = (indicePlantilla.value + paso + total) % total
+}
+
+function irAPlantilla(i: number) {
+  indicePlantilla.value = i
+}
+
+function estiloTarjeta(i: number): Record<string, string> {
+  const d = desfasePlantilla(i)
+  const lejania = Math.abs(d)
+  return {
+    transform: `translateX(${d * 66}%) scale(${lejania === 0 ? 1 : 0.88})`,
+    opacity: String(lejania === 0 ? 1 : lejania === 1 ? 0.5 : 0),
+    zIndex: String(10 - lejania)
+  }
+}
+
+// Deslizar: si el gesto movió el carrusel, el clic que llega justo después
+// no debe elegir la tarjeta que quedó bajo el dedo.
+let inicioXDeslizar: number | null = null
+let ignorarClicTarjeta = false
+function inicioDeslizar(e: PointerEvent) {
+  inicioXDeslizar = e.clientX
+}
+function finDeslizar(e: PointerEvent) {
+  if (inicioXDeslizar === null) return
+  const dx = e.clientX - inicioXDeslizar
+  inicioXDeslizar = null
+  if (Math.abs(dx) > 50) {
+    moverPlantilla(dx < 0 ? 1 : -1)
+    ignorarClicTarjeta = true
+    setTimeout(() => { ignorarClicTarjeta = false }, 0)
+  }
+}
+
+// Clic en la tarjeta del frente: usarla; en una de los costados: traerla al frente
+function clicTarjeta(i: number, template: ContractTemplate) {
+  if (ignorarClicTarjeta) return
+  if (desfasePlantilla(i) === 0) selectTemplate(template)
+  else irAPlantilla(i)
+}
+
+function formatoPlantilla(template: ContractTemplate): string {
+  return /\.docx$/i.test(template.storage_path ?? '') ? 'Word' : 'PDF'
+}
+
+// Ícono de la portada según el tipo de contrato (por su nombre)
+const ICONOS_PLANTILLA: [RegExp, string][] = [
+  [/arrend|alquil/i, 'home'],
+  [/compra|venta/i, 'handshake'],
+  [/trabajo|laboral|locaci[oó]n de servicios/i, 'work_outline'],
+  [/mutuo|pr[eé]stamo/i, 'account_balance'],
+  [/obra|servicio|construc/i, 'build'],
+  [/comodato/i, 'key'],
+  [/dep[oó]sito/i, 'inventory_2'],
+  [/donaci[oó]n/i, 'redeem'],
+  [/seguro/i, 'verified_user'],
+  [/suministro/i, 'local_shipping'],
+  [/agente|mandato|comisi[oó]n/i, 'support_agent']
+]
+function iconoPlantilla(nombre: string): string {
+  return ICONOS_PLANTILLA.find(([re]) => re.test(nombre))?.[1] ?? 'description'
+}
 const authStore = useAuthStore()
 
 // =========================
@@ -1217,19 +1200,53 @@ const aplicarCambiosIAEnWord = (cambios: { antes: string; despues: string }[]) =
   textoEditado.value = textoDelCuerpo(html)
   chatEdicionTerminado.value = true
 
-  const aplicados = cambios.length - fallidos.length
-  if (cambios.length === 0) {
+  // Un cambio que no se encontró pero cuyo resultado ya está en el
+  // documento (se aplicó en vivo durante la conversación) no es un fallo.
+  const normalizar = (t: string) => t.replace(/\s+/g, ' ').trim()
+  const textoFinal = normalizar(textoEditado.value)
+  const fallidosReales = fallidos.filter(antes => {
+    const cambio = cambios.find(c => c.antes === antes)
+    return !(cambio && textoFinal.includes(normalizar(cambio.despues)))
+  })
+  const aplicados = cambios.length - fallidosReales.length
+  if (cambios.length === 0 && cambiosEnVivo.value > 0) {
+    avisoChatEdicion.value = ''
+  } else if (cambios.length === 0) {
     avisoChatEdicion.value = 'La IA no propuso cambios al documento.'
-  } else if (fallidos.length > 0) {
-    const ejemplos = fallidos.slice(0, 3).map(t => `"${t.length > 60 ? `${t.slice(0, 60)}…` : t}"`).join(', ')
+  } else if (fallidosReales.length > 0) {
+    const ejemplos = fallidosReales.slice(0, 3).map(t => `"${t.length > 60 ? `${t.slice(0, 60)}…` : t}"`).join(', ')
     avisoChatEdicion.value = `Se aplicaron ${aplicados} de ${cambios.length} cambios. ` +
-      `${fallidos.length} no se encontraron en el documento (${ejemplos}); complétalos en "Editar Manualmente".`
+      `${fallidosReales.length} no se encontraron en el documento (${ejemplos}); complétalos en "Editar Manualmente".`
   } else {
     avisoChatEdicion.value = ''
   }
 }
 
+// Documento en vivo: con cada pregunta la IA devuelve los reemplazos que
+// aplican la respuesta que el usuario acaba de dar. Se aplican al momento
+// (el turno siguiente ya le manda a la IA el contrato actualizado).
+const aplicarCambiosEnVivo = (cambios: { antes: string; despues: string }[]) => {
+  if (modoWordFiel.value) {
+    const { html } = aplicarCambiosIAEnHtml(htmlVistaWordEditado.value || htmlVistaWord.value, cambios)
+    htmlVistaWordEditado.value = html
+    textoEditado.value = textoDelCuerpo(html)
+    return
+  }
+  let texto = textoEditado.value
+  for (const cambio of cambios) {
+    if (texto.includes(cambio.antes)) texto = texto.replace(cambio.antes, () => cambio.despues)
+  }
+  if (texto !== textoEditado.value) {
+    textoEditado.value = texto
+    textoHtml.value = textoAHtml(texto)
+  }
+}
+
 const procesarResultadoChatEdicion = (resultado: ResultadoChatEdicion) => {
+  if (resultado.tipo === 'pregunta') {
+    if (resultado.cambios?.length) aplicarCambiosEnVivo(resultado.cambios)
+    return
+  }
   if (resultado.tipo !== 'documento_final') return
   if (resultado.cambios && modoWordFiel.value) {
     aplicarCambiosIAEnWord(resultado.cambios)
@@ -1432,22 +1449,39 @@ watch(plantillasAbiertas, (abierta) => {
 // =========================
 const htmlAntesDeIA = ref('')
 const textoHtmlAntesDeIA = ref('')
+// Foto al empezar cada turno: lo que cambie respecto de ella es lo "nuevo"
+// de esta respuesta (se resalta más fuerte y se lleva a la vista).
+const htmlAntesDelTurno = ref('')
+const textoHtmlAntesDelTurno = ref('')
 const docEnVivoRef = ref<HTMLElement | null>(null)
 
 // Foto del documento justo antes de la primera respuesta de la IA, para
 // saber después qué párrafos cambió ella (y no el usuario a mano).
 watch(chatEdicionCargando, (cargando) => {
-  if (cargando && !chatEdicionIniciado.value) {
+  if (!cargando) return
+  if (!chatEdicionIniciado.value) {
     htmlAntesDeIA.value = htmlVistaWordEditado.value || htmlVistaWord.value
     textoHtmlAntesDeIA.value = textoHtml.value
   }
+  htmlAntesDelTurno.value = htmlVistaWordEditado.value || htmlVistaWord.value
+  textoHtmlAntesDelTurno.value = textoHtml.value
 })
 
-const parrafosCambiadosIA = computed<number[]>(() => {
-  if (!modoWordFiel.value || !chatEdicionTerminado.value || !htmlAntesDeIA.value) return []
-  return calcularCambios(htmlAntesDeIA.value, htmlVistaWordEditado.value || htmlVistaWord.value)
+const indicesCambiados = (antes: string, ahora: string): number[] =>
+  calcularCambios(antes, ahora)
     .map(c => c.indice)
     .filter((i): i is number => i !== undefined)
+
+// Desde la primera respuesta de la IA (en vivo y al final). Antes de
+// iniciar el chat (o tras cambiar de plantilla) no se resalta nada.
+const parrafosCambiadosIA = computed<number[]>(() => {
+  if (!modoWordFiel.value || !chatEdicionIniciado.value || !htmlAntesDeIA.value) return []
+  return indicesCambiados(htmlAntesDeIA.value, htmlVistaWordEditado.value || htmlVistaWord.value)
+})
+
+const parrafosNuevosIA = computed<number[]>(() => {
+  if (!modoWordFiel.value || !chatEdicionIniciado.value || !htmlAntesDelTurno.value) return []
+  return indicesCambiados(htmlAntesDelTurno.value, htmlVistaWordEditado.value || htmlVistaWord.value)
 })
 
 const htmlDocEnVivo = computed(() => {
@@ -1458,6 +1492,9 @@ const htmlDocEnVivo = computed(() => {
   for (const indice of parrafosCambiadosIA.value) {
     contenedor.querySelector(`[data-p="${indice}"]`)?.classList.add('lx-cambio-ia')
   }
+  for (const indice of parrafosNuevosIA.value) {
+    contenedor.querySelector(`[data-p="${indice}"]`)?.classList.add('lx-cambio-ia', 'lx-cambio-ia--nuevo')
+  }
   return contenedor.innerHTML
 })
 
@@ -1465,19 +1502,28 @@ const htmlDocEnVivo = computed(() => {
 // resaltan los párrafos que no estaban antes de la IA.
 const textoDeParrafo = (el: Element) => (el.textContent ?? '').replace(/\s+/g, ' ').trim()
 
-const parrafosTextoCambiadosIA = computed<number[]>(() => {
-  if (modoWordFiel.value || !chatEdicionTerminado.value || !textoHtmlAntesDeIA.value) return []
+const parrafosNoPresentes = (htmlAntes: string, htmlAhora: string): number[] => {
   const antes = document.createElement('div')
-  antes.innerHTML = textoHtmlAntesDeIA.value
+  antes.innerHTML = htmlAntes
   const previos = new Set(Array.from(antes.querySelectorAll('p'), textoDeParrafo))
   const ahora = document.createElement('div')
-  ahora.innerHTML = textoHtml.value
+  ahora.innerHTML = htmlAhora
   const cambiados: number[] = []
   ahora.querySelectorAll('p').forEach((p, i) => {
     const texto = textoDeParrafo(p)
     if (texto && !previos.has(texto)) cambiados.push(i)
   })
   return cambiados
+}
+
+const parrafosTextoCambiadosIA = computed<number[]>(() => {
+  if (modoWordFiel.value || !chatEdicionIniciado.value || !textoHtmlAntesDeIA.value) return []
+  return parrafosNoPresentes(textoHtmlAntesDeIA.value, textoHtml.value)
+})
+
+const parrafosTextoNuevosIA = computed<number[]>(() => {
+  if (modoWordFiel.value || !chatEdicionIniciado.value || !textoHtmlAntesDelTurno.value) return []
+  return parrafosNoPresentes(textoHtmlAntesDelTurno.value, textoHtml.value)
 })
 
 const htmlTextoEnVivo = computed(() => {
@@ -1486,6 +1532,7 @@ const htmlTextoEnVivo = computed(() => {
   contenedor.innerHTML = textoHtml.value
   const parrafos = contenedor.querySelectorAll('p')
   for (const i of parrafosTextoCambiadosIA.value) parrafos[i]?.classList.add('lx-cambio-ia')
+  for (const i of parrafosTextoNuevosIA.value) parrafos[i]?.classList.add('lx-cambio-ia', 'lx-cambio-ia--nuevo')
   return contenedor.innerHTML
 })
 
@@ -1497,10 +1544,12 @@ const cambiosEnVivo = computed(() =>
 // en dibujar el documento nuevo).
 let temporizadorDocEnVivo: ReturnType<typeof setTimeout> | null = null
 watch([htmlDocEnVivo, htmlTextoEnVivo], () => {
-  if (!chatEdicionTerminado.value) return
+  if (!chatEdicionIniciado.value) return
   if (temporizadorDocEnVivo) clearTimeout(temporizadorDocEnVivo)
   temporizadorDocEnVivo = setTimeout(() => {
-    docEnVivoRef.value?.querySelector('.lx-cambio-ia')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const cuerpo = docEnVivoRef.value
+    const destino = cuerpo?.querySelector('.lx-cambio-ia--nuevo') ?? cuerpo?.querySelector('.lx-cambio-ia')
+    destino?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }, 700)
 })
 onUnmounted(() => { if (temporizadorDocEnVivo) clearTimeout(temporizadorDocEnVivo) })
@@ -3653,6 +3702,337 @@ canvas {
   .asistente--inicio { padding: 16px 14px; }
   .asistente-idea-texto { display: none; }
 }
+
+/* ==========================================================================
+   SIMPLIFICACIÓN (feedback: "demasiado cargada")
+   Menos elementos y menos marcos: un solo encabezado, lista de plantillas
+   solo con nombres, asistente sin marco doble y con chips simples.
+   ========================================================================== */
+.page-header {
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+}
+
+.page-title {
+  font-size: clamp(1.6rem, 2.4vw, 2rem);
+}
+
+.page-subtitle {
+  margin-top: 2px;
+  font-size: 0.95rem;
+}
+
+/* Lista de plantillas: solo el nombre (la descripción se ve al recomendar) */
+.template-item-desc {
+  display: none;
+}
+
+.template-item {
+  min-height: 44px;
+  margin: 1px 6px;
+}
+
+.template-icon-wrap {
+  width: 30px;
+  height: 30px;
+}
+
+/* Asistente: sin marco propio dentro de la tarjeta */
+.asistente,
+.asistente--inicio {
+  padding: 4px 2px;
+  border: none;
+  background: transparent;
+}
+
+.asistente-portada {
+  margin-bottom: 12px;
+}
+
+.asistente-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.asistente-chip {
+  padding: 5px 12px;
+  border: 1px solid var(--lx-border);
+  border-radius: 999px;
+  background: var(--lx-surface);
+  color: var(--lx-text-muted);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+}
+
+.asistente-chip:hover,
+.asistente-chip:focus-visible {
+  border-color: var(--lx-text);
+  color: var(--lx-text);
+  outline: none;
+}
+
+.asistente-chip--elegido {
+  border-color: var(--lx-text);
+  background: var(--lx-accent-soft);
+  color: var(--lx-text);
+}
+
+/* Chat "Completar con IA": indicación más discreta */
+.chat-edicion-hint {
+  font-size: 0.8rem;
+}
+
+/* ==========================================================================
+   DISEÑO LOVABLE: una columna, asistente amplio y plantillas en lista
+   ========================================================================== */
+.contratos-columna {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+/* Tarjeta del asistente sin marco: el contenido va directo sobre el blanco */
+.contratos-columna > .lx-card:has(.asistente) {
+  border: none;
+  background: transparent;
+}
+
+.contratos-columna > .lx-card:has(.asistente) > .editor-content {
+  padding: 24px 0 8px;
+}
+
+.asistente-portada {
+  margin: 8px 0 22px;
+  text-align: left;
+}
+
+.asistente-rotulo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: 0.95rem;
+  color: rgba(var(--lexit-verde-rgb), 0.75);
+}
+
+.asistente-titular {
+  margin: 0;
+  font-size: clamp(2rem, 3.4vw, 2.75rem);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.asistente-titular em {
+  font-style: normal;
+}
+
+.asistente-bajada {
+  display: none;
+}
+
+/* Campo amplio: rectángulo redondeado, botón abajo a la derecha */
+.asistente-composer {
+  position: relative;
+  display: block;
+  min-height: 148px;
+  padding: 22px 26px 66px;
+  border: 1px solid #DFD9CE;
+  border-radius: 22px;
+  background: #F7F7F5;
+}
+
+.asistente-composer:focus-within {
+  background: #FFFFFF;
+  border-color: #1B2632;
+}
+
+.asistente-composer-icono {
+  display: none;
+}
+
+.asistente-composer-input :deep(.q-field__control),
+.asistente-composer-input :deep(.q-field__native) {
+  min-height: 30px;
+  height: auto;
+  font-size: 1.05rem;
+}
+
+.asistente-composer-enviar {
+  position: absolute;
+  right: 22px;
+  bottom: 16px;
+  width: 46px;
+  height: 46px;
+}
+
+.asistente-composer-enviar.disabled,
+.asistente-composer-enviar[disabled] {
+  opacity: 1 !important;
+  background: #8C939B !important;
+}
+
+/* En la conversación el campo vuelve a ser compacto */
+.asistente:not(.asistente--inicio) .asistente-composer {
+  min-height: 0;
+  padding: 10px 64px 10px 18px;
+}
+
+.asistente:not(.asistente--inicio) .asistente-composer-enviar {
+  top: 50%;
+  bottom: auto;
+  right: 10px;
+  width: 38px;
+  height: 38px;
+  transform: translateY(-50%);
+}
+
+/* Accesos rápidos con ícono, sin bordes */
+.asistente-chips {
+  justify-content: center;
+  gap: 8px 40px;
+  margin: 26px 0 8px;
+}
+
+.asistente-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 4px;
+  border: none;
+  background: none;
+  font-size: 0.95rem;
+  color: rgba(var(--lexit-verde-rgb), 0.78);
+}
+
+.asistente-chip:hover,
+.asistente-chip:focus-visible,
+.asistente-chip--elegido {
+  border: none;
+  background: none;
+  color: var(--lx-text);
+}
+
+.asistente-chip--elegido {
+  text-decoration: underline;
+  text-underline-offset: 6px;
+  text-decoration-color: var(--lexit-terracota, currentColor);
+}
+
+/* Plantillas disponibles */
+.plantillas-disponibles {
+  margin-top: 30px;
+}
+
+.plantillas-disponibles-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #E6E1D6;
+}
+
+.plantillas-disponibles-titulo {
+  font-weight: 600;
+  font-size: 0.98rem;
+  color: var(--lx-text);
+}
+
+.plantillas-disponibles-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: rgba(var(--lexit-verde-rgb), 0.62);
+}
+
+.plantillas-actualizar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.plantillas-actualizar:hover:not(:disabled) { color: var(--lx-text); }
+.plantillas-actualizar--girando svg { animation: girar 0.8s linear infinite; }
+
+@keyframes girar { to { transform: rotate(360deg); } }
+
+.plantillas-disponibles-vacio {
+  margin: 0;
+  padding: 18px 4px;
+  color: var(--lx-text-muted);
+  font-size: 0.9rem;
+}
+
+.plantilla-fila {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  padding: 20px 12px;
+  border: none;
+  border-bottom: 1px solid #E6E1D6;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--lx-text);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.plantilla-fila:hover,
+.plantilla-fila:focus-visible {
+  background: #FAF9F6;
+  outline: none;
+}
+
+.plantilla-fila-icono {
+  flex-shrink: 0;
+  color: var(--lx-text);
+}
+
+.plantilla-fila-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.plantilla-fila-nombre {
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.plantilla-fila-desc {
+  font-size: 0.9rem;
+  color: rgba(var(--lexit-verde-rgb), 0.68);
+}
+
+.plantilla-fila-usar {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  transition: gap 0.15s;
+}
+
+.plantilla-fila:hover .plantilla-fila-usar { gap: 12px; }
+
+@media (max-width: 600px) {
+  .asistente-chips { gap: 6px 22px; }
+  .plantilla-fila { gap: 12px; padding: 16px 6px; }
+}
 </style>
 
 <style>
@@ -3669,11 +4049,742 @@ canvas {
   100% { background: rgba(47, 143, 91, 0.12); }
 }
 
+/* Documento en vivo: los párrafos que ya cambiaron antes quedan marcados
+   sin volver a destellar; el que cambió con la última respuesta destella
+   en naranja suave y se asienta en verde. */
+.doc-en-vivo .lx-cambio-ia:not(.lx-cambio-ia--nuevo) {
+  animation: none;
+}
+
+.doc-en-vivo .lx-cambio-ia--nuevo {
+  animation: lxCambioIANuevo 2.2s ease-out both;
+}
+
+@keyframes lxCambioIANuevo {
+  0%   { background: rgba(255, 177, 98, 0.55); box-shadow: -6px 0 0 rgba(255, 177, 98, 0.55), 6px 0 0 rgba(255, 177, 98, 0.55), inset 3px 0 0 #A35139; }
+  45%  { background: rgba(255, 177, 98, 0.35); box-shadow: -6px 0 0 rgba(255, 177, 98, 0.35), 6px 0 0 rgba(255, 177, 98, 0.35), inset 3px 0 0 #A35139; }
+  100% { background: rgba(47, 143, 91, 0.12); box-shadow: -6px 0 0 rgba(47, 143, 91, 0.12), 6px 0 0 rgba(47, 143, 91, 0.12), inset 3px 0 0 #2F8F5B; }
+}
+
+/* Punto que late junto a "En vivo" */
+.doc-en-vivo-latido {
+  width: 7px;
+  height: 7px;
+  border-radius: 50% !important;
+  background: #2F8F5B;
+  animation: lxLatidoVivo 1.6s ease-in-out infinite;
+}
+
+@keyframes lxLatidoVivo {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.8); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doc-en-vivo .lx-cambio-ia--nuevo,
+  .doc-en-vivo-latido { animation: none; }
+}
+
 .q-tooltip.lx-tooltip {
   background: var(--lexit-verde);
   color: var(--lexit-blanco-calido);
   font-size: 0.78rem;
   border-radius: 8px;
   padding: 6px 10px;
+}
+
+/* ==========================================================================
+   ANIMACIÓN AL ELEGIR UNA PLANTILLA
+   Secuencia breve y sobria: entra la cabecera con el nombre del contrato,
+   una línea se traza bajo ella, los botones llegan uno tras otro, la hoja
+   "se prepara" y el documento se despliega de arriba hacia abajo. Solo
+   presentación (cada pieza se anima al montarse con su v-if); no corre si
+   el sistema pide reducir movimiento.
+   ========================================================================== */
+.lx-card-header--wrap {
+  position: relative;
+}
+
+@keyframes lx-cabecera-entrar {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes lx-texto-entrar {
+  from { opacity: 0; transform: translateY(8px); filter: blur(4px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+
+@keyframes lx-boton-entrar {
+  from { opacity: 0; transform: translateX(14px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes lx-linea-trazar {
+  from { transform: scaleX(0); opacity: 1; }
+  70% { transform: scaleX(1); opacity: 1; }
+  to { transform: scaleX(1); opacity: 0; }
+}
+
+@keyframes lx-hoja-preparar {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes lx-documento-desplegar {
+  from { opacity: 0; transform: translateY(18px); clip-path: inset(0 0 100% 0); }
+  35% { opacity: 1; }
+  to { opacity: 1; transform: none; clip-path: inset(0 0 0 0); }
+}
+
+@keyframes lx-aparecer-tarde {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* 1. Cabecera con el nombre del contrato */
+  .lx-card-header--wrap {
+    animation: lx-cabecera-entrar 0.45s var(--lx-ease, ease-out) backwards;
+  }
+
+  .lx-card-header--wrap .lx-card-header-title > svg {
+    animation: lx-texto-entrar 0.5s var(--lx-ease, ease-out) 0.05s backwards;
+  }
+
+  .lx-card-header--wrap .vista-titulo-etiqueta {
+    animation: lx-texto-entrar 0.5s var(--lx-ease, ease-out) 0.1s backwards;
+  }
+
+  .lx-card-header--wrap .vista-titulo-nombre {
+    animation: lx-texto-entrar 0.6s var(--lx-ease, ease-out) 0.18s backwards;
+  }
+
+  /* 2. Línea que se traza bajo la cabecera y se desvanece */
+  .lx-card-header--wrap::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: linear-gradient(90deg, #1B2632, #A35139 60%, #FFB162);
+    transform-origin: left center;
+    transform: scaleX(0);
+    opacity: 0;
+    pointer-events: none;
+    animation: lx-linea-trazar 1.1s var(--lx-ease, ease-out) 0.15s;
+  }
+
+  /* 3. Botones: llegan uno tras otro desde la derecha */
+  .vista-acciones > * {
+    animation: lx-boton-entrar 0.45s var(--lx-ease, ease-out) backwards;
+  }
+
+  .vista-acciones > *:nth-child(1) { animation-delay: 0.25s; }
+  .vista-acciones > *:nth-child(2) { animation-delay: 0.32s; }
+  .vista-acciones > *:nth-child(3) { animation-delay: 0.39s; }
+
+  /* 4. Hoja que se prepara mientras carga */
+  .pdf-loading {
+    animation: lx-hoja-preparar 0.45s var(--lx-ease, ease-out) backwards;
+  }
+
+  .pdf-loading-texto {
+    animation: lx-aparecer-tarde 0.5s var(--lx-ease, ease-out) 0.2s backwards;
+  }
+
+  /* 5. El documento se despliega de arriba hacia abajo */
+  .contrato-vista-word,
+  .word-preview-container,
+  .pdf-canvas-container > .pdf-canvas {
+    animation: lx-documento-desplegar 0.85s var(--lx-ease, ease-out) 0.1s backwards;
+  }
+
+  .vista-aviso,
+  .paginador {
+    animation: lx-aparecer-tarde 0.5s var(--lx-ease, ease-out) 0.6s backwards;
+  }
+
+  /* 6. Al pasar a "Editar contrato", el editor entra con la misma suavidad */
+  .lx-card--editor {
+    animation: lx-hoja-preparar 0.5s var(--lx-ease, ease-out) backwards;
+  }
+}
+
+/* ==========================================================================
+   SELECTOR DE PLANTILLAS EN CARRUSEL ("elegir personaje")
+   ========================================================================== */
+.carrusel {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 26px 0 8px;
+  outline: none;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.carrusel:focus-visible .carrusel-tarjeta--actual {
+  outline: 2px solid #1B2632;
+  outline-offset: 4px;
+}
+
+.carrusel-escenario {
+  position: relative;
+  width: min(300px, 70vw);
+  height: 400px;
+  perspective: 1200px;
+}
+
+.carrusel-tarjeta {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  transform-style: preserve-3d;
+  transition:
+    transform 0.6s cubic-bezier(0.34, 1.3, 0.64, 1),
+    opacity 0.45s ease,
+    filter 0.45s ease;
+}
+
+.page-container.page-container.page-container.page-container .carrusel-tarjeta {
+  border-radius: 24px !important;
+}
+
+.page-container.page-container.page-container.page-container .carrusel-tarjeta--actual {
+  box-shadow: 0 30px 60px -30px rgba(27, 38, 50, 0.45) !important;
+}
+
+/* Portada */
+.carrusel-portada {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 58%;
+  overflow: hidden;
+  color: #FFFFFF;
+}
+
+/* Retícula muy suave sobre la portada */
+.carrusel-portada::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1.4px);
+  background-size: 16px 16px;
+}
+
+.carrusel-formato {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  padding: 3px 10px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.page-container.page-container.page-container.page-container .carrusel-formato {
+  border-radius: 999px !important;
+}
+
+.carrusel-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 22px 22px;
+}
+
+.carrusel-nombre {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: #1B2632;
+}
+
+.carrusel-desc {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: rgba(27, 38, 50, 0.62);
+}
+
+/* Flechas */
+.carrusel-flecha {
+  position: relative;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border: none;
+  background: #FFFFFF;
+  color: #1B2632;
+  cursor: pointer;
+  transition: transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1), background-color 0.2s ease, color 0.2s ease;
+}
+
+.page-container.page-container.page-container.page-container .carrusel-flecha {
+  border-radius: 50% !important;
+  box-shadow: 0 8px 20px -10px rgba(27, 38, 50, 0.4) !important;
+}
+
+.carrusel-flecha--izq { margin-right: 18%; }
+.carrusel-flecha--der { margin-left: 18%; }
+
+.carrusel-flecha:hover {
+  background: #1B2632;
+  color: #FFFFFF;
+}
+
+.carrusel-flecha--izq:hover { transform: translateX(-3px); }
+.carrusel-flecha--der:hover { transform: translateX(3px); }
+.carrusel-flecha:active { transform: scale(0.92); }
+
+/* Pie: puntos, contador y botón */
+.carrusel-pie {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.carrusel-puntos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  max-width: 360px;
+}
+
+.carrusel-punto {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: none;
+  background: rgba(27, 38, 50, 0.18);
+  cursor: pointer;
+  transition: width 0.35s cubic-bezier(0.34, 1.4, 0.64, 1), background-color 0.2s ease;
+}
+
+.page-container.page-container.page-container.page-container .carrusel-punto {
+  border-radius: 999px !important;
+}
+
+.carrusel-punto--actual {
+  width: 26px;
+  background: #1B2632;
+}
+
+.carrusel-contador {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(27, 38, 50, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+
+.carrusel-usar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 28px;
+  border: none;
+  background: #1B2632;
+  color: #FFFFFF;
+  font: inherit;
+  font-size: 0.98rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.page-container.page-container.page-container.page-container .carrusel-usar {
+  border-radius: 999px !important;
+}
+
+.carrusel-usar:hover { background: #2C3B4D; }
+.carrusel-usar:hover span { display: inline-block; transform: translateX(3px); transition: transform 0.25s ease; }
+.carrusel-usar:active { transform: scale(0.96); }
+
+@media (max-width: 600px) {
+  .carrusel-escenario { height: 370px; }
+  .carrusel-flecha { position: absolute; top: 50%; margin: 0; transform: translateY(-50%); width: 40px; height: 40px; }
+  .carrusel-flecha--izq { left: 0; }
+  .carrusel-flecha--der { right: 0; }
+  .carrusel-flecha--izq:hover,
+  .carrusel-flecha--der:hover { transform: translateY(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .carrusel-tarjeta,
+  .carrusel-punto { transition: none; }
+}
+
+/* ==========================================================================
+   CARRUSEL DE PLANTILLAS: versión corporativa
+   Sobrio y confiable: portada navy uniforme con ícono en recuadro, sin giro
+   3D ni rebote, datos claros de lo que ofrece la plantilla, flechas con
+   contorno y movimiento suave. Va después del estilo anterior del carrusel.
+   ========================================================================== */
+.carrusel-escenario {
+  width: min(320px, 72vw);
+  height: 430px;
+  perspective: none;
+}
+
+.carrusel-tarjeta {
+  border: 1px solid rgba(27, 38, 50, 0.1);
+  transition:
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.4s ease;
+}
+
+.page-container.page-container.page-container.page-container .carrusel-tarjeta {
+  border-radius: 16px !important;
+}
+
+.page-container.page-container.page-container.page-container .carrusel-tarjeta--actual {
+  border-color: rgba(27, 38, 50, 0.16);
+  box-shadow: 0 24px 48px -28px rgba(27, 38, 50, 0.4) !important;
+}
+
+/* Portada: navy uniforme con líneas finas, sin colores alternos */
+.carrusel-portada {
+  height: 40%;
+  align-items: flex-start;
+  justify-content: flex-start;
+  flex-direction: column;
+  gap: 0;
+  padding: 22px 22px 18px;
+  background: linear-gradient(160deg, #2C3B4D 0%, #1B2632 100%);
+  color: #FFFFFF;
+}
+
+.carrusel-portada::before {
+  background-image: repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 12px);
+  background-size: auto;
+}
+
+.carrusel-icono {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #FFFFFF;
+}
+
+.page-container.page-container.page-container.page-container .carrusel-icono {
+  border-radius: 12px !important;
+}
+
+.carrusel-rotulo {
+  position: relative;
+  margin-top: auto;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.carrusel-formato {
+  top: 22px;
+  right: 22px;
+  padding: 4px 11px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* Cuerpo */
+.carrusel-cuerpo {
+  flex: 1;
+  gap: 8px;
+  padding: 20px 22px 20px;
+}
+
+.carrusel-nombre {
+  font-size: 1.22rem;
+}
+
+.carrusel-desc {
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.carrusel-datos {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: auto 0 0;
+  padding: 14px 0 0;
+  border-top: 1px solid rgba(27, 38, 50, 0.08);
+  list-style: none;
+}
+
+.carrusel-datos li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: rgba(27, 38, 50, 0.72);
+}
+
+.carrusel-datos .q-icon {
+  color: #2F8F5B;
+}
+
+/* Flechas: círculo blanco con contorno fino */
+.page-container.page-container.page-container.page-container .carrusel-flecha {
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(27, 38, 50, 0.16);
+  box-shadow: none !important;
+}
+
+.carrusel-flecha {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.carrusel-flecha:hover {
+  background: #1B2632;
+  border-color: #1B2632;
+  color: #FFFFFF;
+}
+
+.carrusel-flecha--izq:hover,
+.carrusel-flecha--der:hover,
+.carrusel-flecha:active {
+  transform: none;
+}
+
+/* Pie */
+.carrusel-punto {
+  width: 6px;
+  height: 6px;
+  transition: width 0.3s ease, background-color 0.2s ease;
+}
+
+.carrusel-punto--actual {
+  width: 20px;
+}
+
+.carrusel-contador {
+  letter-spacing: 0.02em;
+}
+
+.carrusel-usar {
+  padding: 12px 26px;
+  transition: background-color 0.2s ease;
+}
+
+.carrusel-usar:active {
+  transform: none;
+}
+
+@media (max-width: 600px) {
+  .carrusel-escenario { height: 410px; }
+  .carrusel-flecha--izq:hover,
+  .carrusel-flecha--der:hover { transform: translateY(-50%); }
+}
+
+/* Esqueleto del carrusel mientras cargan las plantillas */
+.carrusel-esqueleto {
+  display: flex;
+  justify-content: center;
+  padding: 26px 0 8px;
+}
+
+.carrusel-esqueleto-tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(320px, 72vw);
+  height: 430px;
+  padding-bottom: 22px;
+  overflow: hidden;
+  background: #FFFFFF;
+  border: 1px solid rgba(27, 38, 50, 0.08);
+}
+
+.page-container.page-container.page-container.page-container .carrusel-esqueleto-tarjeta {
+  border-radius: 16px !important;
+}
+
+.carrusel-esqueleto-portada {
+  display: block;
+  height: 40%;
+  margin-bottom: 8px;
+  background: #E9E9ED;
+}
+
+.carrusel-esqueleto-linea {
+  display: block;
+  height: 12px;
+  width: calc(100% - 44px);
+  margin: 0 22px;
+  background: #ECECEF;
+}
+
+.page-container.page-container.page-container.page-container .carrusel-esqueleto-linea {
+  border-radius: 6px !important;
+}
+
+.carrusel-esqueleto-linea--titulo { height: 18px; width: 70%; }
+.carrusel-esqueleto-linea--media { width: 50%; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .carrusel-esqueleto-portada,
+  .carrusel-esqueleto-linea {
+    animation: carruselEsqueleto 1.4s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes carruselEsqueleto {
+  from { opacity: 1; }
+  to { opacity: 0.55; }
+}
+
+/* ==========================================================================
+   CARRUSEL DE PLANTILLAS: acabado institucional
+   Sin rayas ni degradados, sin recuadro "de vidrio" para el ícono, sin
+   listas con checks ni puntos: banda navy lisa, ícono simple, formato como
+   texto, una línea de datos en gris y un solo botón. Como una ficha de
+   documento de un estudio, no como una tarjeta de app.
+   ========================================================================== */
+.carrusel-portada {
+  height: 92px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: #1B2632;
+}
+
+.carrusel-portada::before {
+  display: none;
+}
+
+.carrusel-icono {
+  width: auto;
+  height: auto;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.carrusel-formato {
+  position: static;
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.carrusel-escenario {
+  height: 330px;
+}
+
+.carrusel-cuerpo {
+  gap: 10px;
+  padding: 24px 24px 22px;
+}
+
+.carrusel-nombre {
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.carrusel-desc {
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+.carrusel-meta {
+  margin: auto 0 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(27, 38, 50, 0.08);
+  font-size: 0.8rem;
+  color: rgba(27, 38, 50, 0.55);
+}
+
+.page-container.page-container.page-container.page-container .carrusel-tarjeta {
+  border-radius: 12px !important;
+}
+
+.page-container.page-container.page-container.page-container .carrusel-tarjeta--actual {
+  box-shadow: 0 16px 36px -24px rgba(27, 38, 50, 0.35) !important;
+}
+
+.carrusel-pie {
+  flex-direction: row;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 22px;
+}
+
+.carrusel-contador {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.page-container.page-container.page-container.page-container .carrusel-usar {
+  border-radius: 8px !important;
+}
+
+.carrusel-usar {
+  padding: 11px 24px;
+  font-size: 0.95rem;
+}
+
+.carrusel-usar:hover span {
+  transform: none;
+}
+
+/* Esqueleto de carga con las mismas proporciones */
+.carrusel-esqueleto-tarjeta {
+  height: 330px;
+}
+
+.carrusel-esqueleto-portada {
+  height: 92px;
+  flex-shrink: 0;
+}
+
+.page-container.page-container.page-container.page-container .carrusel-esqueleto-tarjeta {
+  border-radius: 12px !important;
+}
+
+@media (max-width: 600px) {
+  .carrusel-escenario { height: 330px; }
 }
 </style>

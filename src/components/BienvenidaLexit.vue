@@ -5,10 +5,12 @@
     role="dialog"
     aria-modal="true"
     aria-label="Bienvenida a LexIT"
+    tabindex="-1"
     @keydown.esc="saltar"
   >
-    <!-- Mosaico: las 22 fotos se arman del centro hacia afuera, con un
-         acercamiento lento; luego se juntan y se funden bajo un velo claro -->
+    <!-- Mosaico: las 22 fotos se descubren en diagonal (cortina de abajo
+         hacia arriba) con un acercamiento lento, y las filas se deslizan en
+         sentidos opuestos; luego una banda navy se abre desde el centro -->
     <div class="bienvenida-mosaico" aria-hidden="true">
       <div
         v-for="foto in FOTOS"
@@ -33,6 +35,7 @@
         >{{ letra }}</span>
       </span>
       <span class="bienvenida-linea" aria-hidden="true"></span>
+      <span class="bienvenida-lema" aria-hidden="true">Asistente jurídico · Derecho peruano</span>
       <p class="bienvenida-saludo" role="status">
         Te damos la bienvenida<template v-if="nombre">, <strong>{{ nombre }}</strong></template>
       </p>
@@ -40,10 +43,6 @@
 
     <!-- Avance de la bienvenida -->
     <div class="bienvenida-progreso" aria-hidden="true"><span></span></div>
-
-    <button ref="botonSaltar" type="button" class="bienvenida-saltar" @click="saltar">
-      Saltar <span aria-hidden="true">→</span>
-    </button>
   </div>
 </template>
 
@@ -78,11 +77,13 @@ import palacioDibujo from '../assets/bienvenida/palacio-dibujo.webp'
 // =========================
 // BIENVENIDA DESPUÉS DE INICIAR SESIÓN
 // Mosaico de 22 fotos (~0,9 MB en total, optimizadas en webp de 720 px)
-// en una grilla de 6×4 (dos fotos apaisadas ocupan dos celdas). Se arma
-// del centro hacia afuera con un acercamiento lento, se junta hacia el
-// centro bajo un velo claro y aparecen "LexIT" letra por letra y el saludo
-// con el nombre. Dura ~4 s y se puede saltar (botón o Esc). Con "reducir
-// movimiento" solo muestra el saludo un momento.
+// en una grilla de 6×4 (dos fotos apaisadas ocupan dos celdas), sobre
+// fondo navy y con un tinte navy que las unifica. Las fotos se descubren
+// en diagonal con un acercamiento lento y las filas se deslizan en
+// sentidos opuestos; una banda navy se abre desde el centro, "LexIT" sube
+// letra por letra con el lema y el saludo, y todo sube como un telón.
+// Dura ~5 s y se puede saltar con Esc. Con "reducir movimiento"
+// solo muestra el saludo un momento.
 // =========================
 const FOTOS = [
   { src: limaTorres }, { src: palacioFachada }, { src: bahiaCosta, ancha: true }, { src: faroMiraflores }, { src: pinturaTormenta },
@@ -96,7 +97,6 @@ const perfil = useUserProfileStore()
 const nombre = computed(() => perfil.profile?.displayName?.trim() || '')
 
 const raiz = ref<HTMLElement | null>(null)
-const botonSaltar = ref<HTMLButtonElement | null>(null)
 let linea: gsap.core.Timeline | null = null
 let terminado = false
 
@@ -131,7 +131,8 @@ function precargar(): Promise<void> {
 
 onMounted(async () => {
   document.documentElement.style.overflow = 'hidden'
-  botonSaltar.value?.focus({ preventScroll: true })
+  // Sin botón visible: el foco queda en la bienvenida para poder saltarla con Esc
+  raiz.value?.focus({ preventScroll: true })
   const el = raiz.value
   if (!el) return terminar()
 
@@ -146,9 +147,9 @@ onMounted(async () => {
 
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     gsap.set(fotos, { opacity: 0 })
-    gsap.set(velo, { opacity: 1 })
+    gsap.set(velo, { opacity: 1, clipPath: 'none' })
     linea = gsap.timeline({ onComplete: terminar })
-      .from(centro, { opacity: 0, duration: 0.3 })
+      .fromTo(centro, { opacity: 0 }, { opacity: 1, duration: 0.3 })
       .to(el, { opacity: 0, duration: 0.3 }, '+=1.4')
     return
   }
@@ -156,52 +157,55 @@ onMounted(async () => {
   await precargar()
   if (terminado) return
 
-  // Desplazamiento de cada foto hacia el centro de la pantalla.
-  const cx = window.innerWidth / 2
-  const cy = window.innerHeight / 2
-  const haciaCentro = fotos.map(f => {
-    const r = f.getBoundingClientRect()
-    return { x: (cx - (r.left + r.width / 2)) * 0.3, y: (cy - (r.top + r.height / 2)) * 0.3 }
-  })
-  // Orden de aparición: del centro hacia afuera.
-  const distancia = (i: number) => Math.hypot(haciaCentro[i]!.x, haciaCentro[i]!.y)
-  const deCentroAFuera = fotos.map((_, i) => i).sort((a, b) => distancia(a) - distancia(b))
+  const lema = el.querySelector<HTMLElement>('.bienvenida-lema')
 
-  gsap.set(fotos, { opacity: 0, scale: 0.9, y: 14 })
-  gsap.set(imagenes, { scale: 1.16 })
-  gsap.set(velo, { opacity: 0 })
+  // Fila y columna de cada foto (según su posición en pantalla): la
+  // cortina avanza en diagonal y cada fila se desliza en sentido opuesto
+  // a la anterior.
+  const cajas = fotos.map(f => f.getBoundingClientRect())
+  const filasY = [...new Set(cajas.map(r => Math.round(r.top)))].sort((a, b) => a - b)
+  const columnasX = [...new Set(cajas.map(r => Math.round(r.left)))].sort((a, b) => a - b)
+  const fila = (i: number) => filasY.indexOf(Math.round(cajas[i]!.top))
+  const columna = (i: number) => columnasX.indexOf(Math.round(cajas[i]!.left))
+
+  gsap.set(fotos, { clipPath: 'inset(100% 0% 0% 0%)', opacity: 1 })
+  gsap.set(imagenes, { scale: 1.28 })
+  gsap.set(velo, { opacity: 1, clipPath: 'inset(50% 0% 50% 0%)' })
   gsap.set(centro, { opacity: 1 })
-  gsap.set(letras, { opacity: 0, yPercent: 60, filter: 'blur(6px)' })
+  gsap.set(letras, { yPercent: 110, opacity: 1 })
   gsap.set(lineaDecorativa, { scaleX: 0 })
-  gsap.set(saludo, { opacity: 0, y: 12 })
+  gsap.set([lema, saludo], { opacity: 0, y: 10 })
   gsap.set(progreso, { scaleX: 0 })
 
+  const DURACION = 4.15
   linea = gsap.timeline({ onComplete: terminar })
   // Barra de avance durante toda la bienvenida.
-  linea.to(progreso, { scaleX: 1, duration: 3.6, ease: 'none' }, 0)
-  // 1. Las fotos se arman, del centro hacia afuera, con acercamiento lento.
-  deCentroAFuera.forEach((i, orden) => {
-    linea!.to(fotos[i]!, { opacity: 1, scale: 1, y: 0, duration: 0.6, ease: 'power3.out' }, 0.1 + orden * 0.045)
-  })
-  linea.to(imagenes, { scale: 1, duration: 2.6, ease: 'power1.out' }, 0.1)
-  // 2. Velo claro y las fotos se juntan hacia el centro y se funden.
-  linea.to(velo, { opacity: 1, duration: 0.9, ease: 'power2.inOut' }, 1.55)
+  linea.to(progreso, { scaleX: 1, duration: DURACION, ease: 'none' }, 0)
+
+  // 1. Las fotos se descubren en diagonal, con acercamiento lento.
   fotos.forEach((f, i) => {
-    linea!.to(f, {
-      x: haciaCentro[i]!.x,
-      y: haciaCentro[i]!.y,
-      scale: 0.88,
-      opacity: 0,
-      duration: 1,
-      ease: 'power2.in'
-    }, 1.6 + (distancia(i) / 2000))
+    linea!.to(f, { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.85, ease: 'power3.inOut' }, 0.05 + (fila(i) + columna(i)) * 0.07)
   })
-  // 3. "LexIT" letra por letra, la línea y el saludo con el nombre.
-  linea.to(letras, { opacity: 1, yPercent: 0, filter: 'blur(0px)', duration: 0.65, ease: 'power3.out', stagger: 0.07 }, 1.85)
-  linea.to(lineaDecorativa, { scaleX: 1, duration: 0.6, ease: 'power3.out' }, 2.25)
-  linea.to(saludo, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }, 2.35)
-  // 4. Se desvanece y queda la app.
-  linea.to(el, { opacity: 0, duration: 0.45, ease: 'power1.inOut' }, 3.6)
+  linea.to(imagenes, { scale: 1.04, duration: 3, ease: 'power2.out' }, 0.05)
+
+  // 2. Las filas se deslizan en sentidos opuestos (efecto editorial).
+  fotos.forEach((f, i) => {
+    const sentido = fila(i) % 2 === 0 ? -1 : 1
+    linea!.to(f, { x: sentido * 46, duration: 2.4, ease: 'sine.inOut' }, 0.3)
+  })
+
+  // 3. Una banda navy se abre desde la línea central y cubre el mosaico.
+  linea.to(velo, { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.95, ease: 'power4.inOut' }, 1.75)
+
+  // 4. "LexIT" sube letra por letra, se traza la línea, lema y saludo.
+  linea.to(letras, { yPercent: 0, duration: 0.8, ease: 'power4.out', stagger: 0.06 }, 2.25)
+  linea.to(lineaDecorativa, { scaleX: 1, duration: 0.7, ease: 'power3.inOut' }, 2.6)
+  linea.to(lema, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, 2.75)
+  linea.to(saludo, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }, 2.9)
+
+  // 5. Todo sube como un telón y deja la app a la vista.
+  linea.to(centro, { y: -40, opacity: 0, duration: 0.5, ease: 'power2.in' }, DURACION - 0.1)
+  linea.to(el, { yPercent: -100, duration: 0.85, ease: 'power4.inOut' }, DURACION)
 })
 
 onUnmounted(() => {
@@ -364,5 +368,118 @@ onUnmounted(() => {
     gap: 4px;
     padding: 4px;
   }
+}
+
+/* ==========================================================================
+   VERSIÓN CORPORATIVA: fondo navy, fotos con tinte navy, banda que se abre
+   desde el centro y textos claros. Va al final para ganarle a lo anterior.
+   ========================================================================== */
+.bienvenida {
+  background: #141D27;
+  color: #FFFFFF;
+}
+
+.bienvenida-mosaico {
+  gap: 4px;
+  padding: 4px;
+}
+
+.bienvenida-foto {
+  position: relative;
+  border-radius: 2px;
+  background: #1B2632;
+}
+
+/* Tinte navy sobre cada foto: une pinturas, ciudades y paisajes en un tono */
+.bienvenida-foto::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(27, 38, 50, 0.18) 0%, rgba(27, 38, 50, 0.42) 100%);
+  pointer-events: none;
+}
+
+.bienvenida-foto img {
+  filter: saturate(0.82) contrast(1.04);
+}
+
+/* Banda navy (antes un velo claro) */
+.bienvenida-velo {
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 45%, #22303F 0%, #1B2632 55%, #141D27 100%);
+}
+
+.bienvenida-logo {
+  color: #FFFFFF;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+.bienvenida-letra--acento {
+  color: #FFB162;
+}
+
+.bienvenida-linea {
+  width: 120px;
+  height: 1px;
+  background: rgba(255, 177, 98, 0.85);
+}
+
+.bienvenida-lema {
+  font-family: 'Urbanist', 'Figtree', -apple-system, 'Segoe UI', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: rgba(238, 233, 223, 0.62);
+}
+
+.bienvenida-saludo {
+  margin-top: 6px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.bienvenida-saludo strong {
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.bienvenida-progreso {
+  height: 2px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.bienvenida-progreso span {
+  background: #FFB162;
+}
+
+.bienvenida-saltar {
+  border-color: rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(20, 29, 39, 0.55);
+  color: #FFFFFF;
+  backdrop-filter: blur(8px);
+}
+
+.bienvenida-saltar:hover {
+  background: #FFFFFF;
+  border-color: #FFFFFF;
+  color: #1B2632;
+}
+
+/* Estado inicial (antes de que carguen las fotos): nada a medio armar */
+.bienvenida-foto {
+  clip-path: inset(100% 0% 0% 0%);
+}
+
+.bienvenida-velo {
+  clip-path: inset(50% 0% 50% 0%);
+}
+
+.bienvenida-centro {
+  opacity: 0;
+}
+
+.bienvenida:focus {
+  outline: none;
 }
 </style>

@@ -235,6 +235,16 @@
           </div>
         </div>
 
+        <!-- Acceso rápido (solo sin conversación): lleva a Análisis de contratos. -->
+        <div v-if="!hayConversacion" class="accesos-rapidos">
+          <router-link to="/app/analisis" class="acceso-rapido">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/>
+            </svg>
+            Revisar un contrato
+          </router-link>
+        </div>
+
         <div v-if="store.error" class="error-row">
           <q-icon name="error" color="negative" size="18px" />
           <span class="error-text">{{ store.error }}</span>
@@ -1433,6 +1443,103 @@ watch(mensajes, async () => {
 
 @media (max-width: 480px) {
   .especialidad-selector { font-size: 0.82rem; padding: 5px 9px; }
+}
+
+/* ==========================================================================
+   DISEÑO LOVABLE: portada y campo de consulta
+   ========================================================================== */
+/* Saludo en Urbanist, sin cursiva */
+.page-saludo {
+  font-family: 'Urbanist', 'Figtree', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  color: var(--lc-text);
+}
+
+/* Sin la línea decorativa bajo el saludo */
+.page-header:not(.page-header--compact)::after {
+  display: none;
+}
+
+/* Campo de consulta: rectángulo amplio con esquinas redondeadas */
+.input-area {
+  max-width: 860px;
+}
+
+.composer-pill {
+  min-height: 132px;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 18px 18px 14px 26px;
+  border: 1px solid #DFD9CE;
+  border-radius: 22px;
+  background: #F7F7F5;
+  box-shadow: none;
+}
+
+.composer-pill:focus-within {
+  background: #FFFFFF;
+}
+
+:deep(.composer-textarea-pill .q-field__native) {
+  font-size: 1.05rem !important;
+}
+
+.composer-barra {
+  margin-left: -10px;
+}
+
+.especialidad-selector {
+  border-color: transparent;
+  background: transparent;
+}
+
+.ask-btn-round {
+  width: 42px;
+  height: 42px;
+  background: var(--lc-accent);
+}
+
+.ask-btn-round:disabled {
+  opacity: 1;
+  background: #8C939B;
+}
+
+/* Accesos rápidos */
+.accesos-rapidos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 36px;
+  margin-top: 22px;
+}
+
+.acceso-rapido {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 4px;
+  border: none;
+  background: none;
+  color: rgba(var(--lexit-verde-rgb), 0.78);
+  font: inherit;
+  font-size: 0.95rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.acceso-rapido:hover,
+.acceso-rapido:focus-visible,
+.acceso-rapido--activo {
+  color: var(--lc-text);
+  outline: none;
+}
+
+.acceso-rapido--activo {
+  text-decoration: underline;
+  text-underline-offset: 6px;
+  text-decoration-color: var(--lexit-terracota, currentColor);
 }
 </style>
 

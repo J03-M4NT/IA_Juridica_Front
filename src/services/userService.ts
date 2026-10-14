@@ -13,7 +13,8 @@ export async function createUserProfile(
     uid: string,
     email: string,
     displayName?: string,
-    photoURL?: string | null
+    photoURL?: string | null,
+    area?: string | null
 ): Promise<ProfileResponse> {
     console.log('🔵 createUserProfile - Iniciando:', { uid, email, displayName });
     try {
@@ -24,6 +25,7 @@ export async function createUserProfile(
             email,
             displayName: displayName || email.split('@')[0],
             photoURL: photoURL || null,
+            area: area || null,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
         };
@@ -64,6 +66,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
                 displayName: data.displayName,
                 photoURL: data.photoURL,
                 role: data.role || 'user',
+                area: data.area ?? null,
                 createdAt: (data.createdAt as Timestamp)?.toDate() || new Date(),
                 updatedAt: (data.updatedAt as Timestamp)?.toDate() || new Date()
             };

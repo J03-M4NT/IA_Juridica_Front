@@ -41,6 +41,57 @@ export async function obtenerUltimasNormas(): Promise<NormasDelDiaResult | null>
   return { fecha: edicion.fecha, normas: edicion.normas ?? [] }
 }
 
+export interface NormasRecientesResult {
+  desde: string
+  hasta: string
+  normas: NormaDelDia[]
+  // Cada edición del rango por separado (de la más reciente a la más
+  // antigua), para poder ver un día en particular
+  ediciones: NormasDelDiaResult[]
+}
+
+/**
+ * Normas de los últimos `dias` días (por defecto 5), contados desde la
+ * edición más reciente con normas. El scraping guarda un documento por día
+ * en `normas_diarias`; una misma norma puede quedar en dos documentos
+ * seguidos (la fecha del documento es la UTC del momento del scraping),
+ * así que se quitan los repetidos y se conserva la aparición más nueva.
+ * Orden: de la edición más reciente a la más antigua.
+ */
+export async function obtenerNormasRecientes(dias = 5): Promise<NormasRecientesResult | null> {
+  const normasRef = collection(db, 'normas_diarias')
+  const q = query(normasRef, orderBy('fecha', 'desc'), limit(dias * 2 + 2))
+
+  const snapshot = await getDocs(q)
+  const ediciones = snapshot.docs
+    .map(d => d.data() as { fecha: string; normas?: NormaDelDia[] })
+    .filter(e => (e.normas?.length ?? 0) > 0)
+  const ultima = ediciones[0]
+  if (!ultima) return null
+
+  const limite = new Date(`${ultima.fecha}T00:00:00Z`)
+  limite.setUTCDate(limite.getUTCDate() - (dias - 1))
+  const desdeMinimo = limite.toISOString().slice(0, 10)
+
+  const vistas = new Set<string>()
+  const normas: NormaDelDia[] = []
+  const delRango: NormasDelDiaResult[] = []
+  let desde = ultima.fecha
+  for (const edicion of ediciones) {
+    if (edicion.fecha < desdeMinimo) break
+    desde = edicion.fecha
+    delRango.push({ fecha: edicion.fecha, normas: edicion.normas ?? [] })
+    for (const norma of edicion.normas ?? []) {
+      const clave = norma.id || norma.urlPdf || norma.titulo
+      if (vistas.has(clave)) continue
+      vistas.add(clave)
+      normas.push(norma)
+    }
+  }
+
+  return { desde, hasta: ultima.fecha, normas, ediciones: delRango }
+}
+
 /**
  * Dispara el scraping de El Peruano ahora mismo (en vez de esperar a la
  * próxima corrida automática) y devuelve el total de normas guardadas

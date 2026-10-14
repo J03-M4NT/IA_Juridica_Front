@@ -53,9 +53,12 @@ export interface ResumenNormasDelDia {
 }
 
 export async function resumirNormasDelDia(
-  normas: { titulo: string; sumilla: string }[]
+  normas: { titulo: string; sumilla: string }[],
+  // Área de trabajo del usuario (constants/areasTrabajo.ts): enfoca el
+  // resumen y las destacadas en lo que le importa a esa área.
+  area?: string | null
 ): Promise<ResumenNormasDelDia> {
-  const response = await postFuncion('resumirNormasDelDiaIA', { normas })
+  const response = await postFuncion('resumirNormasDelDiaIA', { normas, ...(area ? { area } : {}) })
 
   const data = await response.json() as Partial<ResumenNormasDelDia> & { error?: string }
   if (!response.ok || !data.resumen) {

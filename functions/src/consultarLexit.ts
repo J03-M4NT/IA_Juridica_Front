@@ -373,6 +373,105 @@ function filtrarFragmentosCitados(
 }
 
 // =========================
+// VERIFICACIÓN DE CITAS (solo Consultas)
+// Si la frase que lleva un [n] nombra un artículo ("según el artículo
+// 1681° del Código Civil [2]") y ese [n] apunta a OTRO artículo, la cita se
+// corrige al fragmento de ese artículo si está entre los encontrados; si no
+// está, se quita (ninguna fuente encontrada respalda esa frase). Las
+// frases que no nombran un artículo, y los comentarios/notas, no cambian.
+// Trabaja con la numeración original (antes de filtrarFragmentosCitados).
+// =========================
+interface ArticuloMencionado {
+  numero: number
+  sufijo?: string
+}
+
+// "artículo 1681°", "art. 108-C", "artículos 1681 y 1682"
+const MENCION_ARTICULOS_REGEX = /\bart(?:[íi]culos?|s?\.)\s*(\d+\s*[°º]?(?:\s*-\s*[A-Z](?![a-záéíóúñ]))?(?:\s*(?:,|y|e|o|al|a)\s*\d+\s*[°º]?(?:\s*-\s*[A-Z](?![a-záéíóúñ]))?)*)/gi
+const NUMERO_ARTICULO_REGEX = /(\d+)\s*[°º]?(?:\s*-\s*([A-Z])(?![a-záéíóúñ]))?/g
+
+// Códigos que se pueden nombrar en una frase, para no confundir el
+// artículo 2 de la Constitución con el artículo 2 del Código Civil.
+const CODIGOS_EN_TEXTO: { patron: RegExp; clave: string }[] = [
+  { patron: /constituci[óo]n/i, clave: 'constitucion' },
+  { patron: /c[óo]digo\s+civil/i, clave: 'civil' },
+  { patron: /c[óo]digo\s+penal/i, clave: 'penal' },
+  { patron: /c[óo]digo\s+tributario/i, clave: 'tributario' },
+  { patron: /c[óo]digo\s+(?:laboral|de\s+trabajo)|ley\s+laboral/i, clave: 'laboral' }
+]
+
+function claveDeCodigo(texto: string): string | undefined {
+  return CODIGOS_EN_TEXTO.find(c => c.patron.test(texto))?.clave
+}
+
+// Texto de la misma frase, justo antes de la cita (sin cruzar el fin de la
+// oración anterior ni otra cita).
+function fraseAntesDe(texto: string, fin: number): string {
+  const previo = texto.slice(Math.max(0, fin - 260), fin)
+  const cortes = [...previo.matchAll(/(?<![Aa]rt|[Nn]ro|[Nn][°º]|inc)\.(?=\s+[A-ZÁÉÍÓÚÑ¿¡*])|\n|\]/g)]
+  const ultimo = cortes[cortes.length - 1]
+  return ultimo?.index !== undefined ? previo.slice(ultimo.index + 1) : previo
+}
+
+function articulosMencionados(frase: string): ArticuloMencionado[] {
+  const mencionados: ArticuloMencionado[] = []
+  for (const mencion of frase.matchAll(MENCION_ARTICULOS_REGEX)) {
+    for (const n of (mencion[1] ?? '').matchAll(NUMERO_ARTICULO_REGEX)) {
+      mencionados.push({ numero: Number(n[1]), ...(n[2] ? { sufijo: n[2].toUpperCase() } : {}) })
+    }
+  }
+  return mencionados
+}
+
+function coincideConMencion(
+  fragmento: FragmentoResultado,
+  mencionados: ArticuloMencionado[],
+  codigoFrase: string | undefined
+): boolean {
+  if (fragmento.numeroArticulo === undefined) return false
+  // Solo se descarta por código cuando el documento es claramente OTRO
+  // código (si el nombre no indica ninguno, no se puede saber).
+  const codigoFragmento = claveDeCodigo(fragmento.nombreDocumento)
+  if (codigoFrase && codigoFragmento && codigoFrase !== codigoFragmento) return false
+  return mencionados.some(m =>
+    m.numero === fragmento.numeroArticulo &&
+    (!m.sufijo || m.sufijo === (fragmento.sufijoArticulo ?? '').toUpperCase()))
+}
+
+function verificarCitas(respuesta: string, fragmentos: FragmentoResultado[]): { respuesta: string; corregidas: number; quitadas: number } {
+  let corregidas = 0
+  let quitadas = 0
+  const resultado = respuesta.replace(CITA_REGEX, (original: string, grupo: string, inicio: number) => {
+    const frase = fraseAntesDe(respuesta, inicio)
+    const mencionados = articulosMencionados(frase)
+    if (mencionados.length === 0) return original
+    const codigoFrase = claveDeCodigo(frase)
+
+    const numeros: number[] = []
+    for (const n of grupo.split(',').map(t => Number(t.trim()))) {
+      const fragmento = fragmentos[n - 1]
+      // Sin fragmento, comentario o trozo sin número de artículo: no hay
+      // con qué comparar, se deja como está.
+      if (!fragmento || fragmento.esComentario || fragmento.numeroArticulo === undefined || coincideConMencion(fragmento, mencionados, codigoFrase)) {
+        if (!numeros.includes(n)) numeros.push(n)
+        continue
+      }
+      const correcto = fragmentos.findIndex((f, i) => !numeros.includes(i + 1) && !f.esComentario && coincideConMencion(f, mencionados, codigoFrase))
+      if (correcto !== -1) {
+        numeros.push(correcto + 1)
+        corregidas++
+      } else {
+        quitadas++
+      }
+    }
+    // Cita quitada: se marca (carácter de uso privado, nunca aparece en el
+    // texto) para borrar también el espacio que la precedía.
+    return numeros.length ? `[${numeros.join(', ')}]` : ''
+  })
+  return { respuesta: resultado.replace(/[ \t]*/g, ''), corregidas, quitadas }
+}
+
+// =========================
 // CLOUD FUNCTION
 // =========================
 // =========================
@@ -609,6 +708,7 @@ export const consultarLexit = onRequest(
               '- Si algún fragmento responde la pregunta, úsalo y cítalo con su número entre corchetes justo después de la idea que sustenta, ej. [1] o [1, 3].',
               '- Si explicas una figura (ej. el usufructo) y uno de estos fragmentos es el artículo que la regula, cítalo en esa parte: no la expliques solo de memoria teniendo la norma aquí.',
               '- Cita SOLO los fragmentos que realmente usaste. Si ninguno sirve, ignóralos por completo, no los menciones y responde con tu conocimiento general.',
+              '- Cada [n] debe ir pegado a la idea que ESE fragmento sustenta. Si en la frase nombras un artículo, el [n] debe ser el del fragmento de ese mismo artículo (revisa el número del encabezado de cada fragmento). Los números [n] valen solo para los fragmentos de este mensaje: ignora cualquier numeración de respuestas anteriores.',
               '- Úsalos solo si la pregunta trata sobre lo que regula esa norma. No relaciones la pregunta con un artículo solo porque comparten palabras (ej. "pedir una reunión" por correo NO es la convocatoria a asamblea de una asociación). Si la pregunta es práctica o cotidiana (redactar un correo, un trámite general, una duda común), ignora los fragmentos.',
               '- Las citas textuales (entre comillas) solo pueden salir de estos fragmentos; no transcribas artículos de memoria.',
               '- Complementa con tu conocimiento jurídico general (doctrina, finalidad de la norma, ejemplos, relación con otras figuras o normas) sin número de cita. Los fragmentos sustentan la respuesta, no la limitan.',
@@ -724,7 +824,10 @@ export const consultarLexit = onRequest(
       const enviarAlChat = (mensaje: string) => conModeloDeRespaldo(model => model.startChat({
         history: historialMensajes.map(m => ({
           role: m.esIA ? 'model' : 'user',
-          parts: [{ text: m.esIA ? sinIndicador(m.contenido) : m.contenido }]
+          // Las [n] de respuestas anteriores apuntaban a las fuentes de ESE
+          // turno; si quedan, la IA las reutiliza con la numeración nueva y
+          // cita fuentes que no corresponden.
+          parts: [{ text: m.esIA ? sinIndicador(m.contenido).replace(CITA_REGEX, '') : m.contenido }]
         })),
         // Consultas pide respuestas desarrolladas (ver instrucción de
         // profundidad abajo): más margen para que no se corten.
@@ -799,6 +902,11 @@ export const consultarLexit = onRequest(
       let textoRespuesta = respuestaCompleta.replace(/\bLEXIT\s+AI\b/gi, 'LexIT')
       let fragmentosDevueltos = fragmentosEncontrados
       if (modoConsulta && !tratarComoTrivial && fragmentosEncontrados.length > 0) {
+        const verificado = verificarCitas(textoRespuesta, fragmentosEncontrados)
+        textoRespuesta = verificado.respuesta
+        if (verificado.corregidas || verificado.quitadas) {
+          logger.info(`🔗 Citas verificadas: ${verificado.corregidas} corregida(s), ${verificado.quitadas} quitada(s) por no coincidir con el artículo nombrado`)
+        }
         const filtrado = filtrarFragmentosCitados(textoRespuesta, fragmentosEncontrados)
         textoRespuesta = filtrado.respuesta
         fragmentosDevueltos = filtrado.citados
