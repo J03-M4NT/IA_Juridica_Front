@@ -272,7 +272,7 @@ const MAX_CAMBIOS_CHAT_EDICION = 300
 // "]" o "}", o una clave sin comillas. Se reparan esos dos errores típicos
 // antes de dar la respuesta por perdida. Si aun así no es JSON, lanza
 // SyntaxError.
-function parsearJsonTolerante(texto: string): unknown {
+export function parsearJsonTolerante(texto: string): unknown {
   const inicio = texto.indexOf('{')
   const fin = texto.lastIndexOf('}')
   const cuerpo = inicio !== -1 && fin > inicio ? texto.slice(inicio, fin + 1) : texto

@@ -18,10 +18,10 @@
         </svg>
       </div>
       <div class="page-header-text">
-        <span class="normas-eyebrow">Normas legales · Fuente oficial</span>
         <h1 class="page-title">Normas del Diario Oficial El Peruano</h1>
         <p class="page-subtitle">
-          <span v-if="periodo === 'cinco' && rangoRecientes">Del {{ formatFecha(rangoRecientes.desde) }} al {{ formatFecha(rangoRecientes.hasta) }}</span>
+          <span v-if="periodo === 'quince' && rangoRecientes">Del {{ formatFecha(rangoRecientes.desde) }} al {{ formatFecha(rangoRecientes.hasta) }}</span>
+          <span v-else-if="periodo === 'dia' && diaElegido">Edición del {{ formatFecha(diaElegido) }}</span>
           <span v-else-if="fechaEdicion">Edición del {{ formatFecha(fechaEdicion) }}</span>
           <span v-else>Actualizaciones normativas · fuente oficial</span>
         </p>
@@ -116,7 +116,7 @@
         </template>
       </div>
 
-      <!-- Periodo: solo la última edición o las normas de los últimos 5 días -->
+      <!-- Periodo: la última edición, los últimos 15 días o un día elegido -->
       <div class="periodo-selector">
         <div class="periodo-segmento" role="tablist" aria-label="Periodo de las normas">
         <button
@@ -133,13 +133,30 @@
           type="button"
           role="tab"
           class="periodo-opcion"
-          :class="{ 'periodo-opcion--activa': periodo === 'cinco' }"
-          :aria-selected="periodo === 'cinco'"
-          @click="cambiarPeriodo('cinco')"
+          :class="{ 'periodo-opcion--activa': periodo === 'quince' }"
+          :aria-selected="periodo === 'quince'"
+          @click="cambiarPeriodo('quince')"
         >
-          Últimos 5 días
+          Últimos 15 días
         </button>
         </div>
+        <!-- Elegir un día de los últimos 15 (las fechas se cargan al abrirlo) -->
+        <label class="periodo-dia" :class="{ 'periodo-dia--activo': periodo === 'dia' }">
+          <q-icon name="event" size="18px" aria-hidden="true" />
+          <span class="sr-only">Elegir día</span>
+          <select
+            :value="periodo === 'dia' ? diaElegido ?? '' : ''"
+            aria-label="Elegir un día"
+            @focus="asegurarRecientes"
+            @mousedown="asegurarRecientes"
+            @change="elegirDia(($event.target as HTMLSelectElement).value)"
+          >
+            <option value="" disabled>{{ cargandoRecientes && !edicionesRecientes.length ? 'Cargando días…' : 'Elegir día' }}</option>
+            <option v-for="e in edicionesRecientes" :key="e.fecha" :value="e.fecha">
+              {{ etiquetaDia(e.fecha) }} · {{ e.normas.length }} {{ e.normas.length === 1 ? 'norma' : 'normas' }}
+            </option>
+          </select>
+        </label>
         <span v-if="cargandoRecientes" class="periodo-cargando">Cargando…</span>
       </div>
       <p v-if="errorRecientes" class="refresh-error">{{ errorRecientes }}</p>
@@ -167,7 +184,7 @@
       </div>
 
       <div v-if="sectorSeleccionado && normasFiltradas.length === 0" class="estado-card estado-card--chica">
-        <p class="estado-texto">No hay normas de "{{ mayusculasYMinusculas(sectorSeleccionado) }}" {{ periodo === 'cinco' ? 'en los últimos 5 días' : 'en esta edición' }}.</p>
+        <p class="estado-texto">No hay normas de "{{ mayusculasYMinusculas(sectorSeleccionado) }}" {{ periodo === 'quince' ? 'en los últimos 15 días' : 'en esta edición' }}.</p>
       </div>
 
       <div class="normas-grid">
@@ -322,25 +339,34 @@ const error = ref<string | null>(null)
 // fija, así siempre refleja los sectores que de verdad tuvieron normas.
 const sectorSeleccionado = ref<string | null>(null)
 
-// Periodo: la última edición (lo de siempre) o los últimos 5 días. Las
-// normas de 5 días se piden recién la primera vez que se elige esa opción.
-// El resumen con IA sigue siendo el de la última edición.
-const periodo = ref<'ultima' | 'cinco'>('ultima')
+// Periodo: la última edición (lo de siempre), los últimos 15 días o un día
+// elegido de esos 15. Las normas del rango se piden recién la primera vez
+// que se elige una de esas opciones. El resumen con IA sigue siendo el de
+// la última edición.
+const DIAS_RECIENTES = 15
+const periodo = ref<'ultima' | 'quince' | 'dia'>('ultima')
 const normasRecientes = ref<NormaDelDia[]>([])
+const edicionesRecientes = ref<{ fecha: string; normas: NormaDelDia[] }[]>([])
+const diaElegido = ref<string | null>(null)
 const rangoRecientes = ref<{ desde: string; hasta: string } | null>(null)
 const cargandoRecientes = ref(false)
 const errorRecientes = ref<string | null>(null)
 
-const normasVista = computed(() =>
-  periodo.value === 'cinco' && normasRecientes.value.length ? normasRecientes.value : normas.value
-)
+const normasVista = computed(() => {
+  if (periodo.value === 'quince' && normasRecientes.value.length) return normasRecientes.value
+  if (periodo.value === 'dia' && diaElegido.value) {
+    return edicionesRecientes.value.find(e => e.fecha === diaElegido.value)?.normas ?? normas.value
+  }
+  return normas.value
+})
 
 async function cargarNormasRecientes() {
   cargandoRecientes.value = true
   errorRecientes.value = null
   try {
-    const resultado = await obtenerNormasRecientes(5)
+    const resultado = await obtenerNormasRecientes(DIAS_RECIENTES)
     normasRecientes.value = resultado?.normas ?? []
+    edicionesRecientes.value = resultado?.ediciones ?? []
     rangoRecientes.value = resultado ? { desde: resultado.desde, hasta: resultado.hasta } : null
   } catch (err) {
     errorRecientes.value = getErrorMessage(err)
@@ -350,12 +376,34 @@ async function cargarNormasRecientes() {
   }
 }
 
-function cambiarPeriodo(nuevo: 'ultima' | 'cinco') {
+function cambiarPeriodo(nuevo: 'ultima' | 'quince') {
   if (periodo.value === nuevo || cargandoRecientes.value) return
   periodo.value = nuevo
+  diaElegido.value = null
   sectorSeleccionado.value = null
   cerrarPdf()
-  if (nuevo === 'cinco' && !normasRecientes.value.length) void cargarNormasRecientes()
+  if (nuevo === 'quince' && !normasRecientes.value.length) void cargarNormasRecientes()
+}
+
+// Elegir un día: las fechas disponibles salen de los últimos 15 días
+function asegurarRecientes() {
+  if (!edicionesRecientes.value.length && !cargandoRecientes.value) void cargarNormasRecientes()
+}
+
+function elegirDia(fecha: string) {
+  if (!fecha) return
+  diaElegido.value = fecha
+  periodo.value = 'dia'
+  sectorSeleccionado.value = null
+  cerrarPdf()
+}
+
+const NOMBRES_DIA = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
+function etiquetaDia(fechaIso: string): string {
+  const [anio, mes, dia] = fechaIso.split('-').map(Number)
+  if (!anio || !mes || !dia) return fechaIso
+  const fecha = new Date(Date.UTC(anio, mes - 1, dia))
+  return `${NOMBRES_DIA[fecha.getUTCDay()]} ${formatFecha(fechaIso)}`
 }
 
 const sectores = computed(() => {
@@ -526,8 +574,9 @@ async function actualizarAhora() {
     error.value = null
     resumen.value = null
     normasRecientes.value = []
+    edicionesRecientes.value = []
     await cargarNormas()
-    if (periodo.value === 'cinco') await cargarNormasRecientes()
+    if (periodo.value !== 'ultima') await cargarNormasRecientes()
   } catch (err) {
     actualizarError.value = getErrorMessage(err)
   } finally {
@@ -2318,5 +2367,72 @@ watch(areaResumen, () => {
 
 @media (max-width: 760px) {
   .esqueleto-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Selector de día (junto a "Última edición / Últimos 15 días") */
+.periodo-dia {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  background: #F4F5F7;
+  color: rgba(25, 28, 31, 0.78);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.page-container.page-container.page-container.page-container .periodo-dia {
+  border-radius: 999px !important;
+}
+
+.periodo-dia:hover {
+  background: #ECEEF1;
+}
+
+.periodo-dia select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0 18px 0 0;
+  border: none;
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23191C1F' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right center;
+  color: inherit;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+}
+
+.periodo-dia:focus-within {
+  outline: 2px solid #1D4E89;
+  outline-offset: 2px;
+}
+
+.periodo-dia--activo {
+  background: #1D4E89;
+  color: #FFFFFF;
+}
+
+.periodo-dia--activo:hover {
+  background: #163E6E;
+}
+
+.periodo-dia--activo select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+
+.periodo-dia option {
+  color: #191C1F;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 </style>

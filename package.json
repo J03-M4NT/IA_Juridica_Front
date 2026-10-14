@@ -30,6 +30,7 @@
     "@tiptap/starter-kit": "^3.23.6",
     "@tiptap/vue-3": "^3.23.6",
     "axios": "^1.2.1",
+    "diff": "^8.0.2",
     "docx": "^9.6.1",
     "docx-preview": "^0.3.7",
     "docxtemplater": "^3.66.5",

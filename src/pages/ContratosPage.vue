@@ -63,12 +63,6 @@
             >
               <!-- Portada: solo antes de la primera pregunta -->
               <div v-if="asistenteMensajes.length === 1" class="asistente-portada">
-                <span class="asistente-rotulo">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M10 17l1.5-4L16 8.5l2 2L13.5 15z"/>
-                  </svg>
-                  Redacción de contratos
-                </span>
                 <h2 class="asistente-titular">
                   ¿Qué <em>contrato</em> necesitas hoy?
                 </h2>
@@ -154,29 +148,6 @@
                   :loading="asistenteCargando"
                   :disable="!asistenteRespuesta.trim()"
                 />
-              </div>
-
-              <!-- Ideas rápidas: solo escriben el ejemplo en el campo; el
-                   usuario lo envía (o lo ajusta) como siempre. -->
-              <div v-if="asistenteMensajes.length === 1 && !asistenteCargando" class="asistente-chips">
-                <button
-                  v-for="idea in [
-                    { icono: 'home', titulo: 'Alquiler', texto: 'Quiero alquilar mi departamento' },
-                    { icono: 'handshake', titulo: 'Compraventa', texto: 'Quiero vender mi auto' },
-                    { icono: 'work_outline', titulo: 'Trabajo', texto: 'Necesito contratar a un trabajador' },
-                    { icono: 'account_balance', titulo: 'Préstamo', texto: 'Quiero prestarle dinero a un amigo' },
-                    { icono: 'build', titulo: 'Servicios', texto: 'Quiero contratar los servicios de un profesional' }
-                  ]"
-                  :key="idea.titulo"
-                  type="button"
-                  class="asistente-chip"
-                  :class="{ 'asistente-chip--elegido': asistenteRespuesta === idea.texto }"
-                  :title="idea.texto"
-                  @click="asistenteRespuesta = idea.texto"
-                >
-                  <q-icon :name="idea.icono" size="18px" />
-                  {{ idea.titulo }}
-                </button>
               </div>
 
               <!-- Plantillas disponibles (antes en la columna lateral) -->

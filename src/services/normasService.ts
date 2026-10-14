@@ -45,6 +45,9 @@ export interface NormasRecientesResult {
   desde: string
   hasta: string
   normas: NormaDelDia[]
+  // Cada edición del rango por separado (de la más reciente a la más
+  // antigua), para poder ver un día en particular
+  ediciones: NormasDelDiaResult[]
 }
 
 /**
@@ -72,10 +75,12 @@ export async function obtenerNormasRecientes(dias = 5): Promise<NormasRecientesR
 
   const vistas = new Set<string>()
   const normas: NormaDelDia[] = []
+  const delRango: NormasDelDiaResult[] = []
   let desde = ultima.fecha
   for (const edicion of ediciones) {
     if (edicion.fecha < desdeMinimo) break
     desde = edicion.fecha
+    delRango.push({ fecha: edicion.fecha, normas: edicion.normas ?? [] })
     for (const norma of edicion.normas ?? []) {
       const clave = norma.id || norma.urlPdf || norma.titulo
       if (vistas.has(clave)) continue
@@ -84,7 +89,7 @@ export async function obtenerNormasRecientes(dias = 5): Promise<NormasRecientesR
     }
   }
 
-  return { desde, hasta: ultima.fecha, normas }
+  return { desde, hasta: ultima.fecha, normas, ediciones: delRango }
 }
 
 /**

@@ -2935,4 +2935,266 @@ body.lexit-app-plana {
     transform: none;
   }
 }
+
+/* ==========================================================================
+   PALETA AZUL CORPORATIVO Y BLANCO EN LAS FUNCIONES
+   Azul serio #1D4E89 (hover #163E6E, tinte #EEF3F9) como color de marca,
+   barra lateral en azul marino profundo #13294A, acento claro #A9C2E2 en
+   detalles, sobre blanco; texto casi negro y grises fríos (sin beige,
+   naranja ni terracota).
+   Va al final: redefine las variables de la app y los acentos que
+   estaban fijos en navy/naranja. Solo dentro de la app (body.lexit-app-plana);
+   la Landing y la bienvenida no cambian.
+   ========================================================================== */
+body.lexit-app-plana {
+  --rv-azul: #1D4E89;
+  --rv-azul-hover: #163E6E;
+  --rv-azul-rgb: 29, 78, 137;
+  --rv-azul-suave: #EEF3F9;
+  --rv-azul-borde: rgba(29, 78, 137, 0.28);
+
+  --q-primary: #1D4E89;
+  --q-accent: #1D4E89;
+
+  /* Texto y neutros fríos */
+  --lexit-verde: #191C1F;
+  --lexit-verde-rgb: 25, 28, 31;
+  --lexit-texto-secundario: rgba(25, 28, 31, 0.68);
+  --lexit-texto-tenue: rgba(25, 28, 31, 0.5);
+  --lexit-marfil: #E4E6EA;
+  --lexit-marfil-suave: #F3F4F6;
+  --lexit-blanco-calido: #F7F8FA;
+  --lexit-piedra: #1D4E89;
+  --lexit-piedra-rgb: 29, 78, 137;
+  --lexit-terracota: #1D4E89;
+  --lexit-azul: #1D4E89;
+
+  --rv-gris: #F4F5F7;
+  --rv-gris-hover: #ECEEF1;
+  --rv-gris-fuerte: #E3E6EA;
+  --rv-texto: #191C1F;
+}
+
+/* --- Barra lateral azul con texto blanco --- */
+body.lexit-app-plana .app-sidebar {
+  --lexit-blanco-calido: #13294A;
+  --lexit-blanco: rgba(255, 255, 255, 0.16);
+  --lexit-verde: #FFFFFF;
+  --lexit-verde-rgb: 255, 255, 255;
+  --lexit-texto-secundario: rgba(255, 255, 255, 0.82);
+  --lexit-texto-tenue: rgba(255, 255, 255, 0.64);
+  --lexit-marfil: rgba(255, 255, 255, 0.2);
+  --lexit-marfil-suave: rgba(255, 255, 255, 0.1);
+  --lexit-piedra: #FFFFFF;
+  --lexit-terracota: #FFFFFF;
+}
+
+body.lexit-app-plana .app-sidebar .sidebar-inner {
+  background: linear-gradient(180deg, #13294A 0%, #0F2240 100%);
+}
+
+body.lexit-app-plana .app-sidebar .q-drawer__content {
+  border-right-color: #0F2240;
+}
+
+body.lexit-app-plana .app-sidebar .sidebar-brand {
+  border-bottom-color: rgba(255, 255, 255, 0.2);
+}
+
+body.lexit-app-plana .app-sidebar .sidebar-link {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+body.lexit-app-plana .app-sidebar .sidebar-link:not(.sidebar-link--active):hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #FFFFFF;
+}
+
+body.lexit-app-plana .app-sidebar .sidebar-link--active,
+body.lexit-app-plana .app-sidebar .sidebar-link--active :is(svg, .sidebar-link-texto) {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  color: #FFFFFF !important;
+}
+
+body.lexit-app-plana .app-sidebar .sidebar-link--active :is(svg, .sidebar-link-texto) {
+  background-color: transparent !important;
+}
+
+body.lexit-app-plana .app-sidebar .new-chat-btn,
+body.lexit-app-plana .app-sidebar .sidebar-link--active svg {
+  color: #A9C2E2 !important;
+}
+
+body.lexit-app-plana .app-sidebar .new-chat-btn {
+  color: #FFFFFF !important;
+}
+
+body.lexit-app-plana .app-sidebar .history-item--active::before {
+  background: #FFFFFF;
+}
+
+.app-sidebar :is(button, a, [tabindex="0"]):focus-visible {
+  outline-color: #FFFFFF !important;
+}
+
+/* --- Barra superior --- */
+body.lexit-app-plana .app-barra-titulo {
+  color: #191C1F;
+}
+
+.app-barra-progreso {
+  background: linear-gradient(90deg, #1D4E89, #7FA3CF) !important;
+}
+
+/* --- Botones principales: azul --- */
+.page-container.page-container.page-container.page-container :is(
+  .lx-action-btn,
+  .subir-boton,
+  .sugerencia-aplicar,
+  .ask-btn-round,
+  .asistente-composer-enviar,
+  .carrusel-usar,
+  .cv-comparar,
+  .cv-zona-accion
+):not(:disabled) {
+  background-color: #1D4E89 !important;
+  color: #FFFFFF !important;
+}
+
+@media (hover: hover) {
+  .page-container.page-container.page-container.page-container :is(
+    .lx-action-btn,
+    .subir-boton,
+    .sugerencia-aplicar,
+    .ask-btn-round,
+    .asistente-composer-enviar,
+    .carrusel-usar,
+    .cv-comparar,
+    .cv-zona-accion
+  ):hover:not(:disabled) {
+    background-color: #163E6E !important;
+  }
+}
+
+/* "Cambiar archivo" en una zona ya cargada: botón secundario */
+.page-container.page-container.page-container.page-container .cv-zona--lista .cv-zona-accion {
+  background-color: #FFFFFF !important;
+  color: #1D4E89 !important;
+  box-shadow: inset 0 0 0 1px rgba(29, 78, 137, 0.35) !important;
+}
+
+/* Secundarios: gris frío con texto oscuro; enlaces en azul */
+.page-container :is(.sugerencia-ver, .cv-fila-ver, .norma-cta, .plantilla-fila-usar) {
+  color: #1D4E89 !important;
+}
+
+/* --- Chips, pestañas y filtros activos: azul --- */
+.page-container.page-container.page-container.page-container :is(
+  .sector-chip--activo,
+  .asistente-chip--elegido,
+  .acceso-rapido--activo,
+  .cv-chip--activo
+),
+.page-container.page-container.page-container.page-container :is(
+  .sector-chip--activo,
+  .asistente-chip--elegido,
+  .acceso-rapido--activo,
+  .cv-chip--activo
+):hover {
+  background-color: #1D4E89 !important;
+  border-color: #1D4E89 !important;
+  color: #FFFFFF !important;
+}
+
+.page-container.page-container.page-container.page-container :is(.documento-tab--active, .panel-tab--activa, .lx-tabs .q-tab--active, .periodo-opcion--activa) {
+  background: #1D4E89 !important;
+  color: #FFFFFF !important;
+}
+
+.page-container.page-container.page-container.page-container .modo-opcion--activa {
+  color: #1D4E89 !important;
+}
+
+.page-container .metrica-bloque--activo {
+  box-shadow: inset 0 0 0 2px #1D4E89 !important;
+}
+
+/* --- Normas --- */
+.page-container .normas-page :is(.normas-eyebrow, .norma-sector, .pdf-panel-sector) {
+  color: #1D4E89 !important;
+}
+
+.page-container.page-container.page-container.page-container .normas-page .norma-card--activa,
+.page-container.page-container.page-container.page-container .normas-page .norma-card--activa:hover {
+  box-shadow: 0 0 0 2px #1D4E89 !important;
+}
+
+.page-container .normas-page .norma-abierta {
+  color: #1D4E89;
+}
+
+.page-container .normas-page .normas-banner .refresh-btn:hover:not(:disabled) {
+  background: #1D4E89 !important;
+  color: #FFFFFF !important;
+}
+
+/* --- Contratos --- */
+.page-container .carrusel-portada {
+  background: linear-gradient(135deg, #1F4472 0%, #163556 100%) !important;
+}
+
+.page-container .carrusel-flecha:hover {
+  background: #1D4E89;
+  border-color: #1D4E89;
+}
+
+.page-container .carrusel-punto--actual {
+  background: #1D4E89;
+}
+
+.page-container .lx-card-header--wrap::after {
+  background: linear-gradient(90deg, #1D4E89, #7FA3CF) !important;
+}
+
+/* Documento en vivo: el párrafo recién cambiado destella en azul suave */
+.doc-en-vivo .lx-cambio-ia--nuevo {
+  animation-name: lxCambioIAAzul !important;
+}
+
+@keyframes lxCambioIAAzul {
+  0%   { background: rgba(29, 78, 137, 0.22); }
+  45%  { background: rgba(29, 78, 137, 0.14); }
+  100% { background: rgba(47, 143, 91, 0.12); }
+}
+
+/* --- Análisis: "Ver observación" con resaltado azul --- */
+.page-container :is(.documento-word, .documento-texto) mark.hl-foco {
+  background: rgba(29, 78, 137, 0.2) !important;
+  outline-color: #1D4E89 !important;
+}
+
+/* --- Foco de teclado en azul --- */
+.page-container :is(button, a, [role="tab"], [tabindex="0"], .q-btn, summary):focus-visible {
+  outline-color: #1D4E89 !important;
+}
+
+/* --- Campo de consulta y asistente: gris frío --- */
+.page-container.page-container.page-container.page-container :is(.composer-pill, .asistente-composer),
+.page-container.page-container.page-container.page-container :is(.composer-pill, .asistente-composer):focus-within {
+  background: #F4F5F7 !important;
+}
+
+/* --- Accesos y títulos --- */
+.page-container .page-title-letra,
+.page-container .page-title {
+  color: #191C1F;
+}
+
+.saltar-contenido {
+  background: #1D4E89;
+}
+
+.saltar-contenido:focus-visible {
+  outline-color: #191C1F;
+}
 </style>

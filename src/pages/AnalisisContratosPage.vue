@@ -1,5 +1,5 @@
 <template>
-  <q-page class="analisis-page" :class="{ 'analisis-page--with-pdf': store.archivoAdjunto, 'analisis-page--trabajo': etapa === 'trabajo' }">
+  <q-page class="analisis-page" :class="{ 'analisis-page--with-pdf': store.archivoAdjunto, 'analisis-page--trabajo': etapa === 'trabajo', 'analisis-page--comparar': modoAnalisis === 'comparar' && etapa === 'subir' }">
 
     <!-- Section header — se encoge y se atenúa al bajar en el chat, para
          devolverle espacio a la conversación sin perder el título del
@@ -14,8 +14,36 @@
       </div>
       <div>
         <h1 class="page-title">Análisis de Contratos</h1>
-        <p class="page-subtitle">Sube un contrato en Word para revisar sus riesgos, editarlo y hacer preguntas sobre él</p>
+        <p class="page-subtitle">{{ modoAnalisis === 'comparar' ? 'Sube dos versiones del mismo contrato en Word para ver qué cambió y qué riesgo implica' : 'Sube un contrato en Word para revisar sus riesgos, editarlo y hacer preguntas sobre él' }}</p>
       </div>
+    </div>
+
+    <!-- Modo de trabajo (solo antes de subir un documento): el modo
+         "Analizar un contrato" es el de siempre y va por defecto. -->
+    <div v-if="etapa === 'subir'" class="modo-analisis" role="tablist" aria-label="Modo de análisis">
+      <button
+        type="button"
+        role="tab"
+        class="modo-opcion"
+        :class="{ 'modo-opcion--activa': modoAnalisis === 'uno' }"
+        :aria-selected="modoAnalisis === 'uno'"
+        @click="modoAnalisis = 'uno'"
+      >
+        Analizar un contrato
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="modo-opcion"
+        :class="{ 'modo-opcion--activa': modoAnalisis === 'comparar' }"
+        :aria-selected="modoAnalisis === 'comparar'"
+        @click="modoAnalisis = 'comparar'"
+      >
+        Comparar versiones
+      </button>
+      <button type="button" role="tab" class="modo-opcion" aria-selected="false" aria-disabled="true" disabled>
+        Comparar varios <span class="modo-pronto">Próximamente</span>
+      </button>
     </div>
 
     <!-- Selector de archivo compartido por los tres pasos -->
@@ -27,8 +55,11 @@
       @change="onArchivoSeleccionado"
     />
 
+    <!-- Modo "Comparar versiones" (componente aparte; no toca el flujo de abajo) -->
+    <CompararVersiones v-if="modoAnalisis === 'comparar' && etapa === 'subir'" />
+
     <!-- PASO 1: subir el contrato -->
-    <div v-if="etapa === 'subir'" class="etapa-centro">
+    <div v-else-if="etapa === 'subir'" class="etapa-centro">
       <div
         class="subir-zona"
         :class="{ 'subir-zona--arrastrando': isDraggingFile, 'subir-zona--leyendo': procesandoArchivo }"
@@ -648,6 +679,7 @@
 </template>
 
 <script setup lang="ts">
+import CompararVersiones from '../components/Analisis/CompararVersiones.vue'
 import { filasMatriz, matrizAWord, matrizAExcel, nombreArchivoMatriz } from '../utils/matrizDesviaciones'
 import { ref, shallowRef, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useAnalisisContratosStore, esSolicitudDeAnalisisDeRiesgos } from '../stores/analisis-contratos-store'
@@ -1615,6 +1647,10 @@ function quitarAdjunto() {
 // =========================
 const accionElegida = ref(false)
 const preguntaInicial = ref('')
+
+// Modo de la pantalla: "uno" = Analizar un contrato (el flujo de siempre),
+// "comparar" = Comparar versiones (components/Analisis/CompararVersiones.vue).
+const modoAnalisis = ref<'uno' | 'comparar'>('uno')
 
 const etapa = computed<'subir' | 'elegir' | 'trabajo'>(() => {
   if (!store.archivoAdjunto) return 'subir'
@@ -3888,5 +3924,100 @@ button.metrica-bloque:focus-visible {
 .matriz-boton:focus-visible {
   outline: 2px solid var(--lexit-verde);
   outline-offset: 2px;
+}
+
+/* ==========================================================================
+   SELECTOR DE MODO (Analizar un contrato / Comparar versiones)
+   ========================================================================== */
+.modo-analisis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto 22px;
+  padding: 4px;
+  background: rgba(var(--lexit-verde-rgb), 0.06);
+}
+
+.page-container.page-container.page-container.page-container .modo-analisis {
+  border-radius: 14px !important;
+}
+
+.modo-opcion {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: none;
+  background: transparent;
+  color: rgba(var(--lexit-verde-rgb), 0.72);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.page-container.page-container.page-container.page-container .modo-opcion {
+  border-radius: 10px !important;
+}
+
+.modo-opcion:hover:not(:disabled):not(.modo-opcion--activa) {
+  color: var(--lexit-verde);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.page-container.page-container.page-container.page-container .modo-opcion--activa {
+  background: #FFFFFF;
+  color: var(--lexit-verde);
+  box-shadow: 0 1px 3px rgba(var(--lexit-verde-rgb), 0.14) !important;
+}
+
+.modo-opcion:disabled {
+  cursor: not-allowed;
+  color: rgba(var(--lexit-verde-rgb), 0.4);
+}
+
+.modo-opcion:focus-visible {
+  outline: 2px solid var(--lexit-verde);
+  outline-offset: 2px;
+}
+
+.modo-pronto {
+  padding: 2px 8px;
+  background: rgba(var(--lexit-verde-rgb), 0.07);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.page-container.page-container.page-container.page-container .modo-pronto {
+  border-radius: 6px !important;
+}
+
+@media (max-width: 600px) {
+  .modo-analisis {
+    width: 100%;
+  }
+
+  .modo-opcion {
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 0 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modo-opcion { transition: none; }
+}
+
+/* Modo "Comparar versiones": la página crece con el resultado y se
+   desplaza normalmente (la altura fija con overflow oculto es para el chat
+   del modo de un contrato, y cortaba la lista de cambios). */
+.q-page.analisis-page.analisis-page--comparar {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
 }
 </style>
