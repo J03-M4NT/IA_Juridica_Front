@@ -16,6 +16,16 @@ import {
 import { dividirEnSecciones } from './seccionesContrato'
 import { asignarBaseLegal, PINECONE_API_KEY } from './baseLegal'
 import { ENFOQUE_POR_AREA } from './areasTrabajo'
+import {
+  REGLAS_LLENADO,
+  INSTRUCCION_CLAUSULAS_ADICIONALES,
+  type ClausulaAdicional,
+  normalizarClausulasAdicionales,
+  aplicarCambiosTexto,
+  pendientesDelContrato,
+  quiereTerminar,
+  yaSeOfrecieronAdicionales
+} from './llenadoContrato'
 
 // ================================
 // SUGERENCIAS DE CAMBIOS (redline) PARA UN CONTRATO
@@ -263,6 +273,9 @@ interface RespuestaChatEdicion {
   // "pregunta": los reemplazos que aplican la última respuesta del usuario,
   // para que el contrato se vea actualizándose en vivo mientras conversa.
   cambios?: CambioTextoContrato[]
+  // Gestión de contratos: lista completa de cláusulas adicionales cuando se
+  // crean o cambian (el front las inserta antes del cierre y las firmas).
+  clausulasAdicionales?: ClausulaAdicional[]
 }
 
 const MAX_CAMBIOS_CHAT_EDICION = 300
@@ -356,6 +369,8 @@ Tu trabajo:
 2. Pregunta UNA sola cosa a la vez, en lenguaje natural y claro (ej. "¿Cuál es el nombre completo del arrendador?"), nunca varias preguntas juntas.
 3. No repitas una pregunta que ya fue respondida en la conversación.
 ${INSTRUCCION_CAMBIOS_EN_VIVO}
+${REGLAS_LLENADO}
+${INSTRUCCION_CLAUSULAS_ADICIONALES}
 ${enCambios
   ? `4. Cuando ya tengas suficiente información, o el usuario diga que ya terminó, que no quiere completar más, o pida ver el resultado, devuelve la LISTA DE CAMBIOS a aplicar sobre el contrato (NO el contrato completo). Cada cambio es un reemplazo dentro de un mismo párrafo:
    - "antes": fragmento COPIADO EXACTAMENTE del contrato de arriba (mismas palabras, puntos, guiones y espacios), con las palabras de alrededor necesarias para que aparezca UNA sola vez en el contrato. Nunca abarques dos párrafos.
@@ -366,9 +381,10 @@ Responde SIEMPRE y ÚNICAMENTE en JSON, con esta estructura exacta, sin texto fu
 {
   "tipo": "pregunta" o "documento_final",
   "mensaje": "el mensaje conversacional para mostrarle al usuario (la pregunta a hacer, o un breve resumen de que terminaste)",
-  "cambios": [{ "antes": "fragmento exacto del contrato", "despues": "fragmento con el cambio" }]
+  "cambios": [{ "antes": "fragmento exacto del contrato", "despues": "fragmento con el cambio" }],
+  "clausulasAdicionales": [{ "encabezado": "CLÁUSULA ADICIONAL PRIMERA.- TÍTULO", "texto": "texto de la cláusula" }]
 }
-(Con tipo pregunta, "cambios" lleva lo que aplica la última respuesta del usuario —lista vacía si no dio ningún dato—. Con documento_final, solo lo que todavía no esté aplicado en el contrato de arriba —puede ir vacía—.)
+("clausulasAdicionales" solo cuando agregues o cambies alguna: la lista completa. Con tipo pregunta, "cambios" lleva lo que aplica la última respuesta del usuario —lista vacía si no dio ningún dato—. Con documento_final, solo lo que todavía no esté aplicado en el contrato de arriba —puede ir vacía—.)
 `
   : `4. Cuando ya tengas suficiente información, o el usuario diga que ya terminó, que no quiere completar más, o pida ver el resultado, genera el CONTRATO COMPLETO actualizado con todos los cambios aplicados, conservando el resto del texto, la estructura y las cláusulas originales tal cual.
 
@@ -424,13 +440,48 @@ Responde SIEMPRE y ÚNICAMENTE en JSON, con esta estructura exacta, sin texto fu
       }
 
       const cambios = normalizarCambios(parsed.cambios)
+      const clausulasAdicionales = normalizarClausulasAdicionales(parsed.clausulasAdicionales)
+
+      // Plantillas Word: antes de dar el contrato por terminado se comprueba
+      // que no quede nada por completar (salvo las firmas) y que se haya
+      // ofrecido agregar cláusulas adicionales. Si falta algo y el usuario
+      // no pidió terminar, se sigue preguntando (lo ya completado se aplica
+      // en vivo igual).
+      if (enCambios && parsed.tipo === 'documento_final' && !quiereTerminar(mensajeUsuario)) {
+        const pendientes = pendientesDelContrato(aplicarCambiosTexto(textoContrato, cambios))
+        let siguientePregunta = ''
+        if (pendientes.length > 0) {
+          const r = await conModeloDeRespaldo(model => model.generateContent(`
+Eres un asistente legal completando un contrato con un usuario. Aún faltan estos datos en el contrato (cada línea es un fragmento con espacios en blanco o una indicación por completar):
+${pendientes.slice(0, 12).map(p => `- ${p}`).join('\n')}
+
+Escribe UNA sola pregunta, breve y clara, para pedirle al usuario el PRIMER dato que falta (puedes pedir juntos los datos de una misma parte, como nombre, DNI y domicilio). Responde SOLO JSON: {"mensaje": "la pregunta"}`), { json: true })
+          const datos = parsearJsonTolerante(r.response.text()) as { mensaje?: unknown }
+          siguientePregunta = typeof datos.mensaje === 'string' && datos.mensaje.trim()
+            ? datos.mensaje.trim()
+            : 'Todavía faltan algunos datos del contrato. ¿Me indicas el siguiente?'
+        } else if (!yaSeOfrecieronAdicionales(historialRecibido) && !clausulasAdicionales) {
+          siguientePregunta = 'Ya completé los datos del contrato. ¿Deseas agregar cláusulas adicionales? Si es así, cuéntame qué quieres pactar.'
+        }
+        if (siguientePregunta) {
+          res.json({
+            tipo: 'pregunta',
+            mensaje: siguientePregunta,
+            ...(cambios.length > 0 ? { cambios } : {}),
+            ...(clausulasAdicionales ? { clausulasAdicionales } : {})
+          } satisfies RespuestaChatEdicion)
+          return
+        }
+      }
+
       const respuesta: RespuestaChatEdicion = {
         tipo: parsed.tipo,
         mensaje: parsed.mensaje,
         ...(!enCambios && parsed.textoModificado !== undefined ? { textoModificado: parsed.textoModificado } : {}),
         ...(enCambios && parsed.tipo === 'documento_final' ? { cambios } : {}),
         // Documento en vivo: lo que aplica la respuesta que acaba de dar el usuario
-        ...(parsed.tipo === 'pregunta' && cambios.length > 0 ? { cambios } : {})
+        ...(parsed.tipo === 'pregunta' && cambios.length > 0 ? { cambios } : {}),
+        ...(clausulasAdicionales ? { clausulasAdicionales } : {})
       }
       res.json(respuesta)
     } catch (err) {
