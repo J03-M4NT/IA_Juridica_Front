@@ -4,7 +4,7 @@
     <div class="scroll-progress" ref="progresoRef" aria-hidden="true"></div>
 
     <!-- Header: transparente sobre el hero oscuro; al bajar se vuelve claro. -->
-    <header class="landing-header" :class="{ 'landing-header--solido': headerSolido }">
+    <header class="landing-header" :class="{ 'landing-header--solido': headerSolido, 'landing-header--claro': !headerSolido }">
       <div class="header-inner">
         <button type="button" class="header-logo" @click="scrollToSection('inicio')">LexIT</button>
         <nav class="header-nav" aria-label="Secciones">
@@ -23,6 +23,59 @@
     </header>
 
     <main class="main-content">
+
+      <!-- ============ ESCENA DE ENTRADA: video + hero ============
+           Computadora (y sin "reducir movimiento"): la escena se fija al
+           bajar; el título centrado sobre el video viaja a su sitio en el
+           hero y sube la demo. Celular/tablet: video arriba y hero debajo.
+           El video vive en public/videos/: si falta, queda el fondo oscuro. -->
+      <div class="escena" :class="{ 'escena--animada': escenaAnimada }" ref="escenaRef">
+      <section class="intro" ref="introRef" aria-label="Presentación de LexIT">
+        <div class="intro-capa" aria-hidden="true">
+          <video
+            v-show="!videoFallo"
+            ref="introVideoRef"
+            class="intro-video"
+            :src="VIDEO_INTRO"
+            :poster="POSTER_INTRO"
+            muted
+            loop
+            playsinline
+            preload="auto"
+            @play="videoReproduciendo = true"
+            @pause="videoReproduciendo = false"
+            @error="videoFallo = true"
+          ></video>
+          <span class="intro-velo"></span>
+          <!-- Capa crema que aparece al bajar (celular): funde la intro con el hero -->
+          <span class="intro-fundido"></span>
+        </div>
+
+        <!-- Copia visual del título del hero (el <h1> real está en el hero) -->
+        <div class="intro-contenido" aria-hidden="true">
+          <span class="intro-marca">§</span>
+          <p class="intro-titulo">
+            El derecho peruano,<br />
+            <em>al alcance de tu práctica.</em>
+          </p>
+        </div>
+
+        <button type="button" class="intro-bajar" @click="bajarAlHero">
+          Descubre LexIT
+          <span class="intro-bajar-flecha" aria-hidden="true">↓</span>
+        </button>
+
+        <button
+          v-if="!videoFallo"
+          type="button"
+          class="intro-control"
+          :aria-label="videoReproduciendo ? 'Pausar video' : 'Reproducir video'"
+          @click="alternarVideo"
+        >
+          <span v-if="videoReproduciendo" class="intro-icono-pausa" aria-hidden="true"></span>
+          <span v-else class="intro-icono-play" aria-hidden="true"></span>
+        </button>
+      </section>
 
       <!-- ============ HERO (verde bosque) ============ -->
       <section class="hero" id="inicio" ref="heroRef" @pointermove="moverFoco">
@@ -159,6 +212,7 @@
           </div>
         </div>
       </section>
+      </div>
 
       <!-- ============ BASE JURÍDICA (marfil): cifras + cinta de normas ============ -->
       <section class="base" aria-label="Base jurídica">
@@ -407,7 +461,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '../stores/auth'
@@ -569,6 +623,197 @@ function scrollToSection(id: string) {
 }
 
 // =========================
+// ESCENA DE ENTRADA (video + hero). El video se reproduce solo mientras
+// se ve; con movimiento reducido no arranca solo (queda el botón).
+// =========================
+const BASE = import.meta.env.BASE_URL
+// En pantallas chicas se carga la versión liviana (720p) del video.
+const VIDEO_INTRO = window.matchMedia('(max-width: 768px)').matches
+  ? `${BASE}videos/lexit-intro-movil.mp4`
+  : `${BASE}videos/lexit-intro.mp4`
+const POSTER_INTRO = `${BASE}videos/lexit-intro-poster.jpg`
+
+// La escena fija (el título viaja del centro a su sitio en el hero) solo
+// va en computadora y sin "reducir movimiento"; en el resto, la intro y
+// el hero van uno debajo del otro.
+const mqEscena = window.matchMedia('(min-width: 1025px) and (prefers-reduced-motion: no-preference)')
+const escenaAnimada = ref(mqEscena.matches)
+const escenaRef = ref<HTMLElement | null>(null)
+const introRef = ref<HTMLElement | null>(null)
+const introVideoRef = ref<HTMLVideoElement | null>(null)
+const videoFallo = ref(false)
+const videoReproduciendo = ref(false)
+const videoPausadoPorUsuario = ref(false)
+let observerIntro: IntersectionObserver | null = null
+let ctxEscena: gsap.Context | null = null
+let triggerEscena: ScrollTrigger | null = null
+
+function reproducirIntro() {
+  const video = introVideoRef.value
+  if (!video || videoFallo.value) return
+  // play() se rechaza si el navegador bloquea el autoplay: no es un error.
+  video.play().catch(() => { videoReproduciendo.value = false })
+}
+
+function alternarVideo() {
+  const video = introVideoRef.value
+  if (!video) return
+  if (video.paused) {
+    videoPausadoPorUsuario.value = false
+    reproducirIntro()
+  } else {
+    videoPausadoPorUsuario.value = true
+    video.pause()
+  }
+}
+
+// Botón "Descubre LexIT": en la escena fija baja hasta el final de la
+// transición; si no, al hero.
+function bajarAlHero() {
+  if (triggerEscena) {
+    window.scrollTo({ top: triggerEscena.end, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+  } else {
+    scrollToSection('inicio')
+  }
+}
+
+// Posición de un elemento dentro de un ancestro, sin contar transforms.
+function posicionEn(el: HTMLElement, ancestro: HTMLElement) {
+  let x = 0
+  let y = 0
+  let actual: HTMLElement | null = el
+  while (actual && actual !== ancestro) {
+    x += actual.offsetLeft
+    y += actual.offsetTop
+    actual = actual.offsetParent as HTMLElement | null
+  }
+  return { x, y, alto: el.offsetHeight }
+}
+
+// Computadora: la escena se fija y, al bajar, el título centrado viaja y
+// se achica hasta el título del hero (se cruzan con un fundido), el video
+// se va y aparecen el resto del texto y la demo.
+function animarEscenaEscritorio(escena: HTMLElement) {
+  const tituloIntro = escena.querySelector<HTMLElement>('.intro-titulo')
+  const h1 = escena.querySelector<HTMLElement>('.hero-title')
+  const demo = escena.querySelector<HTMLElement>('.demo')
+  if (!tituloIntro || !h1 || !demo) return
+
+  const estilos = getComputedStyle(escena)
+  const crema = estilos.getPropertyValue('--crema').trim()
+  const azul = estilos.getPropertyValue('--azul-2').trim()
+  const colorTitulo = getComputedStyle(h1).color
+
+  // Escala hasta el tamaño de letra del hero, sin pasar del ancho de su
+  // columna (así no se monta sobre la demo); se alinea el borde izquierdo
+  // y el centro vertical (transformOrigin: left center, en el CSS).
+  const destino = () => {
+    const a = posicionEn(tituloIntro, escena)
+    const b = posicionEn(h1, escena)
+    const porLetra = parseFloat(getComputedStyle(h1).fontSize) / parseFloat(getComputedStyle(tituloIntro).fontSize)
+    const porAncho = h1.offsetWidth / tituloIntro.offsetWidth
+    return {
+      x: b.x - a.x,
+      y: b.y + b.alto / 2 - (a.y + a.alto / 2),
+      escala: Math.min(porLetra, porAncho)
+    }
+  }
+
+  const tl = gsap.timeline({ defaults: { ease: 'none' } })
+    .fromTo(escena.querySelectorAll('.intro-marca, .intro-bajar, .intro-control'),
+      { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.15 }, 0)
+    .fromTo(escena.querySelector('.intro-video'), { scale: 1 }, { scale: 1.08, duration: 0.6 }, 0)
+    .fromTo(escena.querySelector('.intro-capa'), { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.5, ease: 'power1.inOut' }, 0.1)
+    .fromTo(tituloIntro,
+      { x: 0, y: 0, scale: 1, color: crema, textShadow: '0 2px 4px rgba(0, 0, 0, 0.25), 0 4px 40px rgba(0, 0, 0, 0.45)' },
+      {
+        x: () => destino().x,
+        y: () => destino().y,
+        scale: () => destino().escala,
+        color: colorTitulo,
+        textShadow: '0 2px 4px rgba(0, 0, 0, 0), 0 4px 40px rgba(0, 0, 0, 0)',
+        duration: 0.65,
+        ease: 'power2.inOut'
+      }, 0.05)
+    .fromTo(tituloIntro.querySelector('em'), { color: crema }, { color: azul, duration: 0.65, ease: 'power2.inOut' }, 0.05)
+    // Relevo: la copia se va justo al llegar y entra el <h1> real en el
+    // mismo sitio (en secuencia: si se cruzan, se leen los dos encimados).
+    .fromTo(tituloIntro, { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.07, immediateRender: false }, 0.6)
+    .fromTo(h1, { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: 0.12, ease: 'power2.out' }, 0.67)
+    .fromTo(escena.querySelectorAll('.hero-texto > :not(.hero-title)'),
+      { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 0.25, stagger: 0.04, ease: 'power2.out' }, 0.62)
+    .fromTo(demo,
+      { autoAlpha: 0, y: () => window.innerHeight * 0.6 },
+      { autoAlpha: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 0.52)
+    // Pequeña pausa al final, con todo ya en su sitio
+    .to({}, { duration: 0.12 })
+
+  triggerEscena = ScrollTrigger.create({
+    trigger: escena,
+    start: 'top top',
+    end: '+=110%',
+    pin: true,
+    scrub: 0.8,
+    invalidateOnRefresh: true,
+    refreshPriority: 1,
+    animation: tl,
+    onLeave: () => introVideoRef.value?.pause(),
+    onEnterBack: () => { if (!videoPausadoPorUsuario.value) reproducirIntro() }
+  })
+}
+
+// Celular/tablet: la intro se desvanece al bajar y el hero entra al verse.
+function animarIntroMovil(escena: HTMLElement) {
+  const intro = introRef.value
+  const hero = heroRef.value
+  if (!intro || !hero) return
+
+  ScrollTrigger.create({
+    trigger: intro,
+    start: 'top top',
+    end: 'bottom top',
+    scrub: 0.6,
+    animation: gsap.timeline({ defaults: { ease: 'none' } })
+      // fromTo con valores de inicio explícitos: con .to() GSAP tomaba la
+      // opacidad a mitad de la animación CSS de entrada (≈0) y el texto
+      // quedaba invisible.
+      .fromTo(intro.querySelector('.intro-contenido'), { yPercent: 0, opacity: 1 }, { yPercent: -15, opacity: 0, duration: 0.5 }, 0)
+      .fromTo(intro.querySelectorAll('.intro-bajar, .intro-control'), { opacity: 1 }, { opacity: 0, duration: 0.3 }, 0)
+      .fromTo(intro.querySelector('.intro-video'), { scale: 1 }, { scale: 1.12 }, 0)
+      .fromTo(intro.querySelector('.intro-fundido'), { opacity: 0 }, { opacity: 1, ease: 'power1.in' }, 0)
+  })
+
+  const entradaHero = gsap.timeline({ paused: true })
+    .from(escena.querySelectorAll('.hero-texto > *'), {
+      opacity: 0, y: 28, duration: 0.9, ease: 'power3.out', stagger: 0.1
+    }, 0)
+    .from(escena.querySelector('.demo'), {
+      opacity: 0, y: 40, scale: 0.97, duration: 1.1, ease: 'power3.out'
+    }, 0.25)
+  ScrollTrigger.create({ trigger: hero, start: 'top 70%', once: true, animation: entradaHero })
+}
+
+// (Re)arma la animación de la escena según el tamaño de pantalla. Todo
+// lo que se crea dentro del contexto se deshace con revert().
+function montarEscena() {
+  ctxEscena?.revert()
+  ctxEscena = null
+  triggerEscena = null
+  const escena = escenaRef.value
+  if (!escena || prefersReducedMotion()) return
+  ctxEscena = gsap.context(() => {
+    if (escenaAnimada.value) animarEscenaEscritorio(escena)
+    else animarIntroMovil(escena)
+  }, escena)
+  ScrollTrigger.refresh()
+}
+
+function alCambiarEscena(e: MediaQueryListEvent) {
+  escenaAnimada.value = e.matches
+  void nextTick(montarEscena)
+}
+
+// =========================
 // DEMO DEL HERO: pestañas que rotan solas (se pausan con mouse o teclado)
 // =========================
 const demoActiva = ref(0)
@@ -637,6 +882,13 @@ const headerSolido = ref(false)
 const seccionActiva = ref('')
 const progresoPasos = ref(0)
 
+// El header es transparente (texto claro) mientras está sobre el video.
+function umbralHeader() {
+  if (triggerEscena) return triggerEscena.start + (triggerEscena.end - triggerEscena.start) * 0.25
+  const intro = introRef.value
+  return intro ? Math.max(40, intro.offsetHeight * 0.5) : 40
+}
+
 // Un solo cálculo por cuadro de pantalla para todo lo que depende del scroll.
 let cuadroScroll: number | null = null
 function alHacerScroll() {
@@ -646,7 +898,7 @@ function alHacerScroll() {
     const total = document.documentElement.scrollHeight - window.innerHeight
     const avance = total > 0 ? window.scrollY / total : 0
     if (progresoRef.value) progresoRef.value.style.transform = `scaleX(${avance})`
-    headerSolido.value = window.scrollY > 40
+    headerSolido.value = window.scrollY > umbralHeader()
     // Línea de "Cómo funciona": se llena mientras la sección cruza la pantalla.
     const pasos = pasosRef.value
     if (pasos) {
@@ -727,16 +979,24 @@ onMounted(() => {
     if (el) observerSecciones.observe(el)
   }
 
+  // Video de la intro: corre en pantalla, se pausa fuera de ella.
+  if (!prefersReducedMotion() && introRef.value) {
+    observerIntro = new IntersectionObserver(([entry]) => {
+      if (entry?.isIntersecting) {
+        if (!videoPausadoPorUsuario.value) reproducirIntro()
+      } else {
+        introVideoRef.value?.pause()
+      }
+    }, { threshold: 0.1 })
+    observerIntro.observe(introRef.value)
+  }
+
+  mqEscena.addEventListener('change', alCambiarEscena)
+  montarEscena()
+  alHacerScroll()
+
   const root = pageRoot.value
   if (!root || prefersReducedMotion()) return
-
-  // Entrada del hero.
-  gsap.from(root.querySelectorAll('.hero-texto > *'), {
-    opacity: 0, y: 28, duration: 0.9, ease: 'power3.out', stagger: 0.1, delay: 0.1
-  })
-  gsap.from(root.querySelector('.demo'), {
-    opacity: 0, y: 40, scale: 0.97, duration: 1.1, ease: 'power3.out', delay: 0.35
-  })
 
   // Parallax suave de las imágenes editoriales.
   root.querySelectorAll<HTMLElement>('.parallax-img').forEach((img) => {
@@ -753,6 +1013,9 @@ onMounted(() => {
 onUnmounted(() => {
   observerReveal?.disconnect()
   observerSecciones?.disconnect()
+  observerIntro?.disconnect()
+  mqEscena.removeEventListener('change', alCambiarEscena)
+  ctxEscena?.revert()
   scrollTriggers.forEach((st) => st.kill())
   if (demoTimer) clearInterval(demoTimer)
   if (escrituraTimer) clearInterval(escrituraTimer)
@@ -932,6 +1195,212 @@ onUnmounted(() => {
 :deep(.auth-buttons .login-btn:hover) { background: rgba(23, 33, 27, 0.06) !important; }
 :deep(.auth-buttons .register-btn) { background: var(--bosque) !important; color: var(--crema) !important; }
 :deep(.auth-buttons .register-btn:hover) { background: var(--grisaceo) !important; }
+
+/* Header sobre el video de la intro (arriba del todo): texto claro */
+.header-logo { transition: color 0.35s var(--ease); }
+.landing-header--claro .header-logo { color: var(--crema); }
+.landing-header--claro .header-nav-link { color: rgba(248, 247, 242, 0.8); }
+.landing-header--claro .header-nav-link:hover,
+.landing-header--claro .header-nav-link--activo { color: var(--crema); }
+.landing-header--claro :deep(.auth-buttons .login-btn) { color: var(--crema) !important; }
+.landing-header--claro :deep(.auth-buttons .login-btn:hover) { background: rgba(255, 255, 255, 0.12) !important; }
+.landing-header--claro :deep(.auth-buttons .register-btn) { background: var(--crema) !important; color: var(--bosque) !important; }
+.landing-header--claro :deep(.auth-buttons .register-btn:hover) { background: var(--blanco) !important; }
+
+/* ==============================
+   INTRO EN VIDEO (pantalla completa, texto serif centrado)
+   ============================== */
+.intro {
+  position: relative;
+  height: 100vh;
+  height: 100svh;
+  min-height: 520px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 96px var(--gutter) 120px;
+  color: var(--crema);
+  text-align: center;
+}
+
+/* Video + velo. Su fondo queda si el video aún no carga o no existe. */
+.intro-capa {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(900px circle at 50% 40%, rgba(61, 71, 58, 0.9), transparent 70%),
+    var(--bosque);
+}
+
+.intro-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+/* Velo para que el texto blanco se lea sobre cualquier toma */
+.intro-velo {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(23, 33, 27, 0.45) 0%, rgba(23, 33, 27, 0.12) 35%, rgba(23, 33, 27, 0.15) 65%, rgba(23, 33, 27, 0.5) 100%),
+    radial-gradient(ellipse 65% 50% at 50% 50%, rgba(23, 33, 27, 0.38), transparent 75%);
+}
+
+/* Al bajar, GSAP sube su opacidad hasta igualar el fondo del hero */
+.intro-fundido {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--crema);
+  opacity: 0;
+}
+
+
+.intro-contenido {
+  position: relative;
+  max-width: 1000px;
+  animation: intro-entrada 1.4s var(--ease) backwards;
+}
+
+.intro-marca {
+  display: block;
+  font-family: var(--serif);
+  font-size: clamp(2.6rem, 4vw, 3.6rem);
+  line-height: 1;
+  margin-bottom: clamp(20px, 3vw, 36px);
+  opacity: 0.95;
+}
+
+/* Mismo peso y espaciado que el título del hero: en computadora este
+   texto viaja hasta él y se cruzan. inline-block: la caja mide lo que
+   el texto (sirve para calcular el viaje). */
+.intro-titulo {
+  display: inline-block;
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(2.4rem, 5.6vw, 5.4rem);
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+  color: var(--crema);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.25), 0 4px 40px rgba(0, 0, 0, 0.45);
+  transform-origin: left center;
+}
+
+.intro-titulo em { color: var(--crema); }
+
+/* ---------- Escena fija (solo computadora, ver montarEscena) ----------
+   La intro se superpone al hero (primer alto de pantalla); al bajar, la
+   escena se fija y GSAP hace la transición. */
+.escena { position: relative; }
+
+.escena--animada .intro {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 2;
+  min-height: 0;
+  pointer-events: none;
+}
+
+.escena--animada .intro-bajar,
+.escena--animada .intro-control { pointer-events: auto; }
+
+.escena--animada .intro-fundido { display: none; }
+
+.escena--animada .hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding-top: 110px;
+  padding-bottom: 72px;
+}
+
+.escena--animada .hero-inner { width: 100%; }
+
+@keyframes intro-entrada {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
+}
+
+.intro-bajar {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(24px, 5vh, 44px);
+  transform: translateX(-50%);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(248, 247, 242, 0.85);
+  transition: color 0.25s var(--ease-out);
+}
+
+.intro-bajar-flecha {
+  font-size: 1.1rem;
+  animation: intro-flecha 2s var(--ease) infinite;
+}
+
+@keyframes intro-flecha {
+  0%, 100% { transform: translateY(0); opacity: 0.6; }
+  50% { transform: translateY(6px); opacity: 1; }
+}
+
+.intro-control {
+  position: absolute;
+  right: var(--gutter);
+  bottom: clamp(24px, 5vh, 44px);
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(248, 247, 242, 0.45);
+  background: rgba(23, 33, 27, 0.35);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  color: var(--crema);
+  transition: background-color 0.2s var(--ease-out), border-color 0.2s var(--ease-out);
+}
+
+.intro-icono-pausa {
+  width: 10px;
+  height: 12px;
+  border-left: 3px solid currentColor;
+  border-right: 3px solid currentColor;
+}
+
+.intro-icono-play {
+  width: 0;
+  height: 0;
+  margin-left: 3px;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-left: 11px solid currentColor;
+}
+
+.intro-bajar:focus-visible,
+.intro-control:focus-visible { outline: 2px solid var(--crema); outline-offset: 3px; }
+
+@media (hover: hover) and (pointer: fine) {
+  .intro-bajar:hover { color: var(--crema); }
+  .intro-control:hover { background: rgba(23, 33, 27, 0.6); border-color: var(--crema); }
+}
 
 /* ==============================
    BOTONES
