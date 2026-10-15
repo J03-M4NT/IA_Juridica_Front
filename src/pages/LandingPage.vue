@@ -92,7 +92,6 @@
 
         <!-- Copia visual del título del hero (el <h1> real está en el hero) -->
         <div class="intro-contenido" aria-hidden="true">
-          <span class="intro-marca">§</span>
           <p class="intro-titulo">
             El derecho peruano,<br />
             <em>al alcance de tu práctica.</em>
@@ -154,12 +153,11 @@
             <p class="hero-caption">Hecho para abogados, estudios jurídicos y estudiantes de derecho en Perú</p>
           </div>
 
-          <!-- Demo del producto: pestañas reales (cambia el contenido). Al
-               hacer clic en la ventana invita a iniciar sesión. -->
+          <!-- Demo del producto: las pestañas rotan solas cada 3 s; al elegir
+               una, se queda en ella. Al hacer clic en la ventana invita a
+               iniciar sesión. -->
           <div
             class="demo"
-            @pointerenter="demoPausada = true"
-            @pointerleave="demoPausada = false"
             @focusin="demoPausada = true"
             @focusout="demoPausada = false"
           >
@@ -180,7 +178,13 @@
                 @keydown.left.prevent="elegirDemo((i + DEMO_TABS.length - 1) % DEMO_TABS.length, true)"
               >{{ tab.etiqueta }}</button>
               <span class="demo-tabs-progreso" :style="{ '--i': demoActiva }" aria-hidden="true">
-                <span :key="demoActiva" class="demo-tabs-progreso-relleno" :class="{ 'demo-tabs-progreso-relleno--pausa': demoPausada }"></span>
+                <span
+                  v-if="!demoElegida"
+                  :key="demoActiva"
+                  class="demo-tabs-progreso-relleno"
+                  :class="{ 'demo-tabs-progreso-relleno--pausa': demoPausada }"
+                  :style="{ animationDuration: `${DEMO_MS}ms` }"
+                ></span>
               </span>
             </div>
 
@@ -231,7 +235,7 @@
                   </span>
                   <span class="demo-msg demo-msg--user">Quiero alquilar mi departamento</span>
                   <span class="demo-plantilla">
-                    <span class="demo-plantilla-icono" aria-hidden="true">§</span>
+                    <span class="demo-plantilla-icono" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h4" /></svg></span>
                     <span class="demo-plantilla-texto"><b>Contrato de Arrendamiento</b>Plantilla en Word, lista para completar</span>
                     <span class="demo-plantilla-accion">Usar →</span>
                   </span>
@@ -268,7 +272,7 @@
           <div class="cinta-pista">
             <template v-for="vuelta in 2" :key="vuelta">
               <span v-for="norma in NORMAS_CINTA" :key="`${vuelta}-${norma}`" class="cinta-item" :aria-hidden="vuelta === 2 ? 'true' : undefined">
-                <span class="cinta-sep" aria-hidden="true">§</span>{{ norma }}
+                <span class="cinta-sep" aria-hidden="true"></span>{{ norma }}
               </span>
             </template>
           </div>
@@ -329,7 +333,7 @@
         </div>
       </section>
 
-      <!-- ============ ESPECIALIZACIONES (oliva oscuro) ============ -->
+      <!-- ============ ESPECIALIZACIONES (pintura de fondo con velo azul) ============ -->
       <section class="especialidades" id="especializaciones">
         <div class="section-header reveal">
           <span class="section-label">Especializaciones</span>
@@ -349,7 +353,7 @@
           >
             <div class="esp-cabecera">
               <span class="esp-num">{{ String(i + 1).padStart(2, '0') }}</span>
-              <span class="esp-icono" aria-hidden="true">§</span>
+              <span class="esp-icono" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M5 7h14M12 5l0 2" /><path d="M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z" /></svg></span>
             </div>
             <h3 class="esp-titulo">{{ esp.titulo }}</h3>
             <p class="esp-desc">{{ esp.descripcion }}</p>
@@ -851,7 +855,7 @@ function animarEscenaEscritorio(escena: HTMLElement) {
   }
 
   const tl = gsap.timeline({ defaults: { ease: 'none' } })
-    .fromTo(escena.querySelectorAll('.intro-marca, .intro-bajar, .intro-control'),
+    .fromTo(escena.querySelectorAll('.intro-bajar, .intro-control'),
       { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.15 }, 0)
     .fromTo(escena.querySelector('.intro-video'), { scale: 1 }, { scale: 1.08, duration: 0.6 }, 0)
     .fromTo(escena.querySelector('.intro-capa'), { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.5, ease: 'power1.inOut' }, 0.1)
@@ -945,11 +949,13 @@ function alCambiarEscena(e: MediaQueryListEvent) {
 }
 
 // =========================
-// DEMO DEL HERO: pestañas que rotan solas (se pausan con mouse o teclado)
+// DEMO DEL HERO: pestañas que rotan solas cada 3 s (se pausan mientras
+// se navega con teclado). Si el usuario elige una, se queda en ella.
 // =========================
 const demoActiva = ref(0)
 const demoPausada = ref(false)
-const DEMO_MS = 7000
+const demoElegida = ref(false)
+const DEMO_MS = 3000
 let demoTimer: ReturnType<typeof setInterval> | null = null
 
 const textoEscrito = ref(RESPUESTA_DEMO)
@@ -980,7 +986,10 @@ function escribirRespuesta() {
 function elegirDemo(i: number, enfocar = false) {
   demoActiva.value = i
   if (i === 0) escribirRespuesta()
-  reiniciarDemo()
+  // Eligió una opción: se detiene la rotación para que la vea con calma.
+  demoElegida.value = true
+  if (demoTimer) clearInterval(demoTimer)
+  demoTimer = null
   if (enfocar) document.getElementById(`demo-tab-${i}`)?.focus()
 }
 
@@ -1607,15 +1616,6 @@ onUnmounted(() => {
   animation: intro-entrada 1.4s var(--ease) backwards;
 }
 
-.intro-marca {
-  display: block;
-  font-family: var(--serif);
-  font-size: clamp(2.6rem, 4vw, 3.6rem);
-  line-height: 1;
-  margin-bottom: clamp(20px, 3vw, 36px);
-  opacity: 0.95;
-}
-
 /* Mismo peso y espaciado que el título del hero: en computadora este
    texto viaja hasta él y se cruzan. inline-block: la caja mide lo que
    el texto (sirve para calcular el viaje). */
@@ -1949,7 +1949,8 @@ onUnmounted(() => {
   height: 100%;
   background: var(--beige-oliva);
   transform-origin: left;
-  animation: llenar 7s linear forwards;
+  /* La duración real llega desde DEMO_MS (style en la plantilla) */
+  animation: llenar 3s linear forwards;
 }
 
 .demo-tabs-progreso-relleno--pausa { animation-play-state: paused; }
@@ -2348,6 +2349,15 @@ onUnmounted(() => {
 
 .cinta-sep { color: var(--grisaceo); opacity: 0.7; }
 
+.cinta-sep::before {
+  content: '';
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
 @keyframes cinta {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
@@ -2435,18 +2445,6 @@ onUnmounted(() => {
   transition: background-color 0.6s var(--ease);
 }
 
-.producto-vista::before {
-  content: '§';
-  position: absolute;
-  top: -40px;
-  right: 10px;
-  font-family: var(--serif);
-  font-size: 320px;
-  line-height: 1;
-  color: var(--texto);
-  opacity: 0.06;
-  pointer-events: none;
-}
 
 /* Cada herramienta tiñe el panel con un tono claro distinto */
 .producto-vista[data-tono='bosque'] { background: var(--crema); }
@@ -2621,12 +2619,13 @@ onUnmounted(() => {
 }
 
 .esp-normas li::before {
-  content: '§';
+  content: '';
   position: absolute;
   left: 0;
-  top: 0;
-  font-family: var(--serif);
-  color: var(--oliva);
+  top: 0.7em;
+  width: 7px;
+  height: 1.5px;
+  background: var(--oliva);
 }
 
 .esp-cta {
@@ -3143,6 +3142,102 @@ onUnmounted(() => {
 
 .cinta-sep { color: var(--crema); opacity: 0.45; }
 
+/* ---- Producto: relieve de fondo ----
+   Solo capas decorativas detrás del contenido (z-index -1 dentro de un
+   contexto aislado): no cambian colores, tamaños ni posición de nada. */
+.producto {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(900px circle at 8% 0%, rgba(189, 181, 155, 0.22), transparent 60%),
+    radial-gradient(800px circle at 100% 100%, rgba(var(--azul-rgb), 0.06), transparent 60%),
+    var(--blanco);
+}
+
+/* Trama de puntos finos, desvanecida hacia los bordes */
+.producto::before,
+.producto::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.producto::before {
+  background-image: radial-gradient(rgba(var(--azul-rgb), 0.11) 1px, transparent 1.5px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 45%, #000 20%, transparent 85%);
+  mask-image: radial-gradient(ellipse 75% 65% at 50% 45%, #000 20%, transparent 85%);
+}
+
+/* Anillos concéntricos grabados, como el relieve de un sello */
+.producto::after {
+  --anillos: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Cg fill='none' stroke='%232C3B4D' stroke-opacity='0.09'%3E%3Ccircle cx='300' cy='300' r='70'/%3E%3Ccircle cx='300' cy='300' r='92'/%3E%3Ccircle cx='300' cy='300' r='114'/%3E%3Ccircle cx='300' cy='300' r='136'/%3E%3Ccircle cx='300' cy='300' r='158'/%3E%3Ccircle cx='300' cy='300' r='180'/%3E%3Ccircle cx='300' cy='300' r='202'/%3E%3Ccircle cx='300' cy='300' r='224'/%3E%3Ccircle cx='300' cy='300' r='246'/%3E%3Ccircle cx='300' cy='300' r='268'/%3E%3Ccircle cx='300' cy='300' r='290' stroke-dasharray='2 6'/%3E%3C/g%3E%3C/svg%3E");
+  background:
+    var(--anillos) right -200px top -220px / clamp(380px, 42vw, 620px) no-repeat,
+    var(--anillos) left -240px bottom -260px / clamp(340px, 36vw, 540px) no-repeat;
+}
+
+/* ---- Nosotros y Dirección/Equipo: mismo relieve que Producto ----
+   Igual que arriba: solo pseudo-elementos detrás del contenido, sin tocar
+   colores ni medidas. .equipo mide 1200px, así que su relieve se extiende
+   a todo el ancho (.landing-page ya recorta el desborde horizontal). */
+.nosotros,
+.equipo {
+  position: relative;
+  isolation: isolate;
+}
+
+.nosotros::before,
+.nosotros::after,
+.equipo::before,
+.equipo::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.equipo::before,
+.equipo::after {
+  left: calc(50% - 50vw);
+  right: calc(50% - 50vw);
+}
+
+/* Trama de puntos finos, desvanecida hacia los bordes */
+.nosotros::before,
+.equipo::before {
+  background-image: radial-gradient(rgba(var(--azul-rgb), 0.11) 1px, transparent 1.5px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 45%, #000 20%, transparent 85%);
+  mask-image: radial-gradient(ellipse 75% 65% at 50% 45%, #000 20%, transparent 85%);
+}
+
+/* Luces suaves y anillos de sello, en esquinas distintas a Producto */
+.nosotros::after,
+.equipo::after {
+  --anillos: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Cg fill='none' stroke='%232C3B4D' stroke-opacity='0.09'%3E%3Ccircle cx='300' cy='300' r='70'/%3E%3Ccircle cx='300' cy='300' r='92'/%3E%3Ccircle cx='300' cy='300' r='114'/%3E%3Ccircle cx='300' cy='300' r='136'/%3E%3Ccircle cx='300' cy='300' r='158'/%3E%3Ccircle cx='300' cy='300' r='180'/%3E%3Ccircle cx='300' cy='300' r='202'/%3E%3Ccircle cx='300' cy='300' r='224'/%3E%3Ccircle cx='300' cy='300' r='246'/%3E%3Ccircle cx='300' cy='300' r='268'/%3E%3Ccircle cx='300' cy='300' r='290' stroke-dasharray='2 6'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.nosotros::after {
+  background:
+    var(--anillos) left -220px top -200px / clamp(380px, 42vw, 620px) no-repeat,
+    radial-gradient(900px circle at 95% 10%, rgba(189, 181, 155, 0.22), transparent 60%),
+    radial-gradient(700px circle at 0% 100%, rgba(var(--azul-rgb), 0.05), transparent 60%);
+}
+
+.equipo::after {
+  background:
+    var(--anillos) right -240px top 30% / clamp(380px, 40vw, 600px) no-repeat,
+    radial-gradient(900px circle at 5% 30%, rgba(189, 181, 155, 0.2), transparent 60%),
+    radial-gradient(800px circle at 100% 100%, rgba(var(--azul-rgb), 0.05), transparent 60%);
+}
+
 /* ---- Producto y pasos ---- */
 .herr--activa .herr-num { color: var(--azul-2) !important; }
 .herr--activa { box-shadow: inset 2px 0 0 var(--azul-2); }
@@ -3171,6 +3266,33 @@ onUnmounted(() => {
 @media (hover: hover) and (pointer: fine) {
   .mv-bloque:hover { border-left-color: var(--crema); }
 }
+
+/* ---- Especializaciones: "La tormenta en el mar de Galilea" de fondo ----
+   Velo azul (Abyssal) encima de la pintura y acentos en el ocre de sus
+   velas; solo afecta a esta sección. */
+.especialidades {
+  --oro: #C9A774;
+  --oro-claro: #DEC29A;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(var(--azul-rgb), 0.9) 0%, rgba(var(--azul-rgb), 0.72) 40%, rgba(var(--azul-rgb), 0.82) 75%, rgba(var(--azul-rgb), 0.95) 100%),
+    radial-gradient(900px circle at 30% 45%, rgba(201, 167, 116, 0.16), transparent 65%),
+    url('../assets/especializaciones/fondo-tormenta.jpg') center 58% / cover no-repeat,
+    var(--azul);
+  color: var(--crema);
+}
+
+.especialidades .section-label { color: var(--oro); }
+.especialidades .section-label::before { background: var(--oro); }
+.especialidades .section-title { color: var(--crema); }
+.especialidades .section-title em { color: var(--oro-claro); }
+.especialidades .section-subtitle { color: var(--crema-sobre-azul); }
+
+/* Las tarjetas no cambian: recuperan el color de texto de siempre para
+   no heredar el crema del encabezado. */
+.especialidades .esp { color: var(--texto); }
 
 /* ---- Llamado final: azul con resplandor que se mueve lento ---- */
 .cta {
