@@ -71,6 +71,16 @@
             <q-tooltip v-if="esEscritorio && !drawerOpen" anchor="center right" self="center left" :offset="[12, 0]">Contratos</q-tooltip>
           </router-link>
 
+          <router-link to="/app/redaccion" class="sidebar-link" aria-label="Redacción avanzada"
+            :class="{ 'sidebar-link--active': $route.path === '/app/redaccion' }"
+            @click="cerrarDrawerEnMobile">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>
+            </svg>
+            <span class="sidebar-link-texto q-mini-drawer-hide">Redacción avanzada</span>
+            <q-tooltip v-if="esEscritorio && !drawerOpen" anchor="center right" self="center left" :offset="[12, 0]">Redacción avanzada</q-tooltip>
+          </router-link>
+
           <router-link to="/app/normas" class="sidebar-link" aria-label="Normas"
             :class="{ 'sidebar-link--active': $route.path === '/app/normas' }"
             @click="cerrarDrawerEnMobile">
@@ -79,6 +89,16 @@
             </svg>
             <span class="sidebar-link-texto q-mini-drawer-hide">Normas</span>
             <q-tooltip v-if="esEscritorio && !drawerOpen" anchor="center right" self="center left" :offset="[12, 0]">Normas</q-tooltip>
+          </router-link>
+
+          <router-link to="/app/panorama" class="sidebar-link" aria-label="Panorama del día"
+            :class="{ 'sidebar-link--active': $route.path === '/app/panorama' }"
+            @click="cerrarDrawerEnMobile">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>
+            </svg>
+            <span class="sidebar-link-texto q-mini-drawer-hide">Panorama del día</span>
+            <q-tooltip v-if="esEscritorio && !drawerOpen" anchor="center right" self="center left" :offset="[12, 0]">Panorama del día</q-tooltip>
           </router-link>
 
           <router-link
@@ -394,6 +414,8 @@ const SECCIONES: Record<string, { titulo: string; subtitulo: string }> = {
   '/app/consultas': { titulo: 'Consultas', subtitulo: 'Asistente jurídico · Derecho peruano' },
   '/app/analisis': { titulo: 'Análisis de contratos', subtitulo: 'Revisión jurídica de documentos' },
   '/app/contratos': { titulo: 'Gestión de contratos', subtitulo: 'Plantillas jurídicas · Derecho peruano' },
+  '/app/redaccion': { titulo: 'Redacción avanzada', subtitulo: 'Cartas, cargos y escritos · Derecho peruano' },
+  '/app/panorama': { titulo: 'Panorama del día', subtitulo: 'BCRP · SMV · Congreso · El Peruano' },
   '/app/normas': { titulo: 'Normas', subtitulo: 'Diario Oficial El Peruano' },
   '/app/admin': { titulo: 'Administración', subtitulo: 'Base jurídica y plantillas' }
 }
@@ -3196,5 +3218,148 @@ body.lexit-app-plana .app-barra-titulo {
 
 .saltar-contenido:focus-visible {
   outline-color: #191C1F;
+}
+
+/* ==========================================================================
+   BARRA LATERAL: GRAFITO CON ACENTO AZUL (nuevo diseño)
+   Gris grafito #23272E → #1B1E23, neutro y premium; el azul (#3B6EA8) solo
+   marca la opción activa (barra a la izquierda y fondo tenue). Opciones
+   rectangulares con esquinas suaves, íconos en blanco suave, separadores
+   finos y la cuenta del usuario abajo en un bloque.
+   ========================================================================== */
+body.lexit-app-plana .app-sidebar {
+  --lexit-blanco-calido: #23272E;
+  --lexit-blanco: rgba(255, 255, 255, 0.14);
+  --lexit-marfil: rgba(255, 255, 255, 0.16);
+  --lexit-marfil-suave: rgba(255, 255, 255, 0.08);
+}
+
+body.lexit-app-plana .app-sidebar .sidebar-inner {
+  background: linear-gradient(180deg, #23272E 0%, #1F2329 55%, #1B1E23 100%);
+}
+
+body.lexit-app-plana .app-sidebar .q-drawer__content {
+  border-right: 1px solid #15181C;
+}
+
+/* Marca */
+body.lexit-app-plana .app-sidebar .sidebar-brand {
+  border-bottom-color: rgba(255, 255, 255, 0.16);
+}
+
+/* Opciones: rectángulos con esquinas suaves */
+.app-sidebar.app-sidebar.app-sidebar.app-sidebar :is(.sidebar-link, .history-item, .new-chat-btn, .sidebar-plegar, .sidebar-usuario-mini) {
+  border-radius: 8px !important;
+}
+
+body.lexit-app-plana .app-sidebar .sidebar-link {
+  position: relative;
+  min-height: 46px;
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 500;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+body.lexit-app-plana .app-sidebar .sidebar-link svg {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+body.lexit-app-plana .app-sidebar .sidebar-link:not(.sidebar-link--active):hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #FFFFFF;
+}
+
+body.lexit-app-plana .app-sidebar .sidebar-link:not(.sidebar-link--active):hover svg {
+  color: #FFFFFF;
+}
+
+/* Activa: fondo translúcido + barra blanca a la izquierda */
+body.lexit-app-plana .app-sidebar .sidebar-link--active {
+  background-color: rgba(59, 110, 168, 0.22) !important;
+  color: #FFFFFF !important;
+  font-weight: 600;
+}
+
+body.lexit-app-plana .app-sidebar .sidebar-link--active :is(svg, .sidebar-link-texto) {
+  background-color: transparent !important;
+  color: #FFFFFF !important;
+}
+
+body.lexit-app-plana .app-sidebar .sidebar-link--active::before {
+  content: '';
+  display: block !important;
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  background: #3B6EA8 !important;
+  border-radius: 0 3px 3px 0 !important;
+}
+
+/* Riel plegado: la barra activa también se ve */
+.app-sidebar.q-drawer--mini .sidebar-link--active::before {
+  top: 12px;
+  bottom: 12px;
+}
+
+/* Historial */
+body.lexit-app-plana .app-sidebar .history-title {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+body.lexit-app-plana .app-sidebar .history-item {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+body.lexit-app-plana .app-sidebar .history-item:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #FFFFFF;
+}
+
+body.lexit-app-plana .app-sidebar .history-item--active {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #FFFFFF;
+}
+
+body.lexit-app-plana .app-sidebar .history-item--active::before {
+  background: #3B6EA8;
+}
+
+body.lexit-app-plana .app-sidebar .new-chat-btn {
+  color: #FFFFFF !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.lexit-app-plana .app-sidebar .new-chat-btn:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+}
+
+/* Separadores */
+body.lexit-app-plana .app-sidebar .sidebar-separator {
+  background: rgba(255, 255, 255, 0.14) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+/* Cuenta del usuario: bloque abajo */
+body.lexit-app-plana .app-sidebar .sidebar-footer {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+body.lexit-app-plana .app-sidebar .sidebar-footer :deep(.user-profile-btn),
+body.lexit-app-plana .app-sidebar .sidebar-footer .user-profile-btn {
+  border-radius: 8px !important;
+}
+
+body.lexit-app-plana .app-sidebar .sidebar-plegar:hover,
+body.lexit-app-plana .app-sidebar .sidebar-usuario-mini:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.app-sidebar :is(button, a, [tabindex="0"]):focus-visible {
+  outline: 2px solid #FFFFFF !important;
+  outline-offset: 2px;
 }
 </style>

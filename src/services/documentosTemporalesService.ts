@@ -41,9 +41,16 @@ export async function descargarWordEditado(
   nombreDescarga: string,
   // marcaLexit: agrega el membrete "LEXIT" / "Generado por LexIT" dentro del
   // Word original (descargas de Contratos y de Análisis de contratos).
-  opciones: { marcaLexit?: boolean } = {}
+  // clausulasAdicionales: Gestión de contratos, se insertan antes del cierre
+  opciones: { marcaLexit?: boolean; clausulasAdicionales?: { encabezado: string; texto: string }[] } = {}
 ): Promise<ResultadoWordEditado> {
-  const response = await postFuncion('descargarWordEditado', { storagePath, cambios, nombreDescarga, marcaLexit: opciones.marcaLexit === true })
+  const response = await postFuncion('descargarWordEditado', {
+    storagePath,
+    cambios,
+    nombreDescarga,
+    marcaLexit: opciones.marcaLexit === true,
+    ...(opciones.clausulasAdicionales?.length ? { clausulasAdicionales: opciones.clausulasAdicionales } : {})
+  })
   const data = await response.json() as Partial<ResultadoWordEditado> & { error?: string }
   if (!response.ok || !data.url) {
     throw new Error(data.error ?? 'No se pudo generar el Word editado')

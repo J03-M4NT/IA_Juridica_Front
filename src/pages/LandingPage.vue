@@ -26,6 +26,26 @@
 
       <!-- ============ HERO (verde bosque) ============ -->
       <section class="hero" id="inicio" ref="heroRef" @pointermove="moverFoco">
+        <!-- Video de fondo (Lima al atardecer): a pantalla completa al
+             entrar; al bajar se desvanece y el contenido toma su lugar. -->
+        <div class="hero-video" aria-hidden="true">
+          <video
+            ref="videoHeroRef"
+            class="hero-video-media"
+            :poster="posterHero"
+            autoplay
+            muted
+            loop
+            playsinline
+            preload="auto"
+            disablepictureinpicture
+          >
+            <source :src="videoHeroWebm" type="video/webm" />
+            <source :src="videoHeroMp4" type="video/mp4" />
+          </video>
+          <span class="hero-video-velo"></span>
+        </div>
+
         <div class="hero-fondo" aria-hidden="true">
           <span class="hero-foco"></span>
           <span class="hero-rejilla"></span>
@@ -139,7 +159,7 @@
                   </span>
                   <span class="demo-msg demo-msg--user">Quiero alquilar mi departamento</span>
                   <span class="demo-plantilla">
-                    <span class="demo-plantilla-icono" aria-hidden="true">§</span>
+                    <span class="demo-plantilla-icono" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg></span>
                     <span class="demo-plantilla-texto"><b>Contrato de Arrendamiento</b>Plantilla en Word, lista para completar</span>
                     <span class="demo-plantilla-accion">Usar →</span>
                   </span>
@@ -175,7 +195,7 @@
           <div class="cinta-pista">
             <template v-for="vuelta in 2" :key="vuelta">
               <span v-for="norma in NORMAS_CINTA" :key="`${vuelta}-${norma}`" class="cinta-item" :aria-hidden="vuelta === 2 ? 'true' : undefined">
-                <span class="cinta-sep" aria-hidden="true">§</span>{{ norma }}
+                <span class="cinta-sep" aria-hidden="true"></span>{{ norma }}
               </span>
             </template>
           </div>
@@ -256,7 +276,6 @@
           >
             <div class="esp-cabecera">
               <span class="esp-num">{{ String(i + 1).padStart(2, '0') }}</span>
-              <span class="esp-icono" aria-hidden="true">§</span>
             </div>
             <h3 class="esp-titulo">{{ esp.titulo }}</h3>
             <p class="esp-desc">{{ esp.descripcion }}</p>
@@ -414,6 +433,9 @@ import { useAuthStore } from '../stores/auth'
 import AuthButtons from '../components/Auth/AuthButtons.vue'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import videoHeroMp4 from '../assets/landing/hero-fondo.mp4'
+import videoHeroWebm from '../assets/landing/hero-fondo.webm'
+import posterHero from '../assets/landing/hero-fondo.jpg'
 import fotoAlexZegarra from '../assets/equipo/alex-zegarra.jpg'
 import fotoMijhailMedina from '../assets/equipo/mijhail-medina.jpg'
 import fotoJoeMantilla from '../assets/equipo/joe-mantilla.jpg'
@@ -432,6 +454,7 @@ const { isAuthenticated } = storeToRefs(authStore)
 
 const pageRoot = ref<HTMLElement | null>(null)
 const heroRef = ref<HTMLElement | null>(null)
+const videoHeroRef = ref<HTMLVideoElement | null>(null)
 const progresoRef = ref<HTMLElement | null>(null)
 const pasosRef = ref<HTMLElement | null>(null)
 const authButtonsRef = ref<InstanceType<typeof AuthButtons> | null>(null)
@@ -730,13 +753,38 @@ onMounted(() => {
   const root = pageRoot.value
   if (!root || prefersReducedMotion()) return
 
-  // Entrada del hero.
-  gsap.from(root.querySelectorAll('.hero-texto > *'), {
-    opacity: 0, y: 28, duration: 0.9, ease: 'power3.out', stagger: 0.1, delay: 0.1
-  })
-  gsap.from(root.querySelector('.demo'), {
-    opacity: 0, y: 40, scale: 0.97, duration: 1.1, ease: 'power3.out', delay: 0.35
-  })
+  // Entrada del hero. En escritorio: primero el video a pantalla completa
+  // con el titular centrado; al bajar, el titular va a su lugar (izquierda),
+  // el video se desvanece, aparece el resto del texto y sube la demo.
+  const hero = heroRef.value
+  const titulo = root.querySelector<HTMLElement>('.hero-title')
+  const demo = root.querySelector<HTMLElement>('.demo')
+  if (hero && titulo && demo && window.matchMedia('(min-width: 1025px)').matches) {
+    hero.classList.add('hero--intro')
+    const otros = Array.from(root.querySelectorAll<HTMLElement>('.hero-texto > *')).filter(el => el !== titulo)
+    const rTitulo = titulo.getBoundingClientRect()
+    const rHero = hero.getBoundingClientRect()
+    const dx = rHero.left + rHero.width / 2 - (rTitulo.left + rTitulo.width / 2)
+    const dy = window.innerHeight / 2 - (rTitulo.top + rTitulo.height / 2)
+
+    const intro = gsap.timeline({
+      scrollTrigger: { trigger: hero, start: 'top top', end: '+=110%', scrub: 0.7, pin: true, anticipatePin: 1 }
+    })
+    intro
+      .fromTo(hero, { '--hero-tinta': '#FFFFFF', '--hero-em': 'rgba(255, 255, 255, 0.78)' }, { '--hero-tinta': '#141414', '--hero-em': '#1D3B63', duration: 0.8, ease: 'none' }, 0.1)
+      .fromTo(titulo, { x: dx, y: dy, scale: 1.12 }, { x: 0, y: 0, scale: 1, duration: 1, ease: 'power2.inOut' }, 0)
+      .fromTo(root.querySelector('.hero-video'), { opacity: 1 }, { opacity: 0, duration: 0.75, ease: 'none' }, 0.15)
+      .fromTo(otros, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.05, ease: 'power2.out' }, 0.6)
+      .fromTo(demo, { y: () => window.innerHeight * 0.7, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: 'power2.out' }, 0.35)
+    if (intro.scrollTrigger) scrollTriggers.push(intro.scrollTrigger)
+  } else {
+    gsap.from(root.querySelectorAll('.hero-texto > *'), {
+      opacity: 0, y: 28, duration: 0.9, ease: 'power3.out', stagger: 0.1, delay: 0.1
+    })
+    gsap.from(demo, {
+      opacity: 0, y: 40, scale: 0.97, duration: 1.1, ease: 'power3.out', delay: 0.35
+    })
+  }
 
   // Parallax suave de las imágenes editoriales.
   root.querySelectorAll<HTMLElement>('.parallax-img').forEach((img) => {
@@ -1630,7 +1678,7 @@ onUnmounted(() => {
 }
 
 .producto-vista::before {
-  content: '§';
+  content: none;
   position: absolute;
   top: -40px;
   right: 10px;
@@ -1815,7 +1863,7 @@ onUnmounted(() => {
 }
 
 .esp-normas li::before {
-  content: '§';
+  content: '—';
   position: absolute;
   left: 0;
   top: 0;
@@ -2521,5 +2569,611 @@ onUnmounted(() => {
 
   .reveal { opacity: 1; transform: none; }
   .cinta-pista { transform: none; }
+}
+
+/* ==========================================================================
+   ESTILO EDITORIAL (Rothschild & Co)
+   Sobrio y editorial: blanco y marfil, tinta casi negra, titulares en serif
+   ligera de gran tamaño, rótulos pequeños en versalitas, filetes finos entre
+   secciones, esquinas rectas, sin sombras ni degradados, botones
+   rectangulares negros y enlaces de texto con flecha. Pie negro. Solo
+   presentación: los textos y la demo animada del inicio no cambian.
+   ========================================================================== */
+.landing-page.landing-page {
+  --rc-tinta: #141414;
+  --rc-texto: #3C3C3C;
+  --rc-suave: #6B6B6B;
+  --rc-linea: #DAD6CE;
+  --rc-marfil: #F6F4EF;
+  --rc-blanco: #FFFFFF;
+  --rc-negro: #0F0F0F;
+  --texto: var(--rc-tinta);
+  --texto-sec: var(--rc-texto);
+  --borde: var(--rc-linea);
+  --borde-fuerte: #BDB8AE;
+  --radio: 0px;
+  --radio-sm: 0px;
+  background: var(--rc-blanco);
+  color: var(--rc-tinta);
+}
+
+/* ---- Cabecera: blanca, filete fino ---- */
+.landing-page .landing-header,
+.landing-page .landing-header--solido {
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: none;
+  border-bottom: 1px solid var(--rc-linea);
+}
+
+.landing-page .header-inner { padding-top: 18px; padding-bottom: 18px; }
+
+.landing-page .header-logo {
+  color: var(--rc-tinta);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+.landing-page .header-nav-link {
+  color: var(--rc-texto);
+  font-size: 0.88rem;
+  letter-spacing: 0.02em;
+}
+
+.landing-page .header-nav-link:hover,
+.landing-page .header-nav-link--activo {
+  color: var(--rc-tinta);
+  text-decoration: underline;
+  text-underline-offset: 6px;
+  text-decoration-thickness: 1px;
+}
+
+/* ---- Botones: rectángulos negros; secundario como enlace ---- */
+.landing-page .btn {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  letter-spacing: 0.02em;
+}
+
+.landing-page .btn--primario {
+  background: var(--rc-negro) !important;
+  color: var(--rc-blanco) !important;
+  border: 1px solid var(--rc-negro) !important;
+}
+
+.landing-page .btn--primario::after { display: none !important; }
+
+.landing-page .btn--primario:hover {
+  background: #2B2B2B !important;
+  border-color: #2B2B2B !important;
+}
+
+.landing-page .btn--contorno {
+  background: transparent !important;
+  color: var(--rc-tinta) !important;
+  border: 1px solid var(--rc-tinta) !important;
+}
+
+.landing-page .btn--contorno:hover {
+  background: var(--rc-tinta) !important;
+  color: var(--rc-blanco) !important;
+}
+
+.landing-page :deep(.auth-buttons .register-btn) {
+  background: var(--rc-negro) !important;
+  border-radius: 0 !important;
+}
+
+.landing-page :deep(.auth-buttons .login-btn) {
+  border-radius: 0 !important;
+}
+
+/* ---- Inicio: blanco, titular grande en serif ligera ---- */
+.landing-page .hero {
+  background: var(--rc-blanco) !important;
+  padding-top: 150px;
+  padding-bottom: 96px;
+  border-bottom: 1px solid var(--rc-linea);
+}
+
+.landing-page .hero-foco,
+.landing-page .hero-rejilla,
+.landing-page .hero-grano,
+.landing-page .hero-foco::after { display: none !important; }
+
+.landing-page .hero-badge {
+  padding: 0;
+  background: transparent !important;
+  border: none !important;
+  color: var(--rc-suave);
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.landing-page .hero-badge-punto {
+  width: 28px !important;
+  height: 1px !important;
+  border-radius: 0 !important;
+  background: var(--rc-tinta) !important;
+  animation: none !important;
+}
+
+.landing-page .hero-title {
+  color: var(--rc-tinta);
+  font-weight: 400;
+  font-size: clamp(2.8rem, 5.6vw, 5rem);
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+}
+
+.landing-page .hero-title em {
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+  color: var(--rc-suave) !important;
+  animation: none !important;
+  font-style: italic;
+}
+
+.landing-page .hero-description {
+  color: var(--rc-texto);
+  font-size: 1.1rem;
+  line-height: 1.7;
+}
+
+.landing-page .hero-caption {
+  color: var(--rc-suave);
+  font-size: 0.85rem;
+  padding-top: 18px;
+  border-top: 1px solid var(--rc-linea);
+}
+
+/* ---- Cifras: banda blanca con filetes y números en serif ---- */
+.landing-page .base {
+  background: var(--rc-blanco) !important;
+  border-bottom: 1px solid var(--rc-linea);
+}
+
+.landing-page .cifra {
+  border-color: var(--rc-linea) !important;
+}
+
+.landing-page .cifra-numero {
+  color: var(--rc-tinta) !important;
+  font-family: var(--serif);
+  font-weight: 400;
+}
+
+.landing-page .cifra-etiqueta {
+  color: var(--rc-suave);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.landing-page .cinta {
+  background: var(--rc-marfil) !important;
+  color: var(--rc-texto) !important;
+  border-top: 1px solid var(--rc-linea);
+  border-bottom: 1px solid var(--rc-linea);
+}
+
+.landing-page .cinta-sep { color: var(--rc-suave) !important; opacity: 0.6; }
+
+/* ---- Encabezados de sección ---- */
+.landing-page .section-label {
+  color: var(--rc-suave) !important;
+  font-size: 0.76rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.landing-page .section-label::before { background: var(--rc-tinta) !important; }
+
+.landing-page .section-title {
+  color: var(--rc-tinta);
+  font-weight: 400;
+  font-size: clamp(2.2rem, 4.2vw, 3.4rem);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+}
+
+.landing-page .section-title em { color: var(--rc-suave) !important; font-style: italic; }
+
+.landing-page .section-subtitle { color: var(--rc-texto); }
+
+/* ---- Producto: marfil, lista con filetes ---- */
+.landing-page .producto {
+  background: var(--rc-marfil) !important;
+  border-bottom: 1px solid var(--rc-linea);
+}
+
+.landing-page .herr {
+  border-radius: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  border-top: 1px solid var(--rc-linea) !important;
+  box-shadow: none !important;
+}
+
+.landing-page .herr--activa {
+  box-shadow: inset 2px 0 0 var(--rc-tinta) !important;
+  background: var(--rc-blanco) !important;
+}
+
+.landing-page .herr-num { color: var(--rc-suave) !important; font-family: var(--serif); }
+.landing-page .herr--activa .herr-num { color: var(--rc-tinta) !important; }
+.landing-page .herr-titulo { color: var(--rc-tinta); }
+.landing-page .herr-desc { color: var(--rc-suave); }
+
+.landing-page .producto-vista {
+  border-radius: 0 !important;
+  background: var(--rc-blanco) !important;
+  border: 1px solid var(--rc-linea) !important;
+  box-shadow: none !important;
+}
+
+.landing-page .vista-etiqueta {
+  color: var(--rc-suave) !important;
+  background: transparent !important;
+  padding: 0 !important;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.landing-page .vista-frase { color: var(--rc-tinta); font-family: var(--serif); }
+
+/* ---- Especializaciones: tarjetas blancas con filete, sin colores ---- */
+.landing-page .especialidades {
+  background: var(--rc-blanco) !important;
+  color: var(--rc-tinta);
+  border-bottom: 1px solid var(--rc-linea);
+}
+
+.landing-page .esp {
+  border-radius: 0 !important;
+  border: none !important;
+  border-top: 1px solid var(--rc-tinta) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.landing-page .esp::before { display: none !important; }
+
+@media (hover: hover) and (pointer: fine) {
+  .landing-page .esp:hover {
+    transform: none;
+    box-shadow: none !important;
+  }
+
+  .landing-page .esp:hover .esp-titulo {
+    text-decoration: underline;
+    text-underline-offset: 6px;
+    text-decoration-thickness: 1px;
+  }
+}
+
+.landing-page .esp-num { color: var(--rc-suave) !important; font-family: var(--serif); }
+
+.landing-page .esp-icono {
+  background: transparent !important;
+  color: var(--rc-suave) !important;
+  border: none !important;
+}
+
+.landing-page .esp-titulo { color: var(--rc-tinta) !important; font-weight: 400; }
+.landing-page .esp-desc { color: var(--rc-texto) !important; }
+
+.landing-page .esp-normas li {
+  color: var(--rc-suave) !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding-left: 0 !important;
+}
+
+.landing-page .esp-cta {
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--rc-tinta) !important;
+  text-decoration: underline;
+  text-underline-offset: 5px;
+  text-decoration-thickness: 1px;
+}
+
+/* ---- Cómo funciona: marfil, línea negra fina ---- */
+.landing-page .pasos {
+  background: var(--rc-marfil) !important;
+  border-bottom: 1px solid var(--rc-linea);
+}
+
+.landing-page .pasos-linea-base { background: var(--rc-linea) !important; height: 1px !important; }
+.landing-page .pasos-linea-relleno { background: var(--rc-tinta) !important; height: 1px !important; }
+
+.landing-page .paso-punto {
+  border-radius: 0 !important;
+  background: var(--rc-blanco) !important;
+  color: var(--rc-tinta) !important;
+  border: 1px solid var(--rc-tinta) !important;
+  box-shadow: none !important;
+  font-family: var(--serif);
+}
+
+.landing-page .paso--hecho .paso-punto {
+  background: var(--rc-tinta) !important;
+  color: var(--rc-blanco) !important;
+}
+
+.landing-page .paso-titulo { color: var(--rc-tinta); font-weight: 400; }
+.landing-page .paso-desc { color: var(--rc-texto); }
+
+/* ---- Nosotros ---- */
+.landing-page .nosotros { background: var(--rc-blanco) !important; }
+.landing-page .proposito-comilla { color: var(--rc-linea) !important; }
+.landing-page .proposito-quote { color: var(--rc-tinta); font-weight: 400; }
+.landing-page .proposito-label { color: var(--rc-suave) !important; letter-spacing: 0.14em; text-transform: uppercase; }
+
+.landing-page .proposito-valores span {
+  border-radius: 0 !important;
+  background: transparent !important;
+  border: 1px solid var(--rc-linea) !important;
+  color: var(--rc-tinta) !important;
+}
+
+.landing-page :is(.proposito-imagen, .mv-imagen, .persona-foto, .miembro-foto),
+.landing-page :is(.proposito-imagen, .mv-imagen, .persona-foto, .miembro-foto) img {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* ---- Misión y visión: banda negra ---- */
+.landing-page .mv {
+  background: var(--rc-negro) !important;
+}
+
+.landing-page .mv::before,
+.landing-page .mv::after { display: none !important; }
+
+.landing-page .mv-bloque { border-left-color: rgba(255, 255, 255, 0.22) !important; }
+.landing-page .mv-label { color: rgba(255, 255, 255, 0.55) !important; letter-spacing: 0.16em; text-transform: uppercase; }
+.landing-page .mv-texto { color: rgba(255, 255, 255, 0.9) !important; font-family: var(--serif); }
+
+/* ---- Equipo: fotos en blanco y negro, color al pasar ---- */
+.landing-page .equipo { background: var(--rc-blanco) !important; }
+.landing-page .equipo-subtitulo { color: var(--rc-tinta); font-weight: 400; border-bottom: 1px solid var(--rc-linea); padding-bottom: 12px; }
+
+.landing-page :is(.persona, .miembro) {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.landing-page :is(.persona-foto, .miembro-foto) img {
+  filter: grayscale(1);
+  transition: filter 0.5s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .landing-page :is(.persona, .miembro):hover img { filter: grayscale(0); }
+}
+
+.landing-page :is(.persona-nombre, .miembro-nombre) { color: var(--rc-tinta); font-family: var(--serif); font-weight: 400; }
+.landing-page :is(.persona-cargo, .persona-area, .miembro-area) { color: var(--rc-suave); }
+
+/* ---- Llamado final: marfil, sobrio ---- */
+.landing-page .cta {
+  background: var(--rc-marfil) !important;
+  border-top: 1px solid var(--rc-linea);
+}
+
+.landing-page .cta::before,
+.landing-page .cta::after { display: none !important; }
+
+.landing-page .cta-titulo { color: var(--rc-tinta) !important; font-weight: 400; }
+.landing-page .cta-titulo em { color: var(--rc-suave) !important; font-style: italic; }
+.landing-page .cta-texto { color: var(--rc-texto) !important; }
+
+.landing-page .cta .btn--primario {
+  background: var(--rc-negro) !important;
+  color: var(--rc-blanco) !important;
+  border-color: var(--rc-negro) !important;
+}
+
+.landing-page .cta .btn--contorno {
+  background: transparent !important;
+  color: var(--rc-tinta) !important;
+  border-color: var(--rc-tinta) !important;
+}
+
+.landing-page .cta .btn:focus-visible { outline-color: var(--rc-tinta) !important; }
+
+/* ---- Pie: negro ---- */
+.landing-page .landing-footer {
+  background: var(--rc-negro) !important;
+  border-top: none !important;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.landing-page .footer-inner { border-bottom-color: rgba(255, 255, 255, 0.14) !important; }
+.landing-page .footer-logo { color: var(--rc-blanco) !important; font-weight: 400; }
+.landing-page .footer-lema { color: rgba(255, 255, 255, 0.6) !important; }
+.landing-page .footer-nav a { color: rgba(255, 255, 255, 0.75) !important; }
+.landing-page .footer-nav a:hover { color: var(--rc-blanco) !important; text-decoration: underline; text-underline-offset: 4px; }
+.landing-page .footer-copy { color: rgba(255, 255, 255, 0.45) !important; }
+.landing-page .landing-footer :is(a, button):focus-visible { outline-color: var(--rc-blanco) !important; }
+
+/* ---- Barra de avance y selección ---- */
+.landing-page .scroll-progress { background: var(--rc-tinta) !important; }
+.landing-page ::selection { background: #E6E1D6; color: var(--rc-tinta); }
+
+.landing-page :is(a, button):focus-visible { outline-color: var(--rc-tinta); }
+
+/* ==========================================================================
+   HERO CON VIDEO DE FONDO
+   Escritorio con movimiento permitido: el hero queda fijo mientras se baja
+   (ScrollTrigger) y pasa del video con el titular centrado en blanco al
+   diseño de siempre (texto a la izquierda, demo a la derecha). En celular
+   o con "reducir movimiento" no se muestra el video: queda el hero normal.
+   ========================================================================== */
+.landing-page .hero-video {
+  display: none;
+}
+
+.landing-page .hero.hero--intro {
+  --hero-tinta: #141414;
+  --hero-em: #6B6B6B;
+  display: flex;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.landing-page .hero.hero--intro .hero-inner {
+  width: 100%;
+  z-index: 1;
+}
+
+.landing-page .hero.hero--intro .hero-video {
+  display: block;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.landing-page .hero-video-media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Velo oscuro para que el titular blanco se lea sobre el video */
+.landing-page .hero-video-velo {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(10, 10, 10, 0.35) 0%, rgba(10, 10, 10, 0.55) 100%),
+    radial-gradient(ellipse 60% 50% at 50% 50%, rgba(10, 10, 10, 0.35), transparent 75%);
+}
+
+.landing-page .hero.hero--intro .hero-title {
+  position: relative;
+  color: var(--hero-tinta) !important;
+  will-change: transform;
+}
+
+.landing-page .hero.hero--intro .hero-title em {
+  color: var(--hero-em) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-page .hero-video { display: none !important; }
+}
+
+/* ==========================================================================
+   ACABADO CORPORATIVO (azul marino de la marca)
+   Sobre el estilo editorial: el azul marino de LexIT como único color de
+   marca (botones, rótulos, cifras, detalles activos), titulares en dos
+   tonos sin cursivas y bandas oscuras en marino en vez de negro.
+   ========================================================================== */
+.landing-page.landing-page {
+  --rc-marca: #13294A;
+  --rc-marca-2: #1D3B63;
+  --rc-negro: #0F2240;
+}
+
+/* Titulares: la segunda parte en marino, sin cursiva */
+.landing-page :is(.hero-title, .section-title, .cta-titulo) em {
+  font-style: normal !important;
+  color: var(--rc-marca-2) !important;
+}
+
+.landing-page .hero.hero--intro .hero-title em {
+  color: var(--hero-em) !important;
+}
+
+/* Cabecera */
+.landing-page .header-logo { color: var(--rc-marca); }
+
+.landing-page .header-nav-link:hover,
+.landing-page .header-nav-link--activo {
+  color: var(--rc-marca);
+  text-decoration-color: var(--rc-marca);
+}
+
+/* Botones */
+.landing-page .btn--primario,
+.landing-page .cta .btn--primario {
+  background: var(--rc-marca) !important;
+  border-color: var(--rc-marca) !important;
+}
+
+.landing-page .btn--primario:hover,
+.landing-page .cta .btn--primario:hover {
+  background: var(--rc-marca-2) !important;
+  border-color: var(--rc-marca-2) !important;
+}
+
+.landing-page .btn--contorno,
+.landing-page .cta .btn--contorno {
+  color: var(--rc-marca) !important;
+  border-color: var(--rc-marca) !important;
+}
+
+.landing-page .btn--contorno:hover,
+.landing-page .cta .btn--contorno:hover {
+  background: var(--rc-marca) !important;
+  color: #FFFFFF !important;
+}
+
+.landing-page :deep(.auth-buttons .register-btn) { background: var(--rc-marca) !important; }
+
+/* Rótulos y detalles */
+.landing-page .section-label { color: var(--rc-marca) !important; }
+.landing-page .section-label::before { background: var(--rc-marca) !important; }
+.landing-page .hero-badge { color: var(--rc-marca); }
+.landing-page .hero-badge-punto { background: var(--rc-marca) !important; }
+.landing-page .cifra-numero { color: var(--rc-marca) !important; }
+.landing-page .herr--activa { box-shadow: inset 2px 0 0 var(--rc-marca) !important; }
+.landing-page .herr--activa .herr-num { color: var(--rc-marca) !important; }
+.landing-page .esp { border-top-color: var(--rc-marca) !important; }
+.landing-page .esp-cta { color: var(--rc-marca) !important; }
+.landing-page .pasos-linea-relleno { background: var(--rc-marca) !important; }
+.landing-page .paso-punto { border-color: var(--rc-marca) !important; color: var(--rc-marca) !important; }
+.landing-page .paso--hecho .paso-punto { background: var(--rc-marca) !important; color: #FFFFFF !important; }
+.landing-page .scroll-progress { background: var(--rc-marca) !important; }
+.landing-page .proposito-comilla { color: rgba(19, 41, 74, 0.18) !important; }
+
+/* Separador de la cinta de normas: una línea fina en lugar de símbolo */
+.landing-page .cinta-sep {
+  display: inline-block;
+  width: 1px;
+  height: 0.9em;
+  margin-right: 14px;
+  vertical-align: -0.1em;
+  background: currentColor;
+  opacity: 0.3;
+}
+
+/* Viñeta de las normas de cada especialización */
+.landing-page .esp-normas li::before { color: var(--rc-marca) !important; font-family: inherit; }
+
+/* Ícono de plantilla en la demo */
+.landing-page .demo-plantilla-icono svg { display: block; }
+
+/* Bandas oscuras en marino */
+.landing-page .mv,
+.landing-page .landing-footer { background: var(--rc-negro) !important; }
+
+/* Velo del video con un tinte marino */
+.landing-page .hero-video-velo {
+  background:
+    linear-gradient(180deg, rgba(15, 34, 64, 0.45) 0%, rgba(15, 34, 64, 0.62) 100%),
+    radial-gradient(ellipse 60% 50% at 50% 50%, rgba(10, 18, 32, 0.3), transparent 75%) !important;
 }
 </style>

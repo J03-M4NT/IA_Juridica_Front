@@ -242,7 +242,7 @@ function ordenarComoEnElDocumento(fragmentos: FragmentoResultado[]): FragmentoRe
 // Código nombrado en la pregunta, con los mismos valores de tipoDocumento
 // que usa el panel Admin al subir (ver TIPOS_FUENTE_PRIMARIA en
 // pineconeService.ts).
-function tipoDocumentoEnPregunta(pregunta: string): string | undefined {
+export function tipoDocumentoEnPregunta(pregunta: string): string | undefined {
   if (/constituci[óo]n/i.test(pregunta)) return 'constitucion'
   if (/c[óo]digo\s+civil/i.test(pregunta)) return 'codigo-civil'
   if (/c[óo]digo\s+penal/i.test(pregunta)) return 'codigo-penal'
