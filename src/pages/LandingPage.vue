@@ -3,10 +3,15 @@
 
     <div class="scroll-progress" ref="progresoRef" aria-hidden="true"></div>
 
-    <!-- Header: transparente sobre el hero oscuro; al bajar se vuelve claro. -->
-    <header class="landing-header" :class="{ 'landing-header--solido': headerSolido, 'landing-header--claro': !headerSolido }">
+    <!-- Header: transparente (texto claro) sobre el video; al bajar, o con el
+         menú del celular abierto, se vuelve blanco. -->
+    <header
+      class="landing-header"
+      :class="{ 'landing-header--solido': headerSolido || menuAbierto, 'landing-header--claro': !headerSolido && !menuAbierto }"
+      @keydown.esc="cerrarMenu(true)"
+    >
       <div class="header-inner">
-        <button type="button" class="header-logo" @click="scrollToSection('inicio')">LexIT</button>
+        <button type="button" class="header-logo" @click="irArriba">LexIT</button>
         <nav class="header-nav" aria-label="Secciones">
           <a
             v-for="item in NAV"
@@ -19,8 +24,42 @@
           >{{ item.etiqueta }}</a>
         </nav>
         <auth-buttons ref="authButtonsRef" />
+        <!-- Solo en celular (el menú de arriba se oculta) -->
+        <button
+          ref="menuBtnRef"
+          type="button"
+          class="menu-btn"
+          :class="{ 'menu-btn--abierto': menuAbierto }"
+          :aria-expanded="menuAbierto"
+          aria-controls="menu-movil"
+          :aria-label="menuAbierto ? 'Cerrar menú' : 'Abrir menú'"
+          @click="menuAbierto ? cerrarMenu() : abrirMenu()"
+        >
+          <span class="menu-btn-linea" aria-hidden="true"></span>
+          <span class="menu-btn-linea" aria-hidden="true"></span>
+        </button>
       </div>
+
+      <Transition name="menu">
+        <nav v-if="menuAbierto" id="menu-movil" ref="menuRef" class="menu-movil" aria-label="Secciones">
+          <a
+            v-for="item in NAV"
+            :key="item.id"
+            :href="`#${item.id}`"
+            class="menu-movil-link"
+            :class="{ 'menu-movil-link--activo': seccionActiva === item.id }"
+            @click.prevent="irDesdeMenu(item.id)"
+          >{{ item.etiqueta }}<span aria-hidden="true">→</span></a>
+          <button type="button" class="btn btn--contorno menu-movil-login" @click="cerrarMenu(); abrirAuth()">
+            Iniciar sesión
+          </button>
+        </nav>
+      </Transition>
     </header>
+
+    <Transition name="velo">
+      <div v-if="menuAbierto" class="menu-velo" aria-hidden="true" @click="cerrarMenu()"></div>
+    </Transition>
 
     <main class="main-content">
 
@@ -426,6 +465,32 @@
         </div>
       </section>
 
+      <!-- ============ PREGUNTAS FRECUENTES ============
+           Respuestas basadas en lo que hace la app hoy (límite diario,
+           formatos, historial). Si eso cambia, actualizar PREGUNTAS. -->
+      <section class="faq" id="preguntas" aria-labelledby="faq-titulo">
+        <div class="faq-inner">
+          <div class="faq-cabecera reveal">
+            <span class="section-label">Preguntas frecuentes</span>
+            <h2 id="faq-titulo" class="faq-titulo">Lo que conviene saber <em>antes de empezar</em></h2>
+            <p class="faq-texto">
+              ¿Tienes otra duda? Escríbenos a
+              <a href="mailto:lexitiajuridica@gmail.com">lexitiajuridica@gmail.com</a>.
+            </p>
+          </div>
+
+          <div class="faq-lista reveal">
+            <details v-for="(item, i) in PREGUNTAS" :key="item.pregunta" class="faq-item" name="faq" :open="i === 0">
+              <summary class="faq-pregunta">
+                {{ item.pregunta }}
+                <span class="faq-icono" aria-hidden="true"></span>
+              </summary>
+              <p class="faq-respuesta">{{ item.respuesta }}</p>
+            </details>
+          </div>
+        </div>
+      </section>
+
       <!-- ============ CTA FINAL (verde bosque) ============ -->
       <section class="cta" aria-label="Empieza ahora">
         <div class="cta-inner reveal">
@@ -502,6 +567,37 @@ const NAV = [
   { id: 'especializaciones', etiqueta: 'Especializaciones' },
   { id: 'como-funciona', etiqueta: 'Cómo funciona' },
   { id: 'nosotros', etiqueta: 'Nosotros' }
+]
+
+const PREGUNTAS = [
+  {
+    pregunta: '¿LexIT es gratis?',
+    respuesta: 'Sí. Crear tu cuenta es gratis y te da acceso a todas las herramientas. Para mantener el servicio estable, cada cuenta puede usar la IA hasta 50 veces al día (consultas, análisis, resúmenes de normas); el contador se reinicia al día siguiente.'
+  },
+  {
+    pregunta: '¿LexIT reemplaza a un abogado?',
+    respuesta: 'No. LexIT es una herramienta de apoyo: sus respuestas son orientativas y te muestran la norma en la que se basan. Para un caso concreto, consulta siempre con un abogado.'
+  },
+  {
+    pregunta: '¿Cómo sé que la respuesta es correcta?',
+    respuesta: 'Al elegir una especialización, LexIT busca solo en las normas de esa rama y te muestra la cita textual del artículo, para que puedas verificarla tú mismo.'
+  },
+  {
+    pregunta: '¿Qué pasa con los contratos que subo?',
+    respuesta: 'Se guardan en un espacio privado de tu cuenta al que solo tú tienes acceso, y se procesan con IA únicamente para darte el análisis que pides. No se comparten con otros usuarios.'
+  },
+  {
+    pregunta: '¿Qué formatos puedo subir?',
+    respuesta: 'El análisis de contratos acepta documentos Word (.docx) de hasta 25 MB. Si tienes el contrato en PDF, guárdalo primero como Word. Las plantillas de contratos se descargan en Word, listas para editar.'
+  },
+  {
+    pregunta: '¿Se guardan mis consultas? ¿Puedo borrarlas?',
+    respuesta: 'Sí: tus conversaciones quedan en tu historial, visible solo para ti, y puedes borrar cualquiera desde «Consultas recientes».'
+  },
+  {
+    pregunta: '¿De dónde salen las normas del día?',
+    respuesta: 'Del Diario Oficial El Peruano. LexIT las revisa varias veces al día; puedes ver la última edición o cualquier día de los últimos 15, con un resumen hecho por IA.'
+  }
 ]
 
 const DEMO_TABS = [
@@ -620,6 +716,41 @@ function abrirRegistro() {
 // secciones se hace a mano.
 function scrollToSection(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' })
+}
+
+// El logo lleva arriba del todo (al video de la intro).
+function irArriba() {
+  cerrarMenu()
+  window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+}
+
+// =========================
+// MENÚ DEL CELULAR (≤768px, donde se oculta el menú del header)
+// =========================
+const menuAbierto = ref(false)
+const menuBtnRef = ref<HTMLButtonElement | null>(null)
+const menuRef = ref<HTMLElement | null>(null)
+const mqMenu = window.matchMedia('(max-width: 768px)')
+
+function abrirMenu() {
+  menuAbierto.value = true
+  void nextTick(() => menuRef.value?.querySelector<HTMLElement>('a')?.focus())
+}
+
+function cerrarMenu(devolverFoco = false) {
+  if (!menuAbierto.value) return
+  menuAbierto.value = false
+  if (devolverFoco) menuBtnRef.value?.focus()
+}
+
+function irDesdeMenu(id: string) {
+  cerrarMenu()
+  scrollToSection(id)
+}
+
+// Si la pantalla crece y vuelve el menú de arriba, se cierra el del celular.
+function alCambiarMenu(e: MediaQueryListEvent) {
+  if (!e.matches) cerrarMenu()
 }
 
 // =========================
@@ -992,6 +1123,7 @@ onMounted(() => {
   }
 
   mqEscena.addEventListener('change', alCambiarEscena)
+  mqMenu.addEventListener('change', alCambiarMenu)
   montarEscena()
   alHacerScroll()
 
@@ -1015,6 +1147,7 @@ onUnmounted(() => {
   observerSecciones?.disconnect()
   observerIntro?.disconnect()
   mqEscena.removeEventListener('change', alCambiarEscena)
+  mqMenu.removeEventListener('change', alCambiarMenu)
   ctxEscena?.revert()
   scrollTriggers.forEach((st) => st.kill())
   if (demoTimer) clearInterval(demoTimer)
@@ -1206,6 +1339,210 @@ onUnmounted(() => {
 .landing-header--claro :deep(.auth-buttons .login-btn:hover) { background: rgba(255, 255, 255, 0.12) !important; }
 .landing-header--claro :deep(.auth-buttons .register-btn) { background: var(--crema) !important; color: var(--bosque) !important; }
 .landing-header--claro :deep(.auth-buttons .register-btn:hover) { background: var(--blanco) !important; }
+
+/* ==============================
+   PREGUNTAS FRECUENTES
+   ============================== */
+.faq {
+  padding: clamp(80px, 10vw, 130px) var(--gutter);
+  background: var(--crema-2);
+}
+
+.faq-inner {
+  max-width: var(--ancho);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: clamp(32px, 6vw, 96px);
+  align-items: start;
+}
+
+.faq-cabecera {
+  position: sticky;
+  top: 110px;
+}
+
+/* La línea del label va a la izquierda (en las demás secciones, centrada) */
+.faq-cabecera .section-label::before { left: 0; margin-left: 0; }
+.faq-cabecera.is-visible .section-label::before { transform: scaleX(1); }
+
+.faq-titulo {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(2rem, 4vw, 3.1rem);
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  color: var(--texto);
+}
+
+.faq-titulo em { color: var(--azul-2); }
+
+.faq-texto {
+  margin: 20px 0 0;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--texto-sec);
+}
+
+.faq-texto a { color: var(--texto); text-underline-offset: 3px; }
+
+.faq-lista { border-top: 1px solid var(--borde-fuerte); }
+
+.faq-item { border-bottom: 1px solid var(--borde-fuerte); }
+
+.faq-pregunta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 0;
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--serif);
+  font-size: clamp(1.15rem, 1.8vw, 1.35rem);
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--texto);
+  transition: color 0.2s var(--ease-out);
+}
+
+.faq-pregunta::-webkit-details-marker { display: none; }
+.faq-pregunta:focus-visible { outline: 2px solid var(--azul-2); outline-offset: 4px; }
+
+/* "+" que gira a "×" al abrir */
+.faq-icono {
+  position: relative;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  transition: transform 0.3s var(--ease-out);
+}
+
+.faq-icono::before,
+.faq-icono::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1.5px;
+  margin-top: -0.75px;
+  background: currentColor;
+}
+
+.faq-icono::after { transform: rotate(90deg); }
+.faq-item[open] .faq-icono { transform: rotate(45deg); }
+
+.faq-respuesta {
+  margin: 0;
+  padding: 0 40px 24px 0;
+  max-width: 640px;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--texto-sec);
+}
+
+.faq-item[open] .faq-respuesta { animation: faq-abrir 0.35s var(--ease-out); }
+
+@keyframes faq-abrir {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .faq-pregunta:hover { color: var(--azul-2); }
+}
+
+/* ==============================
+   MENÚ DEL CELULAR
+   ============================== */
+.menu-btn {
+  display: none;
+  position: relative;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  color: var(--texto);
+  transition: color 0.35s var(--ease), background-color 0.2s var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.landing-header--claro .menu-btn { color: var(--crema); }
+.menu-btn:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+.menu-btn-linea {
+  position: absolute;
+  left: 11px;
+  right: 11px;
+  height: 1.5px;
+  border-radius: 2px;
+  background: currentColor;
+  transition: transform 0.3s var(--ease-out);
+}
+
+.menu-btn-linea:first-child { transform: translateY(-4px); }
+.menu-btn-linea:last-child { transform: translateY(4px); }
+.menu-btn--abierto .menu-btn-linea:first-child { transform: rotate(45deg); }
+.menu-btn--abierto .menu-btn-linea:last-child { transform: rotate(-45deg); }
+
+.menu-movil {
+  display: flex;
+  flex-direction: column;
+  padding: 8px var(--gutter) 24px;
+  background: var(--blanco);
+  border-top: 1px solid var(--borde);
+  border-bottom: 1px solid var(--borde);
+  box-shadow: 0 24px 40px -24px rgba(23, 33, 27, 0.25);
+}
+
+.menu-movil-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--borde);
+  font-family: var(--serif);
+  font-size: 1.45rem;
+  color: var(--texto);
+  text-decoration: none;
+}
+
+.menu-movil-link span {
+  font-family: var(--sans);
+  font-size: 1rem;
+  color: var(--texto-sec);
+}
+
+.menu-movil-link--activo { color: var(--azul-2); }
+.menu-movil-link:focus-visible { outline: 2px solid var(--azul-2); outline-offset: 2px; }
+
+.menu-movil-login {
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.menu-velo {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(23, 33, 27, 0.35);
+}
+
+.menu-enter-active,
+.menu-leave-active { transition: opacity 0.25s var(--ease-out), transform 0.3s var(--ease-out); }
+.menu-enter-from,
+.menu-leave-to { opacity: 0; transform: translateY(-8px); }
+
+.velo-enter-active,
+.velo-leave-active { transition: opacity 0.25s var(--ease-out); }
+.velo-enter-from,
+.velo-leave-to { opacity: 0; }
 
 /* ==============================
    INTRO EN VIDEO (pantalla completa, texto serif centrado)
@@ -2936,6 +3273,9 @@ onUnmounted(() => {
    RESPONSIVE
    ============================== */
 @media (max-width: 1024px) {
+  .faq-inner { grid-template-columns: 1fr; }
+  .faq-cabecera { position: static; }
+
   .hero-inner,
   .producto-grid,
   .proposito,
@@ -2954,7 +3294,12 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .header-nav { display: none; }
-  .header-inner { justify-content: space-between; }
+  .header-inner { justify-content: space-between; gap: 12px; }
+
+  /* "Iniciar sesión" pasa al menú; en el header queda "Registrarse" */
+  .menu-btn { display: block; }
+  :deep(.auth-buttons) { margin-left: auto; }
+  :deep(.auth-buttons .login-btn) { display: none; }
 
   .base-cifras { grid-template-columns: 1fr; gap: 20px; }
 
@@ -2971,6 +3316,7 @@ onUnmounted(() => {
 }
 
 @media (max-width: 520px) {
+  .faq-respuesta { padding-right: 0; }
   .demo-tab { font-size: 0.76rem; padding: 8px 2px; }
   .demo-panel--analisis { flex-direction: column; }
   .equipo-grid { grid-template-columns: repeat(2, 1fr); }
