@@ -275,3 +275,37 @@ h1, h2, h3 {
 .text-lexit-error-texto {
   color: #7A1D14 !important;
 }
+
+// --------------------------------------------------------------------------
+// Detalles finos: selección de texto y barra de desplazamiento con la paleta
+// LEXIT (marfil / tinta verde) en lugar de los colores del navegador.
+// --------------------------------------------------------------------------
+::selection {
+  background: rgba(var(--lexit-piedra-rgb), 0.45);
+  color: var(--lexit-verde);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--lexit-piedra-rgb), 0.7) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(var(--lexit-piedra-rgb), 0.6);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(var(--lexit-verde-rgb), 0.35);
+}
