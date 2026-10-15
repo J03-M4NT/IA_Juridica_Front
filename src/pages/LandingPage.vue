@@ -3,10 +3,15 @@
 
     <div class="scroll-progress" ref="progresoRef" aria-hidden="true"></div>
 
-    <!-- Header: transparente sobre el hero oscuro; al bajar se vuelve claro. -->
-    <header class="landing-header" :class="{ 'landing-header--solido': headerSolido }">
+    <!-- Header: transparente (texto claro) sobre el video; al bajar, o con el
+         menú del celular abierto, se vuelve blanco. -->
+    <header
+      class="landing-header"
+      :class="{ 'landing-header--solido': headerSolido || menuAbierto, 'landing-header--claro': !headerSolido && !menuAbierto }"
+      @keydown.esc="cerrarMenu(true)"
+    >
       <div class="header-inner">
-        <button type="button" class="header-logo" @click="scrollToSection('inicio')">LexIT</button>
+        <button type="button" class="header-logo" @click="irArriba">LexIT</button>
         <nav class="header-nav" aria-label="Secciones">
           <a
             v-for="item in NAV"
@@ -19,33 +24,99 @@
           >{{ item.etiqueta }}</a>
         </nav>
         <auth-buttons ref="authButtonsRef" />
+        <!-- Solo en celular (el menú de arriba se oculta) -->
+        <button
+          ref="menuBtnRef"
+          type="button"
+          class="menu-btn"
+          :class="{ 'menu-btn--abierto': menuAbierto }"
+          :aria-expanded="menuAbierto"
+          aria-controls="menu-movil"
+          :aria-label="menuAbierto ? 'Cerrar menú' : 'Abrir menú'"
+          @click="menuAbierto ? cerrarMenu() : abrirMenu()"
+        >
+          <span class="menu-btn-linea" aria-hidden="true"></span>
+          <span class="menu-btn-linea" aria-hidden="true"></span>
+        </button>
       </div>
+
+      <Transition name="menu">
+        <nav v-if="menuAbierto" id="menu-movil" ref="menuRef" class="menu-movil" aria-label="Secciones">
+          <a
+            v-for="item in NAV"
+            :key="item.id"
+            :href="`#${item.id}`"
+            class="menu-movil-link"
+            :class="{ 'menu-movil-link--activo': seccionActiva === item.id }"
+            @click.prevent="irDesdeMenu(item.id)"
+          >{{ item.etiqueta }}<span aria-hidden="true">→</span></a>
+          <button type="button" class="btn btn--contorno menu-movil-login" @click="cerrarMenu(); abrirAuth()">
+            Iniciar sesión
+          </button>
+        </nav>
+      </Transition>
     </header>
+
+    <Transition name="velo">
+      <div v-if="menuAbierto" class="menu-velo" aria-hidden="true" @click="cerrarMenu()"></div>
+    </Transition>
 
     <main class="main-content">
 
-      <!-- ============ HERO (verde bosque) ============ -->
-      <section class="hero" id="inicio" ref="heroRef" @pointermove="moverFoco">
-        <!-- Video de fondo (Lima al atardecer): a pantalla completa al
-             entrar; al bajar se desvanece y el contenido toma su lugar. -->
-        <div class="hero-video" aria-hidden="true">
+      <!-- ============ ESCENA DE ENTRADA: video + hero ============
+           Computadora (y sin "reducir movimiento"): la escena se fija al
+           bajar; el título centrado sobre el video viaja a su sitio en el
+           hero y sube la demo. Celular/tablet: video arriba y hero debajo.
+           El video vive en public/videos/: si falta, queda el fondo oscuro. -->
+      <div class="escena" :class="{ 'escena--animada': escenaAnimada }" ref="escenaRef">
+      <section class="intro" ref="introRef" aria-label="Presentación de LexIT">
+        <div class="intro-capa" aria-hidden="true">
           <video
-            ref="videoHeroRef"
-            class="hero-video-media"
-            :poster="posterHero"
-            autoplay
+            v-show="!videoFallo"
+            ref="introVideoRef"
+            class="intro-video"
+            :src="VIDEO_INTRO"
+            :poster="POSTER_INTRO"
             muted
             loop
             playsinline
             preload="auto"
-            disablepictureinpicture
-          >
-            <source :src="videoHeroWebm" type="video/webm" />
-            <source :src="videoHeroMp4" type="video/mp4" />
-          </video>
-          <span class="hero-video-velo"></span>
+            @play="videoReproduciendo = true"
+            @pause="videoReproduciendo = false"
+            @error="videoFallo = true"
+          ></video>
+          <span class="intro-velo"></span>
+          <!-- Capa crema que aparece al bajar (celular): funde la intro con el hero -->
+          <span class="intro-fundido"></span>
         </div>
 
+        <!-- Copia visual del título del hero (el <h1> real está en el hero) -->
+        <div class="intro-contenido" aria-hidden="true">
+          <p class="intro-titulo">
+            El derecho peruano,<br />
+            <em>al alcance de tu práctica.</em>
+          </p>
+        </div>
+
+        <button type="button" class="intro-bajar" @click="bajarAlHero">
+          Descubre LexIT
+          <span class="intro-bajar-flecha" aria-hidden="true">↓</span>
+        </button>
+
+        <button
+          v-if="!videoFallo"
+          type="button"
+          class="intro-control"
+          :aria-label="videoReproduciendo ? 'Pausar video' : 'Reproducir video'"
+          @click="alternarVideo"
+        >
+          <span v-if="videoReproduciendo" class="intro-icono-pausa" aria-hidden="true"></span>
+          <span v-else class="intro-icono-play" aria-hidden="true"></span>
+        </button>
+      </section>
+
+      <!-- ============ HERO (verde bosque) ============ -->
+      <section class="hero" id="inicio" ref="heroRef" @pointermove="moverFoco">
         <div class="hero-fondo" aria-hidden="true">
           <span class="hero-foco"></span>
           <span class="hero-rejilla"></span>
@@ -82,12 +153,11 @@
             <p class="hero-caption">Hecho para abogados, estudios jurídicos y estudiantes de derecho en Perú</p>
           </div>
 
-          <!-- Demo del producto: pestañas reales (cambia el contenido). Al
-               hacer clic en la ventana invita a iniciar sesión. -->
+          <!-- Demo del producto: las pestañas rotan solas cada 3 s; al elegir
+               una, se queda en ella. Al hacer clic en la ventana invita a
+               iniciar sesión. -->
           <div
             class="demo"
-            @pointerenter="demoPausada = true"
-            @pointerleave="demoPausada = false"
             @focusin="demoPausada = true"
             @focusout="demoPausada = false"
           >
@@ -108,7 +178,13 @@
                 @keydown.left.prevent="elegirDemo((i + DEMO_TABS.length - 1) % DEMO_TABS.length, true)"
               >{{ tab.etiqueta }}</button>
               <span class="demo-tabs-progreso" :style="{ '--i': demoActiva }" aria-hidden="true">
-                <span :key="demoActiva" class="demo-tabs-progreso-relleno" :class="{ 'demo-tabs-progreso-relleno--pausa': demoPausada }"></span>
+                <span
+                  v-if="!demoElegida"
+                  :key="demoActiva"
+                  class="demo-tabs-progreso-relleno"
+                  :class="{ 'demo-tabs-progreso-relleno--pausa': demoPausada }"
+                  :style="{ animationDuration: `${DEMO_MS}ms` }"
+                ></span>
               </span>
             </div>
 
@@ -159,7 +235,7 @@
                   </span>
                   <span class="demo-msg demo-msg--user">Quiero alquilar mi departamento</span>
                   <span class="demo-plantilla">
-                    <span class="demo-plantilla-icono" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg></span>
+                    <span class="demo-plantilla-icono" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h4" /></svg></span>
                     <span class="demo-plantilla-texto"><b>Contrato de Arrendamiento</b>Plantilla en Word, lista para completar</span>
                     <span class="demo-plantilla-accion">Usar →</span>
                   </span>
@@ -179,6 +255,7 @@
           </div>
         </div>
       </section>
+      </div>
 
       <!-- ============ BASE JURÍDICA (marfil): cifras + cinta de normas ============ -->
       <section class="base" aria-label="Base jurídica">
@@ -256,7 +333,7 @@
         </div>
       </section>
 
-      <!-- ============ ESPECIALIZACIONES (oliva oscuro) ============ -->
+      <!-- ============ ESPECIALIZACIONES (pintura de fondo con velo azul) ============ -->
       <section class="especialidades" id="especializaciones">
         <div class="section-header reveal">
           <span class="section-label">Especializaciones</span>
@@ -276,6 +353,7 @@
           >
             <div class="esp-cabecera">
               <span class="esp-num">{{ String(i + 1).padStart(2, '0') }}</span>
+              <span class="esp-icono" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M5 7h14M12 5l0 2" /><path d="M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z" /></svg></span>
             </div>
             <h3 class="esp-titulo">{{ esp.titulo }}</h3>
             <p class="esp-desc">{{ esp.descripcion }}</p>
@@ -391,6 +469,32 @@
         </div>
       </section>
 
+      <!-- ============ PREGUNTAS FRECUENTES ============
+           Respuestas basadas en lo que hace la app hoy (límite diario,
+           formatos, historial). Si eso cambia, actualizar PREGUNTAS. -->
+      <section class="faq" id="preguntas" aria-labelledby="faq-titulo">
+        <div class="faq-inner">
+          <div class="faq-cabecera reveal">
+            <span class="section-label">Preguntas frecuentes</span>
+            <h2 id="faq-titulo" class="faq-titulo">Lo que conviene saber <em>antes de empezar</em></h2>
+            <p class="faq-texto">
+              ¿Tienes otra duda? Escríbenos a
+              <a href="mailto:lexitiajuridica@gmail.com">lexitiajuridica@gmail.com</a>.
+            </p>
+          </div>
+
+          <div class="faq-lista reveal">
+            <details v-for="(item, i) in PREGUNTAS" :key="item.pregunta" class="faq-item" name="faq" :open="i === 0">
+              <summary class="faq-pregunta">
+                {{ item.pregunta }}
+                <span class="faq-icono" aria-hidden="true"></span>
+              </summary>
+              <p class="faq-respuesta">{{ item.respuesta }}</p>
+            </details>
+          </div>
+        </div>
+      </section>
+
       <!-- ============ CTA FINAL (verde bosque) ============ -->
       <section class="cta" aria-label="Empieza ahora">
         <div class="cta-inner reveal">
@@ -426,16 +530,13 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '../stores/auth'
 import AuthButtons from '../components/Auth/AuthButtons.vue'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import videoHeroMp4 from '../assets/landing/hero-fondo.mp4'
-import videoHeroWebm from '../assets/landing/hero-fondo.webm'
-import posterHero from '../assets/landing/hero-fondo.jpg'
 import fotoAlexZegarra from '../assets/equipo/alex-zegarra.jpg'
 import fotoMijhailMedina from '../assets/equipo/mijhail-medina.jpg'
 import fotoJoeMantilla from '../assets/equipo/joe-mantilla.jpg'
@@ -454,7 +555,6 @@ const { isAuthenticated } = storeToRefs(authStore)
 
 const pageRoot = ref<HTMLElement | null>(null)
 const heroRef = ref<HTMLElement | null>(null)
-const videoHeroRef = ref<HTMLVideoElement | null>(null)
 const progresoRef = ref<HTMLElement | null>(null)
 const pasosRef = ref<HTMLElement | null>(null)
 const authButtonsRef = ref<InstanceType<typeof AuthButtons> | null>(null)
@@ -471,6 +571,37 @@ const NAV = [
   { id: 'especializaciones', etiqueta: 'Especializaciones' },
   { id: 'como-funciona', etiqueta: 'Cómo funciona' },
   { id: 'nosotros', etiqueta: 'Nosotros' }
+]
+
+const PREGUNTAS = [
+  {
+    pregunta: '¿LexIT es gratis?',
+    respuesta: 'Sí. Crear tu cuenta es gratis y te da acceso a todas las herramientas. Para mantener el servicio estable, cada cuenta puede usar la IA hasta 50 veces al día (consultas, análisis, resúmenes de normas); el contador se reinicia al día siguiente.'
+  },
+  {
+    pregunta: '¿LexIT reemplaza a un abogado?',
+    respuesta: 'No. LexIT es una herramienta de apoyo: sus respuestas son orientativas y te muestran la norma en la que se basan. Para un caso concreto, consulta siempre con un abogado.'
+  },
+  {
+    pregunta: '¿Cómo sé que la respuesta es correcta?',
+    respuesta: 'Al elegir una especialización, LexIT busca solo en las normas de esa rama y te muestra la cita textual del artículo, para que puedas verificarla tú mismo.'
+  },
+  {
+    pregunta: '¿Qué pasa con los contratos que subo?',
+    respuesta: 'Se guardan en un espacio privado de tu cuenta al que solo tú tienes acceso, y se procesan con IA únicamente para darte el análisis que pides. No se comparten con otros usuarios.'
+  },
+  {
+    pregunta: '¿Qué formatos puedo subir?',
+    respuesta: 'El análisis de contratos acepta documentos Word (.docx) de hasta 25 MB. Si tienes el contrato en PDF, guárdalo primero como Word. Las plantillas de contratos se descargan en Word, listas para editar.'
+  },
+  {
+    pregunta: '¿Se guardan mis consultas? ¿Puedo borrarlas?',
+    respuesta: 'Sí: tus conversaciones quedan en tu historial, visible solo para ti, y puedes borrar cualquiera desde «Consultas recientes».'
+  },
+  {
+    pregunta: '¿De dónde salen las normas del día?',
+    respuesta: 'Del Diario Oficial El Peruano. LexIT las revisa varias veces al día; puedes ver la última edición o cualquier día de los últimos 15, con un resumen hecho por IA.'
+  }
 ]
 
 const DEMO_TABS = [
@@ -591,12 +722,240 @@ function scrollToSection(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' })
 }
 
+// El logo lleva arriba del todo (al video de la intro).
+function irArriba() {
+  cerrarMenu()
+  window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+}
+
 // =========================
-// DEMO DEL HERO: pestañas que rotan solas (se pausan con mouse o teclado)
+// MENÚ DEL CELULAR (≤768px, donde se oculta el menú del header)
+// =========================
+const menuAbierto = ref(false)
+const menuBtnRef = ref<HTMLButtonElement | null>(null)
+const menuRef = ref<HTMLElement | null>(null)
+const mqMenu = window.matchMedia('(max-width: 768px)')
+
+function abrirMenu() {
+  menuAbierto.value = true
+  void nextTick(() => menuRef.value?.querySelector<HTMLElement>('a')?.focus())
+}
+
+function cerrarMenu(devolverFoco = false) {
+  if (!menuAbierto.value) return
+  menuAbierto.value = false
+  if (devolverFoco) menuBtnRef.value?.focus()
+}
+
+function irDesdeMenu(id: string) {
+  cerrarMenu()
+  scrollToSection(id)
+}
+
+// Si la pantalla crece y vuelve el menú de arriba, se cierra el del celular.
+function alCambiarMenu(e: MediaQueryListEvent) {
+  if (!e.matches) cerrarMenu()
+}
+
+// =========================
+// ESCENA DE ENTRADA (video + hero). El video se reproduce solo mientras
+// se ve; con movimiento reducido no arranca solo (queda el botón).
+// =========================
+const BASE = import.meta.env.BASE_URL
+// En pantallas chicas se carga la versión liviana (720p) del video.
+const VIDEO_INTRO = window.matchMedia('(max-width: 768px)').matches
+  ? `${BASE}videos/lexit-intro-movil.mp4`
+  : `${BASE}videos/lexit-intro.mp4`
+const POSTER_INTRO = `${BASE}videos/lexit-intro-poster.jpg`
+
+// La escena fija (el título viaja del centro a su sitio en el hero) solo
+// va en computadora y sin "reducir movimiento"; en el resto, la intro y
+// el hero van uno debajo del otro.
+const mqEscena = window.matchMedia('(min-width: 1025px) and (prefers-reduced-motion: no-preference)')
+const escenaAnimada = ref(mqEscena.matches)
+const escenaRef = ref<HTMLElement | null>(null)
+const introRef = ref<HTMLElement | null>(null)
+const introVideoRef = ref<HTMLVideoElement | null>(null)
+const videoFallo = ref(false)
+const videoReproduciendo = ref(false)
+const videoPausadoPorUsuario = ref(false)
+let observerIntro: IntersectionObserver | null = null
+let ctxEscena: gsap.Context | null = null
+let triggerEscena: ScrollTrigger | null = null
+
+function reproducirIntro() {
+  const video = introVideoRef.value
+  if (!video || videoFallo.value) return
+  // play() se rechaza si el navegador bloquea el autoplay: no es un error.
+  video.play().catch(() => { videoReproduciendo.value = false })
+}
+
+function alternarVideo() {
+  const video = introVideoRef.value
+  if (!video) return
+  if (video.paused) {
+    videoPausadoPorUsuario.value = false
+    reproducirIntro()
+  } else {
+    videoPausadoPorUsuario.value = true
+    video.pause()
+  }
+}
+
+// Botón "Descubre LexIT": en la escena fija baja hasta el final de la
+// transición; si no, al hero.
+function bajarAlHero() {
+  if (triggerEscena) {
+    window.scrollTo({ top: triggerEscena.end, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+  } else {
+    scrollToSection('inicio')
+  }
+}
+
+// Posición de un elemento dentro de un ancestro, sin contar transforms.
+function posicionEn(el: HTMLElement, ancestro: HTMLElement) {
+  let x = 0
+  let y = 0
+  let actual: HTMLElement | null = el
+  while (actual && actual !== ancestro) {
+    x += actual.offsetLeft
+    y += actual.offsetTop
+    actual = actual.offsetParent as HTMLElement | null
+  }
+  return { x, y, alto: el.offsetHeight }
+}
+
+// Computadora: la escena se fija y, al bajar, el título centrado viaja y
+// se achica hasta el título del hero (se cruzan con un fundido), el video
+// se va y aparecen el resto del texto y la demo.
+function animarEscenaEscritorio(escena: HTMLElement) {
+  const tituloIntro = escena.querySelector<HTMLElement>('.intro-titulo')
+  const h1 = escena.querySelector<HTMLElement>('.hero-title')
+  const demo = escena.querySelector<HTMLElement>('.demo')
+  if (!tituloIntro || !h1 || !demo) return
+
+  const estilos = getComputedStyle(escena)
+  const crema = estilos.getPropertyValue('--crema').trim()
+  const azul = estilos.getPropertyValue('--azul-2').trim()
+  const colorTitulo = getComputedStyle(h1).color
+
+  // Escala hasta el tamaño de letra del hero, sin pasar del ancho de su
+  // columna (así no se monta sobre la demo); se alinea el borde izquierdo
+  // y el centro vertical (transformOrigin: left center, en el CSS).
+  const destino = () => {
+    const a = posicionEn(tituloIntro, escena)
+    const b = posicionEn(h1, escena)
+    const porLetra = parseFloat(getComputedStyle(h1).fontSize) / parseFloat(getComputedStyle(tituloIntro).fontSize)
+    const porAncho = h1.offsetWidth / tituloIntro.offsetWidth
+    return {
+      x: b.x - a.x,
+      y: b.y + b.alto / 2 - (a.y + a.alto / 2),
+      escala: Math.min(porLetra, porAncho)
+    }
+  }
+
+  const tl = gsap.timeline({ defaults: { ease: 'none' } })
+    .fromTo(escena.querySelectorAll('.intro-bajar, .intro-control'),
+      { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.15 }, 0)
+    .fromTo(escena.querySelector('.intro-video'), { scale: 1 }, { scale: 1.08, duration: 0.6 }, 0)
+    .fromTo(escena.querySelector('.intro-capa'), { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.5, ease: 'power1.inOut' }, 0.1)
+    .fromTo(tituloIntro,
+      { x: 0, y: 0, scale: 1, color: crema, textShadow: '0 2px 4px rgba(0, 0, 0, 0.25), 0 4px 40px rgba(0, 0, 0, 0.45)' },
+      {
+        x: () => destino().x,
+        y: () => destino().y,
+        scale: () => destino().escala,
+        color: colorTitulo,
+        textShadow: '0 2px 4px rgba(0, 0, 0, 0), 0 4px 40px rgba(0, 0, 0, 0)',
+        duration: 0.65,
+        ease: 'power2.inOut'
+      }, 0.05)
+    .fromTo(tituloIntro.querySelector('em'), { color: crema }, { color: azul, duration: 0.65, ease: 'power2.inOut' }, 0.05)
+    // Relevo: la copia se va justo al llegar y entra el <h1> real en el
+    // mismo sitio (en secuencia: si se cruzan, se leen los dos encimados).
+    .fromTo(tituloIntro, { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.07, immediateRender: false }, 0.6)
+    .fromTo(h1, { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: 0.12, ease: 'power2.out' }, 0.67)
+    .fromTo(escena.querySelectorAll('.hero-texto > :not(.hero-title)'),
+      { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 0.25, stagger: 0.04, ease: 'power2.out' }, 0.62)
+    .fromTo(demo,
+      { autoAlpha: 0, y: () => window.innerHeight * 0.6 },
+      { autoAlpha: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 0.52)
+    // Pequeña pausa al final, con todo ya en su sitio
+    .to({}, { duration: 0.12 })
+
+  triggerEscena = ScrollTrigger.create({
+    trigger: escena,
+    start: 'top top',
+    end: '+=110%',
+    pin: true,
+    scrub: 0.8,
+    invalidateOnRefresh: true,
+    refreshPriority: 1,
+    animation: tl,
+    onLeave: () => introVideoRef.value?.pause(),
+    onEnterBack: () => { if (!videoPausadoPorUsuario.value) reproducirIntro() }
+  })
+}
+
+// Celular/tablet: la intro se desvanece al bajar y el hero entra al verse.
+function animarIntroMovil(escena: HTMLElement) {
+  const intro = introRef.value
+  const hero = heroRef.value
+  if (!intro || !hero) return
+
+  ScrollTrigger.create({
+    trigger: intro,
+    start: 'top top',
+    end: 'bottom top',
+    scrub: 0.6,
+    animation: gsap.timeline({ defaults: { ease: 'none' } })
+      // fromTo con valores de inicio explícitos: con .to() GSAP tomaba la
+      // opacidad a mitad de la animación CSS de entrada (≈0) y el texto
+      // quedaba invisible.
+      .fromTo(intro.querySelector('.intro-contenido'), { yPercent: 0, opacity: 1 }, { yPercent: -15, opacity: 0, duration: 0.5 }, 0)
+      .fromTo(intro.querySelectorAll('.intro-bajar, .intro-control'), { opacity: 1 }, { opacity: 0, duration: 0.3 }, 0)
+      .fromTo(intro.querySelector('.intro-video'), { scale: 1 }, { scale: 1.12 }, 0)
+      .fromTo(intro.querySelector('.intro-fundido'), { opacity: 0 }, { opacity: 1, ease: 'power1.in' }, 0)
+  })
+
+  const entradaHero = gsap.timeline({ paused: true })
+    .from(escena.querySelectorAll('.hero-texto > *'), {
+      opacity: 0, y: 28, duration: 0.9, ease: 'power3.out', stagger: 0.1
+    }, 0)
+    .from(escena.querySelector('.demo'), {
+      opacity: 0, y: 40, scale: 0.97, duration: 1.1, ease: 'power3.out'
+    }, 0.25)
+  ScrollTrigger.create({ trigger: hero, start: 'top 70%', once: true, animation: entradaHero })
+}
+
+// (Re)arma la animación de la escena según el tamaño de pantalla. Todo
+// lo que se crea dentro del contexto se deshace con revert().
+function montarEscena() {
+  ctxEscena?.revert()
+  ctxEscena = null
+  triggerEscena = null
+  const escena = escenaRef.value
+  if (!escena || prefersReducedMotion()) return
+  ctxEscena = gsap.context(() => {
+    if (escenaAnimada.value) animarEscenaEscritorio(escena)
+    else animarIntroMovil(escena)
+  }, escena)
+  ScrollTrigger.refresh()
+}
+
+function alCambiarEscena(e: MediaQueryListEvent) {
+  escenaAnimada.value = e.matches
+  void nextTick(montarEscena)
+}
+
+// =========================
+// DEMO DEL HERO: pestañas que rotan solas cada 3 s (se pausan mientras
+// se navega con teclado). Si el usuario elige una, se queda en ella.
 // =========================
 const demoActiva = ref(0)
 const demoPausada = ref(false)
-const DEMO_MS = 7000
+const demoElegida = ref(false)
+const DEMO_MS = 3000
 let demoTimer: ReturnType<typeof setInterval> | null = null
 
 const textoEscrito = ref(RESPUESTA_DEMO)
@@ -627,7 +986,10 @@ function escribirRespuesta() {
 function elegirDemo(i: number, enfocar = false) {
   demoActiva.value = i
   if (i === 0) escribirRespuesta()
-  reiniciarDemo()
+  // Eligió una opción: se detiene la rotación para que la vea con calma.
+  demoElegida.value = true
+  if (demoTimer) clearInterval(demoTimer)
+  demoTimer = null
   if (enfocar) document.getElementById(`demo-tab-${i}`)?.focus()
 }
 
@@ -660,6 +1022,13 @@ const headerSolido = ref(false)
 const seccionActiva = ref('')
 const progresoPasos = ref(0)
 
+// El header es transparente (texto claro) mientras está sobre el video.
+function umbralHeader() {
+  if (triggerEscena) return triggerEscena.start + (triggerEscena.end - triggerEscena.start) * 0.25
+  const intro = introRef.value
+  return intro ? Math.max(40, intro.offsetHeight * 0.5) : 40
+}
+
 // Un solo cálculo por cuadro de pantalla para todo lo que depende del scroll.
 let cuadroScroll: number | null = null
 function alHacerScroll() {
@@ -669,7 +1038,7 @@ function alHacerScroll() {
     const total = document.documentElement.scrollHeight - window.innerHeight
     const avance = total > 0 ? window.scrollY / total : 0
     if (progresoRef.value) progresoRef.value.style.transform = `scaleX(${avance})`
-    headerSolido.value = window.scrollY > 40
+    headerSolido.value = window.scrollY > umbralHeader()
     // Línea de "Cómo funciona": se llena mientras la sección cruza la pantalla.
     const pasos = pasosRef.value
     if (pasos) {
@@ -750,41 +1119,25 @@ onMounted(() => {
     if (el) observerSecciones.observe(el)
   }
 
+  // Video de la intro: corre en pantalla, se pausa fuera de ella.
+  if (!prefersReducedMotion() && introRef.value) {
+    observerIntro = new IntersectionObserver(([entry]) => {
+      if (entry?.isIntersecting) {
+        if (!videoPausadoPorUsuario.value) reproducirIntro()
+      } else {
+        introVideoRef.value?.pause()
+      }
+    }, { threshold: 0.1 })
+    observerIntro.observe(introRef.value)
+  }
+
+  mqEscena.addEventListener('change', alCambiarEscena)
+  mqMenu.addEventListener('change', alCambiarMenu)
+  montarEscena()
+  alHacerScroll()
+
   const root = pageRoot.value
   if (!root || prefersReducedMotion()) return
-
-  // Entrada del hero. En escritorio: primero el video a pantalla completa
-  // con el titular centrado; al bajar, el titular va a su lugar (izquierda),
-  // el video se desvanece, aparece el resto del texto y sube la demo.
-  const hero = heroRef.value
-  const titulo = root.querySelector<HTMLElement>('.hero-title')
-  const demo = root.querySelector<HTMLElement>('.demo')
-  if (hero && titulo && demo && window.matchMedia('(min-width: 1025px)').matches) {
-    hero.classList.add('hero--intro')
-    const otros = Array.from(root.querySelectorAll<HTMLElement>('.hero-texto > *')).filter(el => el !== titulo)
-    const rTitulo = titulo.getBoundingClientRect()
-    const rHero = hero.getBoundingClientRect()
-    const dx = rHero.left + rHero.width / 2 - (rTitulo.left + rTitulo.width / 2)
-    const dy = window.innerHeight / 2 - (rTitulo.top + rTitulo.height / 2)
-
-    const intro = gsap.timeline({
-      scrollTrigger: { trigger: hero, start: 'top top', end: '+=110%', scrub: 0.7, pin: true, anticipatePin: 1 }
-    })
-    intro
-      .fromTo(hero, { '--hero-tinta': '#FFFFFF', '--hero-em': 'rgba(255, 255, 255, 0.78)' }, { '--hero-tinta': '#141414', '--hero-em': '#1D3B63', duration: 0.8, ease: 'none' }, 0.1)
-      .fromTo(titulo, { x: dx, y: dy, scale: 1.12 }, { x: 0, y: 0, scale: 1, duration: 1, ease: 'power2.inOut' }, 0)
-      .fromTo(root.querySelector('.hero-video'), { opacity: 1 }, { opacity: 0, duration: 0.75, ease: 'none' }, 0.15)
-      .fromTo(otros, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.05, ease: 'power2.out' }, 0.6)
-      .fromTo(demo, { y: () => window.innerHeight * 0.7, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: 'power2.out' }, 0.35)
-    if (intro.scrollTrigger) scrollTriggers.push(intro.scrollTrigger)
-  } else {
-    gsap.from(root.querySelectorAll('.hero-texto > *'), {
-      opacity: 0, y: 28, duration: 0.9, ease: 'power3.out', stagger: 0.1, delay: 0.1
-    })
-    gsap.from(demo, {
-      opacity: 0, y: 40, scale: 0.97, duration: 1.1, ease: 'power3.out', delay: 0.35
-    })
-  }
 
   // Parallax suave de las imágenes editoriales.
   root.querySelectorAll<HTMLElement>('.parallax-img').forEach((img) => {
@@ -801,6 +1154,10 @@ onMounted(() => {
 onUnmounted(() => {
   observerReveal?.disconnect()
   observerSecciones?.disconnect()
+  observerIntro?.disconnect()
+  mqEscena.removeEventListener('change', alCambiarEscena)
+  mqMenu.removeEventListener('change', alCambiarMenu)
+  ctxEscena?.revert()
   scrollTriggers.forEach((st) => st.kill())
   if (demoTimer) clearInterval(demoTimer)
   if (escrituraTimer) clearInterval(escrituraTimer)
@@ -980,6 +1337,407 @@ onUnmounted(() => {
 :deep(.auth-buttons .login-btn:hover) { background: rgba(23, 33, 27, 0.06) !important; }
 :deep(.auth-buttons .register-btn) { background: var(--bosque) !important; color: var(--crema) !important; }
 :deep(.auth-buttons .register-btn:hover) { background: var(--grisaceo) !important; }
+
+/* Header sobre el video de la intro (arriba del todo): texto claro */
+.header-logo { transition: color 0.35s var(--ease); }
+.landing-header--claro .header-logo { color: var(--crema); }
+.landing-header--claro .header-nav-link { color: rgba(248, 247, 242, 0.8); }
+.landing-header--claro .header-nav-link:hover,
+.landing-header--claro .header-nav-link--activo { color: var(--crema); }
+.landing-header--claro :deep(.auth-buttons .login-btn) { color: var(--crema) !important; }
+.landing-header--claro :deep(.auth-buttons .login-btn:hover) { background: rgba(255, 255, 255, 0.12) !important; }
+.landing-header--claro :deep(.auth-buttons .register-btn) { background: var(--crema) !important; color: var(--bosque) !important; }
+.landing-header--claro :deep(.auth-buttons .register-btn:hover) { background: var(--blanco) !important; }
+
+/* ==============================
+   PREGUNTAS FRECUENTES
+   ============================== */
+.faq {
+  padding: clamp(80px, 10vw, 130px) var(--gutter);
+  background: var(--crema-2);
+}
+
+.faq-inner {
+  max-width: var(--ancho);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: clamp(32px, 6vw, 96px);
+  align-items: start;
+}
+
+.faq-cabecera {
+  position: sticky;
+  top: 110px;
+}
+
+/* La línea del label va a la izquierda (en las demás secciones, centrada) */
+.faq-cabecera .section-label::before { left: 0; margin-left: 0; }
+.faq-cabecera.is-visible .section-label::before { transform: scaleX(1); }
+
+.faq-titulo {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(2rem, 4vw, 3.1rem);
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  color: var(--texto);
+}
+
+.faq-titulo em { color: var(--azul-2); }
+
+.faq-texto {
+  margin: 20px 0 0;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--texto-sec);
+}
+
+.faq-texto a { color: var(--texto); text-underline-offset: 3px; }
+
+.faq-lista { border-top: 1px solid var(--borde-fuerte); }
+
+.faq-item { border-bottom: 1px solid var(--borde-fuerte); }
+
+.faq-pregunta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 0;
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--serif);
+  font-size: clamp(1.15rem, 1.8vw, 1.35rem);
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--texto);
+  transition: color 0.2s var(--ease-out);
+}
+
+.faq-pregunta::-webkit-details-marker { display: none; }
+.faq-pregunta:focus-visible { outline: 2px solid var(--azul-2); outline-offset: 4px; }
+
+/* "+" que gira a "×" al abrir */
+.faq-icono {
+  position: relative;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  transition: transform 0.3s var(--ease-out);
+}
+
+.faq-icono::before,
+.faq-icono::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1.5px;
+  margin-top: -0.75px;
+  background: currentColor;
+}
+
+.faq-icono::after { transform: rotate(90deg); }
+.faq-item[open] .faq-icono { transform: rotate(45deg); }
+
+.faq-respuesta {
+  margin: 0;
+  padding: 0 40px 24px 0;
+  max-width: 640px;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--texto-sec);
+}
+
+.faq-item[open] .faq-respuesta { animation: faq-abrir 0.35s var(--ease-out); }
+
+@keyframes faq-abrir {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .faq-pregunta:hover { color: var(--azul-2); }
+}
+
+/* ==============================
+   MENÚ DEL CELULAR
+   ============================== */
+.menu-btn {
+  display: none;
+  position: relative;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  color: var(--texto);
+  transition: color 0.35s var(--ease), background-color 0.2s var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.landing-header--claro .menu-btn { color: var(--crema); }
+.menu-btn:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+.menu-btn-linea {
+  position: absolute;
+  left: 11px;
+  right: 11px;
+  height: 1.5px;
+  border-radius: 2px;
+  background: currentColor;
+  transition: transform 0.3s var(--ease-out);
+}
+
+.menu-btn-linea:first-child { transform: translateY(-4px); }
+.menu-btn-linea:last-child { transform: translateY(4px); }
+.menu-btn--abierto .menu-btn-linea:first-child { transform: rotate(45deg); }
+.menu-btn--abierto .menu-btn-linea:last-child { transform: rotate(-45deg); }
+
+.menu-movil {
+  display: flex;
+  flex-direction: column;
+  padding: 8px var(--gutter) 24px;
+  background: var(--blanco);
+  border-top: 1px solid var(--borde);
+  border-bottom: 1px solid var(--borde);
+  box-shadow: 0 24px 40px -24px rgba(23, 33, 27, 0.25);
+}
+
+.menu-movil-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--borde);
+  font-family: var(--serif);
+  font-size: 1.45rem;
+  color: var(--texto);
+  text-decoration: none;
+}
+
+.menu-movil-link span {
+  font-family: var(--sans);
+  font-size: 1rem;
+  color: var(--texto-sec);
+}
+
+.menu-movil-link--activo { color: var(--azul-2); }
+.menu-movil-link:focus-visible { outline: 2px solid var(--azul-2); outline-offset: 2px; }
+
+.menu-movil-login {
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.menu-velo {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(23, 33, 27, 0.35);
+}
+
+.menu-enter-active,
+.menu-leave-active { transition: opacity 0.25s var(--ease-out), transform 0.3s var(--ease-out); }
+.menu-enter-from,
+.menu-leave-to { opacity: 0; transform: translateY(-8px); }
+
+.velo-enter-active,
+.velo-leave-active { transition: opacity 0.25s var(--ease-out); }
+.velo-enter-from,
+.velo-leave-to { opacity: 0; }
+
+/* ==============================
+   INTRO EN VIDEO (pantalla completa, texto serif centrado)
+   ============================== */
+.intro {
+  position: relative;
+  height: 100vh;
+  height: 100svh;
+  min-height: 520px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 96px var(--gutter) 120px;
+  color: var(--crema);
+  text-align: center;
+}
+
+/* Video + velo. Su fondo queda si el video aún no carga o no existe. */
+.intro-capa {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(900px circle at 50% 40%, rgba(61, 71, 58, 0.9), transparent 70%),
+    var(--bosque);
+}
+
+.intro-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+/* Velo para que el texto blanco se lea sobre cualquier toma */
+.intro-velo {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(23, 33, 27, 0.45) 0%, rgba(23, 33, 27, 0.12) 35%, rgba(23, 33, 27, 0.15) 65%, rgba(23, 33, 27, 0.5) 100%),
+    radial-gradient(ellipse 65% 50% at 50% 50%, rgba(23, 33, 27, 0.38), transparent 75%);
+}
+
+/* Al bajar, GSAP sube su opacidad hasta igualar el fondo del hero */
+.intro-fundido {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--crema);
+  opacity: 0;
+}
+
+
+.intro-contenido {
+  position: relative;
+  max-width: 1000px;
+  animation: intro-entrada 1.4s var(--ease) backwards;
+}
+
+/* Mismo peso y espaciado que el título del hero: en computadora este
+   texto viaja hasta él y se cruzan. inline-block: la caja mide lo que
+   el texto (sirve para calcular el viaje). */
+.intro-titulo {
+  display: inline-block;
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(2.4rem, 5.6vw, 5.4rem);
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+  color: var(--crema);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.25), 0 4px 40px rgba(0, 0, 0, 0.45);
+  transform-origin: left center;
+}
+
+.intro-titulo em { color: var(--crema); }
+
+/* ---------- Escena fija (solo computadora, ver montarEscena) ----------
+   La intro se superpone al hero (primer alto de pantalla); al bajar, la
+   escena se fija y GSAP hace la transición. */
+.escena { position: relative; }
+
+.escena--animada .intro {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 2;
+  min-height: 0;
+  pointer-events: none;
+}
+
+.escena--animada .intro-bajar,
+.escena--animada .intro-control { pointer-events: auto; }
+
+.escena--animada .intro-fundido { display: none; }
+
+.escena--animada .hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding-top: 110px;
+  padding-bottom: 72px;
+}
+
+.escena--animada .hero-inner { width: 100%; }
+
+@keyframes intro-entrada {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
+}
+
+.intro-bajar {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(24px, 5vh, 44px);
+  transform: translateX(-50%);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(248, 247, 242, 0.85);
+  transition: color 0.25s var(--ease-out);
+}
+
+.intro-bajar-flecha {
+  font-size: 1.1rem;
+  animation: intro-flecha 2s var(--ease) infinite;
+}
+
+@keyframes intro-flecha {
+  0%, 100% { transform: translateY(0); opacity: 0.6; }
+  50% { transform: translateY(6px); opacity: 1; }
+}
+
+.intro-control {
+  position: absolute;
+  right: var(--gutter);
+  bottom: clamp(24px, 5vh, 44px);
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(248, 247, 242, 0.45);
+  background: rgba(23, 33, 27, 0.35);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  color: var(--crema);
+  transition: background-color 0.2s var(--ease-out), border-color 0.2s var(--ease-out);
+}
+
+.intro-icono-pausa {
+  width: 10px;
+  height: 12px;
+  border-left: 3px solid currentColor;
+  border-right: 3px solid currentColor;
+}
+
+.intro-icono-play {
+  width: 0;
+  height: 0;
+  margin-left: 3px;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-left: 11px solid currentColor;
+}
+
+.intro-bajar:focus-visible,
+.intro-control:focus-visible { outline: 2px solid var(--crema); outline-offset: 3px; }
+
+@media (hover: hover) and (pointer: fine) {
+  .intro-bajar:hover { color: var(--crema); }
+  .intro-control:hover { background: rgba(23, 33, 27, 0.6); border-color: var(--crema); }
+}
 
 /* ==============================
    BOTONES
@@ -1191,7 +1949,8 @@ onUnmounted(() => {
   height: 100%;
   background: var(--beige-oliva);
   transform-origin: left;
-  animation: llenar 7s linear forwards;
+  /* La duración real llega desde DEMO_MS (style en la plantilla) */
+  animation: llenar 3s linear forwards;
 }
 
 .demo-tabs-progreso-relleno--pausa { animation-play-state: paused; }
@@ -1590,6 +2349,15 @@ onUnmounted(() => {
 
 .cinta-sep { color: var(--grisaceo); opacity: 0.7; }
 
+.cinta-sep::before {
+  content: '';
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
 @keyframes cinta {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
@@ -1677,18 +2445,6 @@ onUnmounted(() => {
   transition: background-color 0.6s var(--ease);
 }
 
-.producto-vista::before {
-  content: none;
-  position: absolute;
-  top: -40px;
-  right: 10px;
-  font-family: var(--serif);
-  font-size: 320px;
-  line-height: 1;
-  color: var(--texto);
-  opacity: 0.06;
-  pointer-events: none;
-}
 
 /* Cada herramienta tiñe el panel con un tono claro distinto */
 .producto-vista[data-tono='bosque'] { background: var(--crema); }
@@ -1863,12 +2619,13 @@ onUnmounted(() => {
 }
 
 .esp-normas li::before {
-  content: '—';
+  content: '';
   position: absolute;
   left: 0;
-  top: 0;
-  font-family: var(--serif);
-  color: var(--oliva);
+  top: 0.7em;
+  width: 7px;
+  height: 1.5px;
+  background: var(--oliva);
 }
 
 .esp-cta {
@@ -2385,6 +3142,102 @@ onUnmounted(() => {
 
 .cinta-sep { color: var(--crema); opacity: 0.45; }
 
+/* ---- Producto: relieve de fondo ----
+   Solo capas decorativas detrás del contenido (z-index -1 dentro de un
+   contexto aislado): no cambian colores, tamaños ni posición de nada. */
+.producto {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(900px circle at 8% 0%, rgba(189, 181, 155, 0.22), transparent 60%),
+    radial-gradient(800px circle at 100% 100%, rgba(var(--azul-rgb), 0.06), transparent 60%),
+    var(--blanco);
+}
+
+/* Trama de puntos finos, desvanecida hacia los bordes */
+.producto::before,
+.producto::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.producto::before {
+  background-image: radial-gradient(rgba(var(--azul-rgb), 0.11) 1px, transparent 1.5px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 45%, #000 20%, transparent 85%);
+  mask-image: radial-gradient(ellipse 75% 65% at 50% 45%, #000 20%, transparent 85%);
+}
+
+/* Anillos concéntricos grabados, como el relieve de un sello */
+.producto::after {
+  --anillos: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Cg fill='none' stroke='%232C3B4D' stroke-opacity='0.09'%3E%3Ccircle cx='300' cy='300' r='70'/%3E%3Ccircle cx='300' cy='300' r='92'/%3E%3Ccircle cx='300' cy='300' r='114'/%3E%3Ccircle cx='300' cy='300' r='136'/%3E%3Ccircle cx='300' cy='300' r='158'/%3E%3Ccircle cx='300' cy='300' r='180'/%3E%3Ccircle cx='300' cy='300' r='202'/%3E%3Ccircle cx='300' cy='300' r='224'/%3E%3Ccircle cx='300' cy='300' r='246'/%3E%3Ccircle cx='300' cy='300' r='268'/%3E%3Ccircle cx='300' cy='300' r='290' stroke-dasharray='2 6'/%3E%3C/g%3E%3C/svg%3E");
+  background:
+    var(--anillos) right -200px top -220px / clamp(380px, 42vw, 620px) no-repeat,
+    var(--anillos) left -240px bottom -260px / clamp(340px, 36vw, 540px) no-repeat;
+}
+
+/* ---- Nosotros y Dirección/Equipo: mismo relieve que Producto ----
+   Igual que arriba: solo pseudo-elementos detrás del contenido, sin tocar
+   colores ni medidas. .equipo mide 1200px, así que su relieve se extiende
+   a todo el ancho (.landing-page ya recorta el desborde horizontal). */
+.nosotros,
+.equipo {
+  position: relative;
+  isolation: isolate;
+}
+
+.nosotros::before,
+.nosotros::after,
+.equipo::before,
+.equipo::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.equipo::before,
+.equipo::after {
+  left: calc(50% - 50vw);
+  right: calc(50% - 50vw);
+}
+
+/* Trama de puntos finos, desvanecida hacia los bordes */
+.nosotros::before,
+.equipo::before {
+  background-image: radial-gradient(rgba(var(--azul-rgb), 0.11) 1px, transparent 1.5px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 45%, #000 20%, transparent 85%);
+  mask-image: radial-gradient(ellipse 75% 65% at 50% 45%, #000 20%, transparent 85%);
+}
+
+/* Luces suaves y anillos de sello, en esquinas distintas a Producto */
+.nosotros::after,
+.equipo::after {
+  --anillos: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Cg fill='none' stroke='%232C3B4D' stroke-opacity='0.09'%3E%3Ccircle cx='300' cy='300' r='70'/%3E%3Ccircle cx='300' cy='300' r='92'/%3E%3Ccircle cx='300' cy='300' r='114'/%3E%3Ccircle cx='300' cy='300' r='136'/%3E%3Ccircle cx='300' cy='300' r='158'/%3E%3Ccircle cx='300' cy='300' r='180'/%3E%3Ccircle cx='300' cy='300' r='202'/%3E%3Ccircle cx='300' cy='300' r='224'/%3E%3Ccircle cx='300' cy='300' r='246'/%3E%3Ccircle cx='300' cy='300' r='268'/%3E%3Ccircle cx='300' cy='300' r='290' stroke-dasharray='2 6'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.nosotros::after {
+  background:
+    var(--anillos) left -220px top -200px / clamp(380px, 42vw, 620px) no-repeat,
+    radial-gradient(900px circle at 95% 10%, rgba(189, 181, 155, 0.22), transparent 60%),
+    radial-gradient(700px circle at 0% 100%, rgba(var(--azul-rgb), 0.05), transparent 60%);
+}
+
+.equipo::after {
+  background:
+    var(--anillos) right -240px top 30% / clamp(380px, 40vw, 600px) no-repeat,
+    radial-gradient(900px circle at 5% 30%, rgba(189, 181, 155, 0.2), transparent 60%),
+    radial-gradient(800px circle at 100% 100%, rgba(var(--azul-rgb), 0.05), transparent 60%);
+}
+
 /* ---- Producto y pasos ---- */
 .herr--activa .herr-num { color: var(--azul-2) !important; }
 .herr--activa { box-shadow: inset 2px 0 0 var(--azul-2); }
@@ -2413,6 +3266,33 @@ onUnmounted(() => {
 @media (hover: hover) and (pointer: fine) {
   .mv-bloque:hover { border-left-color: var(--crema); }
 }
+
+/* ---- Especializaciones: "La tormenta en el mar de Galilea" de fondo ----
+   Velo azul (Abyssal) encima de la pintura y acentos en el ocre de sus
+   velas; solo afecta a esta sección. */
+.especialidades {
+  --oro: #C9A774;
+  --oro-claro: #DEC29A;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(var(--azul-rgb), 0.9) 0%, rgba(var(--azul-rgb), 0.72) 40%, rgba(var(--azul-rgb), 0.82) 75%, rgba(var(--azul-rgb), 0.95) 100%),
+    radial-gradient(900px circle at 30% 45%, rgba(201, 167, 116, 0.16), transparent 65%),
+    url('../assets/especializaciones/fondo-tormenta.jpg') center 58% / cover no-repeat,
+    var(--azul);
+  color: var(--crema);
+}
+
+.especialidades .section-label { color: var(--oro); }
+.especialidades .section-label::before { background: var(--oro); }
+.especialidades .section-title { color: var(--crema); }
+.especialidades .section-title em { color: var(--oro-claro); }
+.especialidades .section-subtitle { color: var(--crema-sobre-azul); }
+
+/* Las tarjetas no cambian: recuperan el color de texto de siempre para
+   no heredar el crema del encabezado. */
+.especialidades .esp { color: var(--texto); }
 
 /* ---- Llamado final: azul con resplandor que se mueve lento ---- */
 .cta {
@@ -2515,6 +3395,9 @@ onUnmounted(() => {
    RESPONSIVE
    ============================== */
 @media (max-width: 1024px) {
+  .faq-inner { grid-template-columns: 1fr; }
+  .faq-cabecera { position: static; }
+
   .hero-inner,
   .producto-grid,
   .proposito,
@@ -2533,7 +3416,12 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .header-nav { display: none; }
-  .header-inner { justify-content: space-between; }
+  .header-inner { justify-content: space-between; gap: 12px; }
+
+  /* "Iniciar sesión" pasa al menú; en el header queda "Registrarse" */
+  .menu-btn { display: block; }
+  :deep(.auth-buttons) { margin-left: auto; }
+  :deep(.auth-buttons .login-btn) { display: none; }
 
   .base-cifras { grid-template-columns: 1fr; gap: 20px; }
 
@@ -2550,6 +3438,7 @@ onUnmounted(() => {
 }
 
 @media (max-width: 520px) {
+  .faq-respuesta { padding-right: 0; }
   .demo-tab { font-size: 0.76rem; padding: 8px 2px; }
   .demo-panel--analisis { flex-direction: column; }
   .equipo-grid { grid-template-columns: repeat(2, 1fr); }
@@ -3012,68 +3901,6 @@ onUnmounted(() => {
 
 .landing-page :is(a, button):focus-visible { outline-color: var(--rc-tinta); }
 
-/* ==========================================================================
-   HERO CON VIDEO DE FONDO
-   Escritorio con movimiento permitido: el hero queda fijo mientras se baja
-   (ScrollTrigger) y pasa del video con el titular centrado en blanco al
-   diseño de siempre (texto a la izquierda, demo a la derecha). En celular
-   o con "reducir movimiento" no se muestra el video: queda el hero normal.
-   ========================================================================== */
-.landing-page .hero-video {
-  display: none;
-}
-
-.landing-page .hero.hero--intro {
-  --hero-tinta: #141414;
-  --hero-em: #6B6B6B;
-  display: flex;
-  align-items: center;
-  min-height: 100vh;
-}
-
-.landing-page .hero.hero--intro .hero-inner {
-  width: 100%;
-  z-index: 1;
-}
-
-.landing-page .hero.hero--intro .hero-video {
-  display: block;
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.landing-page .hero-video-media {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-/* Velo oscuro para que el titular blanco se lea sobre el video */
-.landing-page .hero-video-velo {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(180deg, rgba(10, 10, 10, 0.35) 0%, rgba(10, 10, 10, 0.55) 100%),
-    radial-gradient(ellipse 60% 50% at 50% 50%, rgba(10, 10, 10, 0.35), transparent 75%);
-}
-
-.landing-page .hero.hero--intro .hero-title {
-  position: relative;
-  color: var(--hero-tinta) !important;
-  will-change: transform;
-}
-
-.landing-page .hero.hero--intro .hero-title em {
-  color: var(--hero-em) !important;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .landing-page .hero-video { display: none !important; }
-}
 
 /* ==========================================================================
    ACABADO CORPORATIVO (azul marino de la marca)
@@ -3091,10 +3918,6 @@ onUnmounted(() => {
 .landing-page :is(.hero-title, .section-title, .cta-titulo) em {
   font-style: normal !important;
   color: var(--rc-marca-2) !important;
-}
-
-.landing-page .hero.hero--intro .hero-title em {
-  color: var(--hero-em) !important;
 }
 
 /* Cabecera */
@@ -3170,10 +3993,4 @@ onUnmounted(() => {
 .landing-page .mv,
 .landing-page .landing-footer { background: var(--rc-negro) !important; }
 
-/* Velo del video con un tinte marino */
-.landing-page .hero-video-velo {
-  background:
-    linear-gradient(180deg, rgba(15, 34, 64, 0.45) 0%, rgba(15, 34, 64, 0.62) 100%),
-    radial-gradient(ellipse 60% 50% at 50% 50%, rgba(10, 18, 32, 0.3), transparent 75%) !important;
-}
 </style>
