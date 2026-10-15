@@ -269,7 +269,7 @@
             <!-- Word: vista fiel (docx-preview), tal como es la plantilla —
                  con las ediciones hechas en "Editar Contrato". -->
             <div v-else-if="modoWordFiel" class="contrato-vista-word">
-              <VistaWord :html="htmlVistaWordEditado || htmlVistaWord" :estilos="estilosVistaWord" />
+              <VistaWord :html="htmlWordConAdicionales" :estilos="estilosVistaWord" />
             </div>
 
             <!-- Word (respaldo): si la vista fiel no se pudo dibujar, o después
@@ -577,7 +577,8 @@ import type { ContractTemplate } from '../stores/contratos-store'
 import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy } from 'pdfjs-dist'
 import { chatEditarContratoIA, recomendarPlantilla, type MensajeChatEdicion, type ResultadoChatEdicion } from '../services/geminiService'
 import { buscarPlantillasLocal } from '../utils/buscarPlantilla'
-import { exportToWordConMarcaDeAgua } from '../utils/documentExport'
+import { exportToWord } from '../utils/documentExport'
+import { insertarClausulasEnHtml, insertarClausulasEnTexto, type ClausulaAdicional } from '../utils/clausulasAdicionales'
 import { extraerHtmlWord } from '../utils/mammothExtractor'
 import { subirDocumentoTemporal, descargarWordEditado } from '../services/documentosTemporalesService'
 import { renderizarWord } from '../utils/vistaWord'
@@ -1010,7 +1011,10 @@ async function descargarWordFiel(marcaLexit: boolean) {
   avisoDescargaWord.value = ''
   const cambios = cambiosDeLaVistaWord()
   const storagePath = await prepararPlantillaEnStorage()
-  const resultado = await descargarWordEditado(storagePath, cambios, currentTemplate.value?.name || 'contrato', { marcaLexit })
+  const resultado = await descargarWordEditado(storagePath, cambios, currentTemplate.value?.name || 'contrato', {
+    marcaLexit,
+    clausulasAdicionales: clausulasAdicionales.value
+  })
   window.location.href = resultado.url
   if (resultado.fallidos.length > 0) {
     avisoDescargaWord.value = `Se aplicaron ${resultado.aplicados} de ${cambios.length} cambios; ` +
@@ -1164,6 +1168,7 @@ const nextPage = async () => {
 const MENSAJE_INICIAL_CHAT_EDICION = 'Analiza el contrato y hazme la primera pregunta para completarlo o modificarlo.'
 
 const reiniciarChatEdicion = () => {
+  clausulasAdicionales.value = []
   chatEdicionMensajes.value = []
   chatEdicionHistorialIA.value = []
   chatEdicionIniciado.value = false
@@ -1188,8 +1193,18 @@ const aplicarResultadoChatEdicion = (textoModificado: string) => {
 // Word mostrado — igual que "Aplicar al documento" en Análisis. Así el
 // contrato se sigue viendo y descargando idéntico al original (con el
 // membrete), solo con los datos completados. PDF: como siempre.
+// Cláusulas adicionales que redactó la IA: se muestran y se descargan
+// insertadas antes del cierre, sin tocar el HTML base del documento.
+const clausulasAdicionales = ref<ClausulaAdicional[]>([])
+
+const htmlWordConAdicionales = computed(() =>
+  insertarClausulasEnHtml(htmlVistaWordEditado.value || htmlVistaWord.value, clausulasAdicionales.value)
+)
+
 const textoParaChatIA = (): string =>
-  modoWordFiel.value ? textoDelCuerpo(htmlVistaWordEditado.value || htmlVistaWord.value) : textoEditado.value
+  modoWordFiel.value
+    ? textoDelCuerpo(htmlWordConAdicionales.value)
+    : insertarClausulasEnTexto(textoEditado.value, clausulasAdicionales.value)
 
 const opcionesChatIA = (): { formato?: 'cambios' } =>
   modoWordFiel.value ? { formato: 'cambios' } : {}
@@ -1243,6 +1258,10 @@ const aplicarCambiosEnVivo = (cambios: { antes: string; despues: string }[]) => 
 }
 
 const procesarResultadoChatEdicion = (resultado: ResultadoChatEdicion) => {
+  if (resultado.clausulasAdicionales) {
+    clausulasAdicionales.value = resultado.clausulasAdicionales
+    if (!modoWordFiel.value) textoHtml.value = textoAHtml(insertarClausulasEnTexto(textoEditado.value, clausulasAdicionales.value))
+  }
   if (resultado.tipo === 'pregunta') {
     if (resultado.cambios?.length) aplicarCambiosEnVivo(resultado.cambios)
     return
@@ -1327,7 +1346,8 @@ const descargarWord = async () => {
   if (modoWordFiel.value) {
     descargandoWord.value = true
     try {
-      await descargarWordFiel(true)
+      // Las plantillas ya traen su propia marca de agua: no se agrega otra
+      await descargarWordFiel(false)
     } catch (err) {
       console.error('Error descargando el Word:', err)
       avisoDescargaWord.value = err instanceof Error ? err.message : 'No se pudo descargar el Word.'
@@ -1339,7 +1359,7 @@ const descargarWord = async () => {
   if (!textoHtml.value) return
   descargandoWord.value = true
   try {
-    const blob = await exportToWordConMarcaDeAgua(textoHtml.value, currentTemplate.value?.name || 'contrato', plantillaFuenteDetectada.value)
+    const blob = await exportToWord(textoHtml.value, currentTemplate.value?.name || 'contrato', plantillaFuenteDetectada.value)
     triggerDownload(blob, `${currentTemplate.value?.name || 'contrato'}.docx`)
   } catch (err) {
     console.error('Error exportando Word:', err)
@@ -1484,7 +1504,12 @@ const parrafosNuevosIA = computed<number[]>(() => {
   return indicesCambiados(htmlAntesDelTurno.value, htmlVistaWordEditado.value || htmlVistaWord.value)
 })
 
-const htmlDocEnVivo = computed(() => {
+const htmlDocEnVivo = computed(() => conAdicionalesEnVivo(htmlDocEnVivoBase()))
+
+// Las cláusulas adicionales aparecen resaltadas como cualquier cambio de la IA
+const conAdicionalesEnVivo = (html: string) => insertarClausulasEnHtml(html, clausulasAdicionales.value, 'lx-cambio-ia')
+
+function htmlDocEnVivoBase(): string {
   const base = htmlVistaWordEditado.value || htmlVistaWord.value
   if (parrafosCambiadosIA.value.length === 0) return base
   const contenedor = document.createElement('div')
@@ -1496,7 +1521,7 @@ const htmlDocEnVivo = computed(() => {
     contenedor.querySelector(`[data-p="${indice}"]`)?.classList.add('lx-cambio-ia', 'lx-cambio-ia--nuevo')
   }
   return contenedor.innerHTML
-})
+}
 
 // PDF (o Word sin vista fiel): el contrato se muestra como texto; se
 // resaltan los párrafos que no estaban antes de la IA.

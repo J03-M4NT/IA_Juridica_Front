@@ -5,6 +5,7 @@ import { ORIGENES_PERMITIDOS, autorizar } from './seguridad'
 import JSZip from 'jszip'
 import { aplicarCambiosDocx, type CambioParrafo } from './editarDocx'
 import { agregarMembreteLexit } from './marcaLexit'
+import { insertarClausulasAdicionalesDocx, type ClausulaAdicionalDocx } from './clausulasDocx'
 
 // =========================
 // DESCARGAR EL WORD EDITADO (Análisis de Contratos)
@@ -33,6 +34,14 @@ function cambiosValidos(cambios: unknown): cambios is CambioParrafo[] {
   )
 }
 
+function clausulasValidas(c: unknown): c is ClausulaAdicionalDocx[] {
+  return Array.isArray(c) && c.length <= 10 && c.every(x =>
+    x !== null && typeof x === 'object' &&
+    typeof (x as ClausulaAdicionalDocx).encabezado === 'string' && (x as ClausulaAdicionalDocx).encabezado.length <= 200 &&
+    typeof (x as ClausulaAdicionalDocx).texto === 'string' && (x as ClausulaAdicionalDocx).texto.length <= 4_000
+  )
+}
+
 export const descargarWordEditado = onRequest(
   // Un .docx grande se abre y se vuelve a comprimir en memoria.
   { cors: ORIGENES_PERMITIDOS, timeoutSeconds: 120, memory: '1GiB' },
@@ -46,7 +55,7 @@ export const descargarWordEditado = onRequest(
     if (!uid) return
 
     try {
-      const { storagePath, cambios, nombreDescarga, marcaLexit } = req.body as { storagePath?: string; cambios?: unknown; nombreDescarga?: string; marcaLexit?: unknown }
+      const { storagePath, cambios, nombreDescarga, marcaLexit, clausulasAdicionales } = req.body as { storagePath?: string; cambios?: unknown; nombreDescarga?: string; marcaLexit?: unknown; clausulasAdicionales?: unknown }
 
       // Solo documentos de la carpeta privada del propio usuario (mismo
       // criterio que obtenerUrlFirmadaDocumento).
@@ -57,6 +66,12 @@ export const descargarWordEditado = onRequest(
       }
       if (!cambiosValidos(cambios)) {
         res.status(400).json({ error: 'La lista de cambios no es válida o es demasiado grande' })
+        return
+      }
+      // Gestión de contratos: cláusulas adicionales redactadas con la IA
+      const adicionales = clausulasAdicionales === undefined ? [] : clausulasAdicionales
+      if (!clausulasValidas(adicionales)) {
+        res.status(400).json({ error: 'Las cláusulas adicionales no son válidas' })
         return
       }
 
@@ -78,6 +93,7 @@ export const descargarWordEditado = onRequest(
       const resultado = await aplicarCambiosDocx(original, cambios)
       const { aplicados, fallidos } = resultado
       let buffer = resultado.buffer
+      if (adicionales.length > 0) buffer = (await insertarClausulasAdicionalesDocx(buffer, adicionales)).buffer
 
       // Contratos: membrete "LEXIT" + "Generado por LexIT" dentro del Word
       // original (ver marcaLexit.ts). Sin esta opción (Análisis) no cambia.
