@@ -416,7 +416,7 @@ onUnmounted(() => {
 }
 
 .bienvenida-letra--acento {
-  color: #FFFFFF;
+  color: #FFB162;
 }
 
 .bienvenida-linea {

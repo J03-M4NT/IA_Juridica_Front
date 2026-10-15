@@ -86,8 +86,6 @@ export interface ResultadoChatEdicion {
   // Con formato "cambios" (plantillas Word): reemplazos puntuales para
   // aplicar sobre el Word original, en vez del contrato reescrito.
   cambios?: { antes: string; despues: string }[]
-  // Lista completa de cláusulas adicionales cuando la IA las crea o cambia
-  clausulasAdicionales?: { encabezado: string; texto: string }[]
 }
 
 export async function chatEditarContratoIA(

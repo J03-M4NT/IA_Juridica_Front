@@ -117,36 +117,6 @@ export async function consumirCuotaIA(uid: string, res: Response): Promise<boole
   return permitido
 }
 
-// Cupo propio para las sugerencias en tiempo real de "Redacción avanzada":
-// se consultan en cada pausa al escribir, así que no gastan el cupo
-// general de 50 (colección uso_ia_vivo, solo escribible por el Admin SDK).
-export const LIMITE_DIARIO_SUGERENCIAS = 300
-
-export async function consumirCuotaSugerencias(uid: string, res: Response): Promise<boolean> {
-  const db = getFirestore()
-  const ref = db.collection('uso_ia_vivo').doc(uid)
-  const hoy = fechaPeru()
-
-  const permitido = await db.runTransaction(async tx => {
-    const snap = await tx.get(ref)
-    const usadasHoy = snap.get('fecha') === hoy ? (snap.get('usadas') as number) ?? 0 : 0
-    if (usadasHoy >= LIMITE_DIARIO_SUGERENCIAS) return false
-    tx.set(ref, {
-      fecha: hoy,
-      usadas: usadasHoy + 1,
-      actualizadoEn: FieldValue.serverTimestamp()
-    })
-    return true
-  })
-
-  if (!permitido) {
-    res.status(429).json({
-      error: `Alcanzaste el límite de ${LIMITE_DIARIO_SUGERENCIAS} sugerencias en vivo por día. Puedes seguir escribiendo; vuelve a intentarlo mañana.`
-    })
-  }
-  return permitido
-}
-
 export function excede(texto: unknown, max: number): boolean {
   return typeof texto === 'string' && texto.length > max
 }

@@ -32,8 +32,6 @@ export { resumirNormaIA } from './resumenNorma'
 // usuario y recomienda plantillas.
 export { recomendarPlantillaIA } from './recomendarPlantilla'
 export { explicarCambiosContratoIA } from './compararVersiones'
-export { redactarDocumentoIA, sugerirRedaccionIA } from './redaccion'
-export { obtenerPanoramaDia } from './panorama'
 
 if (getApps().length === 0) {
   initializeApp()
