@@ -154,12 +154,6 @@
                 <span>{{ item.texto }}</span>
               </li>
             </ul>
-
-            <p class="terminos-text">
-              Al continuar, aceptas los
-              <a :href="URL_TERMINOS" target="_blank" rel="noopener" class="terminos-link">Términos y condiciones</a>
-              de LexIT.
-            </p>
           </form>
         </div>
       </div>
@@ -263,12 +257,6 @@
                 <span>{{ item.texto }}</span>
               </li>
             </ul>
-
-            <p class="terminos-text">
-              Al registrarte, aceptas los
-              <a :href="URL_TERMINOS" target="_blank" rel="noopener" class="terminos-link">Términos y condiciones</a>
-              de LexIT.
-            </p>
           </form>
         </div>
       </div>
@@ -334,11 +322,7 @@ const showProfileDialog = ref(false);
 // Inicial del nombre para el avatar (cuando no hay foto de perfil).
 const inicialUsuario = computed(() => (profileStore.displayName.trim()[0] ?? 'U').toUpperCase());
 
-// PDF de Términos y condiciones (public/terminos-y-condiciones.pdf). Con
-// BASE_URL funciona igual en desarrollo (/) y en GitHub Pages
-// (/IA_Juridica_Front/).
-// Se muestran en las ventanas de inicio de sesión y registro, junto a los
-// Términos y condiciones.
+// Se muestran en las ventanas de inicio de sesión y registro.
 const CONSIDERACIONES = [
   { icono: 'lock', texto: 'No guardamos tus contratos.' },
   { icono: 'description', texto: 'No guardamos una copia de los contratos generados.' },
@@ -346,7 +330,6 @@ const CONSIDERACIONES = [
   { icono: 'auto_awesome', texto: '¡Disfruta de LexIT!' }
 ];
 
-const URL_TERMINOS = `${import.meta.env.BASE_URL}terminos-y-condiciones.pdf`;
 const cargandoGoogle = ref(false);
 // Envío de email/contraseña en curso: desactiva el botón para no repetir la
 // petición al tocar varias veces (frecuente en celular con conexión lenta).

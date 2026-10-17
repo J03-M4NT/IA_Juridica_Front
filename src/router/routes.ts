@@ -56,6 +56,13 @@ const routes: RouteRecordRaw[] = [
     ],
   },
 
+  // Rutas públicas - Legal (Términos y condiciones y Política de privacidad)
+  {
+    path: '/legal/:documento?',
+    component: () => import('pages/LegalPage.vue'),
+    meta: { requiresAuth: false },
+  },
+
   // Ruta no encontrada
   {
     path: '/:catchAll(.*)*',

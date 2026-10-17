@@ -519,7 +519,7 @@
         </div>
         <nav class="footer-nav" aria-label="Pie de página">
           <a v-for="item in NAV" :key="item.id" :href="`#${item.id}`" @click.prevent="scrollToSection(item.id)">{{ item.etiqueta }}</a>
-          <a :href="URL_TERMINOS" target="_blank" rel="noopener">Términos y condiciones</a>
+          <router-link to="/legal">Términos y condiciones</router-link>
           <a href="mailto:lexitiajuridica@gmail.com">lexitiajuridica@gmail.com</a>
         </nav>
       </div>
@@ -560,8 +560,6 @@ const pasosRef = ref<HTMLElement | null>(null)
 const authButtonsRef = ref<InstanceType<typeof AuthButtons> | null>(null)
 
 const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-const URL_TERMINOS = `${import.meta.env.BASE_URL}terminos-y-condiciones.pdf`
 
 // =========================
 // CONTENIDO
