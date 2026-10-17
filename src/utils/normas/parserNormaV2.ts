@@ -159,7 +159,8 @@ function separarNotasFinales(texto: string): { cuerpo: string; notas: Map<number
 // reconoce más artículos propios de la norma (igual que el corte actual).
 // =========================
 const PREFIJO = String.raw`(?:Art[íi]culo|ART[ÍI]CULO|Art\.)`
-const NUMERO = String.raw`(\d(?: ?\d){0,3})\s*[°º]?`
+// El punto puede ir antes del símbolo de grado ("Artículo 543. º -", Código Civil MINJUS)
+const NUMERO = String.raw`(\d(?: ?\d){0,3})\s*(?:\.\s*(?=[°º]))?[°º]?`
 const LETRA = String.raw`(?:\s*-\s*([A-Z])(?![a-záéíóúñ])\s*[°º]?)?`
 
 const VARIANTES: Array<{ nombre: string; regex: RegExp }> = [
