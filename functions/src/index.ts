@@ -34,6 +34,8 @@ export { recomendarPlantillaIA } from './recomendarPlantilla'
 export { explicarCambiosContratoIA } from './compararVersiones'
 export { redactarDocumentoIA, sugerirRedaccionIA } from './redaccion'
 export { obtenerPanoramaDia } from './panorama'
+// Fase 0 de la mejora de Consultas: auditoría de Pinecone, solo lectura y solo admins
+export { auditarPinecone } from './auditoriaPinecone'
 
 if (getApps().length === 0) {
   initializeApp()

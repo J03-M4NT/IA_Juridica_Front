@@ -553,6 +553,15 @@ export async function listarDocumentosPinecone(): Promise<DocumentoIndexado[]> {
   return data.documentos
 }
 
+// Auditoría del índice (solo lectura): normas cargadas, cortes,
+// duplicados y prueba del reranker. Devuelve el informe tal cual.
+export async function auditarPinecone(consulta?: string): Promise<Record<string, unknown>> {
+  const response = await postFuncion('auditarPinecone', consulta ? { consulta } : {})
+  const data = await response.json().catch(() => ({})) as Record<string, unknown> & { error?: string }
+  if (!response.ok) throw new Error(data.error ?? 'No se pudo auditar Pinecone')
+  return data
+}
+
 // Borra de Pinecone TODOS los fragmentos del documento (irreversible).
 export async function eliminarDocumentoPinecone(documentoId: string): Promise<number> {
   const response = await postFuncion('eliminarDocumentoDePinecone', { documentoId })
