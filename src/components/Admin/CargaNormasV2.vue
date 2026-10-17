@@ -6,7 +6,7 @@
         <q-badge outline color="grey-7" class="q-ml-sm" :label="`namespace: ${NAMESPACE_PRUEBA}`" />
         <q-btn flat dense no-caps color="accent" icon="fact_check" label="Verificación (solo lectura)" class="q-ml-sm" :loading="verificando" :disable="ocupado" @click="verificar" />
       </div>
-      <q-file
+      <q-file :dark="false"
         v-model="archivos"
         multiple
         dense
@@ -43,13 +43,13 @@
         </q-banner>
 
         <div class="row q-col-gutter-sm">
-          <q-input v-model="item.meta.norma" dense outlined label="Nombre para citar *" class="col-12 col-md-6" :disable="ocupado" />
-          <q-select v-model="item.meta.tipoNorma" dense outlined emit-value map-options :options="opcionesTipo" label="Tipo *" class="col-6 col-md-3" :disable="ocupado" />
-          <q-input v-model="item.meta.numeroNorma" dense outlined label="Número *" placeholder="Ley 29571, D. Leg. 295…" class="col-6 col-md-3" :disable="ocupado" />
-          <q-select v-model="item.meta.vigencia" dense outlined emit-value map-options :options="opcionesVigencia" label="Vigencia de la norma *" class="col-6 col-md-3" :disable="ocupado" />
-          <q-select v-model="item.meta.area" dense outlined emit-value map-options clearable :options="opcionesArea" label="Área" class="col-6 col-md-3" :disable="ocupado" />
-          <q-input v-model="item.meta.fechaPublicacion" dense outlined label="Fecha de publicación" placeholder="AAAA-MM-DD" class="col-6 col-md-3" :disable="ocupado" />
-          <q-input v-model="item.meta.fuenteUrl" dense outlined label="URL de la fuente" class="col-6 col-md-3" :disable="ocupado" />
+          <q-input :dark="false" v-model="item.meta.norma" dense outlined label="Nombre para citar *" class="col-12 col-md-6" :disable="ocupado" />
+          <q-select :dark="false" v-model="item.meta.tipoNorma" dense outlined emit-value map-options :options="opcionesTipo" label="Tipo *" class="col-6 col-md-3" :disable="ocupado" />
+          <q-input :dark="false" v-model="item.meta.numeroNorma" dense outlined label="Número *" placeholder="Ley 29571, D. Leg. 295…" class="col-6 col-md-3" :disable="ocupado" />
+          <q-select :dark="false" v-model="item.meta.vigencia" dense outlined emit-value map-options :options="opcionesVigencia" label="Vigencia de la norma *" class="col-6 col-md-3" :disable="ocupado" />
+          <q-select :dark="false" v-model="item.meta.area" dense outlined emit-value map-options clearable :options="opcionesArea" label="Área" class="col-6 col-md-3" :disable="ocupado" />
+          <q-input :dark="false" v-model="item.meta.fechaPublicacion" dense outlined label="Fecha de publicación" placeholder="AAAA-MM-DD" class="col-6 col-md-3" :disable="ocupado" />
+          <q-input :dark="false" v-model="item.meta.fuenteUrl" dense outlined label="URL de la fuente" class="col-6 col-md-3" :disable="ocupado" />
         </div>
 
         <div class="carga-v2-datos">
@@ -80,7 +80,7 @@
     </div>
 
     <q-dialog v-model="verVerificacion">
-      <q-card style="width: 900px; max-width: 95vw">
+      <q-card :dark="false" style="width: 900px; max-width: 95vw">
         <q-card-section class="row items-center">
           <div class="text-h6 col">Verificación en {{ NAMESPACE_PRUEBA }}</div>
           <q-btn flat dense no-caps icon="download" label="Descargar JSON" @click="descargarVerificacion" />
@@ -103,7 +103,7 @@
     </q-dialog>
 
     <q-dialog v-model="confirmar" persistent>
-      <q-card style="min-width: 360px; max-width: 520px">
+      <q-card :dark="false" style="min-width: 360px; max-width: 520px">
         <q-card-section class="text-h6">Subir a {{ NAMESPACE_PRUEBA }}</q-card-section>
         <q-card-section>
           Se subirán <strong>{{ porSubir }}</strong> fragmentos (~{{ tokensPorSubir.toLocaleString('es-PE') }} tokens)
@@ -145,6 +145,8 @@ interface ItemV2 {
   resultado: ResultadoParserV2 | null
   aviso: string
   porVerificar: boolean
+  // Datos del catálogo para esta norma (para avisar si el formulario no coincide)
+  catalogo: { tipoNorma: string; numeroNorma: string } | null
   meta: Omit<MetaNorma, 'normaId' | 'area' | 'fechaPublicacion' | 'fuenteUrl'> & { area: string | null; fechaPublicacion: string; fuenteUrl: string; normaId: string }
   plan: PlanCarga | null
 }
@@ -200,6 +202,10 @@ function avisosDe(item: ItemV2): string[] {
   const avisos: string[] = []
   if (item.aviso) avisos.push(item.aviso)
   if (item.porVerificar) avisos.push('Tipo y número pendientes de verificar contra el texto oficial.')
+  if (item.catalogo && item.meta.tipoNorma !== item.catalogo.tipoNorma) {
+    avisos.push(`El tipo elegido no coincide con el catálogo (${TIPOS_NORMA.find(t => t.valor === item.catalogo?.tipoNorma)?.etiqueta ?? item.catalogo.tipoNorma}).`)
+  }
+  if (item.catalogo && item.meta.numeroNorma.trim() !== item.catalogo.numeroNorma) avisos.push(`El número no coincide con el catálogo (${item.catalogo.numeroNorma}).`)
   if (NORMAS_EXCLUIDAS.some(n => n.replace(/\s/g, '') === item.meta.numeroNorma.replace(/\s/g, ''))) avisos.push('Esta norma está excluida de la base: no se subirá.')
   if (item.resultado && item.resultado.estadisticas.articulosDistintos === 0) avisos.push('No se reconoció ningún artículo.')
   return avisos
@@ -228,6 +234,7 @@ async function leer(item: ItemV2) {
     const catalogo = buscarEnCatalogo(sugerencia.numeroNorma, sugerencia.tipoNorma, nombreArchivo)
     item.aviso = sugerencia.aviso ?? ''
     item.porVerificar = catalogo?.porVerificar ?? false
+    item.catalogo = catalogo ? { tipoNorma: catalogo.tipoNorma, numeroNorma: catalogo.numeroNorma } : null
     item.meta = {
       normaId: catalogo?.normaId ?? '',
       norma: catalogo?.norma ?? '',
@@ -249,7 +256,7 @@ function agregarArchivos(valor: File[] | File | null) {
   const lista = Array.isArray(valor) ? valor : valor ? [valor] : []
   for (const archivo of lista) {
     const item: ItemV2 = {
-      id: siguienteId++, archivo, estado: 'leyendo', mensaje: '', texto: '', resultado: null, aviso: '', porVerificar: false, plan: null,
+      id: siguienteId++, archivo, estado: 'leyendo', mensaje: '', texto: '', resultado: null, aviso: '', porVerificar: false, catalogo: null, plan: null,
       meta: { normaId: '', norma: '', tipoNorma: 'otra', numeroNorma: '', vigencia: 'vigente', area: null, fechaPublicacion: '', fuenteUrl: '' }
     }
     items.value.push(item)
@@ -356,6 +363,13 @@ function colorEstado(e: Estado) {
 </script>
 
 <style scoped>
+/* La app usa el modo oscuro de Quasar con fondos blancos: texto oscuro explícito */
+.carga-v2 { color: var(--ink, #1a1f2b); }
+.carga-v2 :deep(.q-field__native),
+.carga-v2 :deep(.q-field__input),
+.carga-v2 :deep(.q-field__prefix),
+.carga-v2 :deep(.q-field__suffix) { color: #1a1f2b; }
+.carga-v2 :deep(.q-field__label) { color: #5b6475; }
 .carga-v2-selector { min-width: 280px; }
 .carga-v2-ayuda { margin: 0 0 12px; font-size: 0.88rem; color: #5b6475; }
 .carga-v2-item { padding: 14px 0; border-top: 1px solid #e4e7ec; }
