@@ -88,6 +88,9 @@ function limpiar(texto: string): string {
   return normalizarSignos(texto)
     .replace(PIE_DECRETO_REGEX, ' ')
     .replace(PIE_MINISTERIO_REGEX, ' ')
+    // Títulos con letras separadas por la tipografía ("T Í TULO I", "CAP Í TULO I", "SECCI Ó N")
+    .replace(/(T|CAP)\s?([ÍI])\s?TULO/g, '$1$2TULO')
+    .replace(/SECCI\s?([ÓO])\s?N/g, 'SECCI$1N')
     .replace(/\r\n?/g, '\n')
     .replace(/[ \t]{2,}/g, ' ')
 }
@@ -255,7 +258,8 @@ function nivelDe(linea: string): number | null {
 // "DERECHOS REALES PRINCIPALES"; "TÍTULO I" → "Disposiciones Generales")
 // Una sumilla real es corta y no es una nota ("(*) ...", "...cuyo texto es el siguiente:")
 function pareceSumilla(texto: string): boolean {
-  return texto.length > 0 && texto.length <= 150 && !/[:;,]$/.test(texto) && !/^\(\*/.test(texto) && !/texto\s+es\s+el\s+siguiente/i.test(texto)
+  // Debe tener palabras: "65 . 5" (llamadas a nota sueltas) no es sumilla
+  return texto.length > 0 && texto.length <= 150 && /[A-Za-zÁÉÍÓÚÑáéíóúñ]{3}/.test(texto) && !/[:;,]$/.test(texto) && !/^\(\*/.test(texto) && !/texto\s+es\s+el\s+siguiente/i.test(texto)
 }
 
 function esNombreDeEncabezado(linea: string): boolean {
@@ -659,7 +663,7 @@ export function parsearNormaV2(textoOriginal: string): ResultadoParserV2 {
       sumilla = primeraLinea
     }
     // Sin el número de nota pegado al final ("Vigencia 30")
-    sumilla = sumilla.replace(/\s*\(\d{1,3}\)/g, '').replace(/\s+\d{1,3}$/, '').trim()
+    sumilla = sumilla.replace(/\s*\(\d{1,3}\)/g, '').replace(/(?:\s+\d{1,3})+$/, '').trim()
 
     if (citados.has(e)) {
       anotaciones.push({ tipo: 'nota', texto: `Cita de otra norma: ${despues.trim()}` })
