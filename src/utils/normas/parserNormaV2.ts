@@ -299,7 +299,7 @@ const MARCA_NOTA_SPIJ = /^\(\*+\)\s*(.{0,400})$/s
 const CAMBIO_TOTAL = /^(?:Art[íi]culo|Texto)\s+(?:modificad|sustituid|incorporad)\w*\b.*texto\s+es\s+el\s+siguiente/i
 const CAMBIO_PARCIAL = /^(?:P[áa]rrafo|Numeral|Inciso|Literal|Pen[úu]ltimo|[ÚU]ltimo|Primer|Segundo|Tercer|Cuarto|Quinto|Sexto|Acápite|Sub\s*numeral)\b.*(?:modificad|sustituid|incorporad)\w*\b.*texto\s+es\s+el\s+siguiente/i
 // MINJUS: nota a pie de página "144 Artículo modificado por el Artículo 2º de la Ley Nº 27495..."
-const NOTA_PIE_MINJUS = /^(\d{1,3})\s+(?:Art[íi]culo|Inciso|P[áa]rrafo|Numeral|Literal|Texto|Libro|T[íi]tulo|Cap[íi]tulo|Secci[óo]n|Pen[úu]ltimo|[ÚU]ltimo|Primer|Segundo|Tercer)\b.{0,160}?(?:modificad|sustituid|incorporad|derogad|vigente|adicionad)/i
+const NOTA_PIE_MINJUS = /^(\d{1,3})\s+(?:Art[íi]culo|Extremo|Inciso|P[áa]rrafo|Numeral|Literal|Texto|Libro|T[íi]tulo|Cap[íi]tulo|Secci[óo]n|Pen[úu]ltimo|[ÚU]ltimo|Primer|Segundo|Tercer|Cuarto|Quinto)\b.{0,160}?(?:modificad|sustituid|incorporad|derogad|vigente|adicionad|agregad)/i
 const NOTA_PIE_CITA = /^(\d{1,3})\s+(?:De\s+conformidad|Conforme|Mediante|Seg[úu]n|Por\s+(?:Ley|Decreto|Resoluci[óo]n)|Ver\s|V[ée]ase|Concordancia)\b.{0,300}?(?:Ley|Decreto|Resoluci[óo]n|C[óo]digo)\b/i
 const DEROGACION = /\b(?:derogad[oa]s?|dejad[oa]s?\s+sin\s+efecto|declarad[oa]\s+inconstitucional)\b/i
 const MODIFICACION = /\b(?:modificad[oa]|sustituid[oa]|incorporad[oa])\b/i
@@ -354,7 +354,7 @@ function procesarCuerpo(cuerpo: string, clave: string): CuerpoProcesado {
   // 2. Párrafos. Una nota a pie MINJUS pegada al final de un párrafo
   // ("...al. 43 Artículo modificado por...") empieza su propio párrafo.
   cuerpo = cuerpo.replace(
-    /([.;:”"])\s+(\d{1,3}\s+(?:Art[íi]culo|Inciso|P[áa]rrafo|Numeral|Literal|Texto)\s+(?:modificad|sustituid|incorporad|derogad|adicionad))/g,
+    /([.;:”"])\s+(\d{1,3}\s+(?:(?:Primer|Segundo|Tercer|Cuarto|Quinto|[ÚU]ltimo|Pen[úu]ltimo)\s+p[áa]rrafo|Art[íi]culo|Extremo|Inciso|P[áa]rrafo|Numeral|Literal|Texto)\s+(?:\S+\s+){0,2}?(?:modificad|sustituid|incorporad|derogad|adicionad|agregad))/g,
     '$1\n\n$2'
   )
   const parrafos = cuerpo.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
