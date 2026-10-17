@@ -3362,4 +3362,177 @@ body.lexit-app-plana .app-sidebar .sidebar-usuario-mini:hover {
   outline: 2px solid #FFFFFF !important;
   outline-offset: 2px;
 }
+
+/* ==========================================================================
+   HISTORIAL DE CONSULTAS: MISMA PROPORCIÓN QUE LAS HERRAMIENTAS
+   Las conversaciones recientes tenían letra y alto menores (0,85rem, ~34px)
+   que las opciones del menú (0,97rem, 46px) y se perdían. Ahora usan la
+   misma escala: alto, letra, sangría y esquinas; el título de la lista y
+   el botón "+" crecen en proporción.
+   ========================================================================== */
+body.lexit-app-plana .app-sidebar .history-header {
+  padding: 4px 4px 10px 12px;
+}
+
+body.lexit-app-plana.lexit-app-plana .app-sidebar .history-title {
+  font-size: 0.86rem !important;
+  font-weight: 600;
+  letter-spacing: 0.01em !important;
+  color: rgba(255, 255, 255, 0.62) !important;
+}
+
+body.lexit-app-plana .app-sidebar .new-chat-btn {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+}
+
+body.lexit-app-plana .app-sidebar .history-list {
+  gap: 4px;
+}
+
+body.lexit-app-plana .app-sidebar .history-item {
+  min-height: 46px;
+  padding: 11px 10px 11px 30px;
+  font-size: 0.97rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+body.lexit-app-plana .app-sidebar .history-item:hover {
+  padding-left: 30px;
+}
+
+/* El punto de cada conversación, alineado con los íconos del menú */
+body.lexit-app-plana .app-sidebar .history-item::before {
+  left: 14px !important;
+  width: 7px !important;
+  height: 7px !important;
+  margin-top: -3.5px !important;
+}
+
+body.lexit-app-plana .app-sidebar .history-item--active {
+  font-weight: 600;
+}
+
+body.lexit-app-plana .app-sidebar .history-item-delete {
+  width: 30px;
+  height: 30px;
+}
+
+/* ==========================================================================
+   BARRA LATERAL MINIMALISTA (mismo grafito)
+   Una sola escala para todo: opciones del menú y conversaciones del
+   historial con el mismo alto (40px), letra (0.92rem) y sangría; márgenes
+   más cortos para que el historial suba; sin cajas ni fondos extra, solo
+   separadores finos y el acento azul en lo activo.
+   ========================================================================== */
+body.lexit-app-plana .app-sidebar .sidebar-inner {
+  padding: 16px 12px 14px;
+}
+
+/* Marca: más compacta */
+body.lexit-app-plana .app-sidebar .sidebar-brand {
+  padding: 2px 2px 14px 10px;
+  margin-bottom: 10px;
+}
+
+body.lexit-app-plana .app-sidebar .sidebar-brand-text {
+  font-size: 1.7rem !important;
+}
+
+/* Menú y historial: misma medida */
+body.lexit-app-plana .app-sidebar .sidebar-nav {
+  gap: 2px;
+}
+
+body.lexit-app-plana .app-sidebar :is(.sidebar-link, .history-item) {
+  min-height: 40px;
+  font-size: 0.92rem;
+  line-height: 1.25;
+}
+
+body.lexit-app-plana .app-sidebar .sidebar-link {
+  padding: 8px 12px;
+  gap: 12px;
+}
+
+body.lexit-app-plana .app-sidebar .sidebar-link svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+body.lexit-app-plana .app-sidebar .history-item {
+  padding: 8px 8px 8px 42px;
+  font-weight: 400;
+}
+
+body.lexit-app-plana .app-sidebar .history-item:hover {
+  padding-left: 42px;
+}
+
+/* El punto del historial, centrado bajo los íconos del menú */
+body.lexit-app-plana .app-sidebar .history-item::before {
+  left: 18px !important;
+  width: 6px !important;
+  height: 6px !important;
+  margin-top: -3px !important;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+body.lexit-app-plana .app-sidebar .history-item--active {
+  font-weight: 500;
+}
+
+/* Separador: fino y con poco aire */
+body.lexit-app-plana .app-sidebar .sidebar-separator {
+  margin: 10px 10px 12px;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Encabezado del historial: discreto, alineado con el texto del menú */
+body.lexit-app-plana .app-sidebar .history-header {
+  padding: 0 4px 6px 12px;
+}
+
+body.lexit-app-plana.lexit-app-plana .app-sidebar .history-title {
+  font-size: 0.78rem !important;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* "+" sin caja: solo el ícono, con fondo tenue al pasar */
+body.lexit-app-plana .app-sidebar .new-chat-btn {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  border: none !important;
+  background: transparent !important;
+  opacity: 0.7;
+}
+
+body.lexit-app-plana .app-sidebar .new-chat-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  opacity: 1;
+  transform: none;
+}
+
+body.lexit-app-plana .app-sidebar .history-list {
+  gap: 2px;
+}
+
+body.lexit-app-plana .app-sidebar .history-item-delete {
+  width: 26px;
+  height: 26px;
+}
+
+/* Cuenta del usuario: sin caja, separada por un filete */
+body.lexit-app-plana .app-sidebar .sidebar-footer {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
 </style>
