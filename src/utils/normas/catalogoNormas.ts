@@ -88,6 +88,12 @@ export function buscarEnCatalogo(numeroNorma: string, tipoNorma?: TipoNorma, nom
     if (porNumero[0]) return porNumero[0]
   }
   if (tipoNorma === 'constitucion') return CATALOGO_NORMAS[0]
-  const n = nombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-  return CATALOGO_NORMAS.find(c => c.tipoNorma === 'codigo' && n.includes(c.norma.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace('nuevo ', '')))
+  // Por nombre (de archivo o escrito): "Codigo-Civil", "CODIGOPENAL", "Código Procesal Civil"
+  const plano = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z]/g, '')
+  const n = plano(nombre)
+  return CATALOGO_NORMAS
+    .filter(c => c.tipoNorma === 'codigo' || c.tipoNorma === 'constitucion')
+    .map(c => ({ c, clave: plano(c.norma).replace(/^nuevo/, '').replace(/politicadelperu$/, '') }))
+    .sort((a, b) => b.clave.length - a.clave.length)
+    .find(({ clave }) => n.includes(clave))?.c
 }
