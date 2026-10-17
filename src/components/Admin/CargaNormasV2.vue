@@ -4,6 +4,7 @@
       <div>
         <span class="section-label">Normas v2 · prueba</span>
         <q-badge outline color="grey-7" class="q-ml-sm" :label="`namespace: ${NAMESPACE_PRUEBA}`" />
+        <q-btn flat dense no-caps color="accent" icon="fact_check" label="Verificación (solo lectura)" class="q-ml-sm" :loading="verificando" :disable="ocupado" @click="verificar" />
       </div>
       <q-file
         v-model="archivos"
@@ -78,6 +79,29 @@
       </div>
     </div>
 
+    <q-dialog v-model="verVerificacion">
+      <q-card style="width: 900px; max-width: 95vw">
+        <q-card-section class="row items-center">
+          <div class="text-h6 col">Verificación en {{ NAMESPACE_PRUEBA }}</div>
+          <q-btn flat dense no-caps icon="download" label="Descargar JSON" @click="descargarVerificacion" />
+          <q-btn flat round dense icon="close" v-close-popup />
+        </q-card-section>
+        <q-card-section class="q-pt-none" style="max-height: 70vh; overflow: auto">
+          <div v-for="v in verificacion" :key="v.etiqueta" class="carga-v2-item">
+            <div class="text-weight-bold">{{ v.etiqueta }} · {{ v.fragmentos.length }} fragmento(s)</div>
+            <div v-if="!v.fragmentos.length" class="text-negative">No encontrado</div>
+            <div v-for="f in v.fragmentos" :key="f.id" class="q-mt-sm">
+              <div class="text-caption text-grey-7">
+                {{ f.id }} · vigencia: {{ f.metadatos.vigencia }} ({{ f.metadatos.vigenciaOrigen }}) · norma: {{ f.metadatos.vigenciaNorma }}
+              </div>
+              <pre class="carga-v2-pre">{{ f.texto }}</pre>
+              <pre class="carga-v2-pre carga-v2-meta">{{ JSON.stringify(f.metadatos, null, 2) }}</pre>
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
     <q-dialog v-model="confirmar" persistent>
       <q-card style="min-width: 360px; max-width: 520px">
         <q-card-section class="text-h6">Subir a {{ NAMESPACE_PRUEBA }}</q-card-section>
@@ -107,7 +131,7 @@ import { extraerTextoNorma } from '../../utils/extraerTextoNorma'
 import { parsearNormaV2, type ResultadoParserV2 } from '../../utils/normas/parserNormaV2'
 import { construirRegistrosV2, sugerirMetadatosNorma, hashTexto, slug, TIPOS_NORMA, type MetaNorma, type RegistroV2 } from '../../utils/normas/metadatosNorma'
 import { buscarEnCatalogo, NORMAS_EXCLUIDAS } from '../../utils/normas/catalogoNormas'
-import { NAMESPACE_PRUEBA, estimarTokens, planificarCarga, ejecutarCarga, type PlanCarga } from '../../services/normasV2Service'
+import { NAMESPACE_PRUEBA, estimarTokens, planificarCarga, ejecutarCarga, buscarNormasV2, type PlanCarga } from '../../services/normasV2Service'
 import { ESPECIALIDADES } from '../../constants/especialidades'
 
 type Estado = 'leyendo' | 'listo' | 'error' | 'subiendo' | 'subido'
@@ -270,6 +294,59 @@ async function subir() {
   ocupado.value = false
 }
 
+// =========================
+// VERIFICACIÓN (solo lectura): trae artículos concretos por norma y número
+// con un filtro exacto; no escribe nada.
+// =========================
+const VERIFICACIONES = [
+  { etiqueta: 'Código Civil, art. 1', normaId: 'codigo-civil', articulo: '1', consulta: 'la persona humana es sujeto de derecho desde su nacimiento' },
+  { etiqueta: 'Código Civil, art. 140', normaId: 'codigo-civil', articulo: '140', consulta: 'acto jurídico requisitos de validez' },
+  { etiqueta: 'Código Penal, art. 108-C', normaId: 'codigo-penal', articulo: '108-C', consulta: 'sicariato' },
+  { etiqueta: 'TUO Ley del IR, art. 1', normaId: 'tuo-ley-impuesto-renta', articulo: '1', consulta: 'el impuesto a la renta grava' },
+  { etiqueta: 'Constitución, art. 2', normaId: 'constitucion-1993', articulo: '2', consulta: 'toda persona tiene derecho' }
+]
+
+interface FragmentoVerificado { id: string; texto: string; metadatos: Record<string, unknown> }
+const verificando = ref(false)
+const verVerificacion = ref(false)
+const verificacion = ref<Array<{ etiqueta: string; fragmentos: FragmentoVerificado[] }>>([])
+
+async function verificar() {
+  verificando.value = true
+  try {
+    const resultados = []
+    for (const v of VERIFICACIONES) {
+      const hits = await buscarNormasV2(NAMESPACE_PRUEBA, v.consulta, {
+        topK: 10,
+        filtro: { normaId: { $eq: v.normaId }, articulo: { $eq: v.articulo } }
+      })
+      const fragmentos = hits
+        .map(h => {
+          const { text, ...metadatos } = h.fields
+          return { id: h._id, texto: typeof text === 'string' ? text : '', metadatos }
+        })
+        .sort((a, b) => Number(a.metadatos.parte ?? 0) - Number(b.metadatos.parte ?? 0))
+      resultados.push({ etiqueta: v.etiqueta, fragmentos })
+    }
+    verificacion.value = resultados
+    verVerificacion.value = true
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err instanceof Error ? err.message : 'No se pudo verificar' })
+  } finally {
+    verificando.value = false
+  }
+}
+
+function descargarVerificacion() {
+  const blob = new Blob([JSON.stringify({ namespace: NAMESPACE_PRUEBA, generadoEn: new Date().toISOString(), resultados: verificacion.value }, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const enlace = document.createElement('a')
+  enlace.href = url
+  enlace.download = `verificacion-normas-v2-${new Date().toISOString().slice(0, 10)}.json`
+  enlace.click()
+  URL.revokeObjectURL(url)
+}
+
 function iconoEstado(e: Estado) {
   return { leyendo: 'hourglass_top', listo: 'description', error: 'error', subiendo: 'cloud_sync', subido: 'cloud_done' }[e]
 }
@@ -284,5 +361,7 @@ function colorEstado(e: Estado) {
 .carga-v2-item { padding: 14px 0; border-top: 1px solid #e4e7ec; }
 .carga-v2-datos { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 0.88rem; color: #2b3240; }
 .carga-v2-plan { margin-top: 6px; font-size: 0.88rem; color: #1d4e89; }
+.carga-v2-pre { margin: 4px 0 0; padding: 10px 12px; background: #f6f7f9; border-radius: 4px; font-size: 0.8rem; white-space: pre-wrap; word-break: break-word; }
+.carga-v2-meta { color: #5b6475; }
 .carga-v2-pie { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; border-top: 1px solid #e4e7ec; }
 </style>
