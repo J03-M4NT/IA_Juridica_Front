@@ -1,0 +1,288 @@
+<template>
+  <div class="section-block q-mb-lg carga-v2">
+    <div class="actions-bar q-mb-md">
+      <div>
+        <span class="section-label">Normas v2 · prueba</span>
+        <q-badge outline color="grey-7" class="q-ml-sm" :label="`namespace: ${NAMESPACE_PRUEBA}`" />
+      </div>
+      <q-file
+        v-model="archivos"
+        multiple
+        dense
+        outlined
+        accept=".pdf,.doc,.docx,.htm,.html"
+        label="Elegir normas (PDF / Word / SPIJ)"
+        class="carga-v2-selector"
+        :disable="ocupado"
+        @update:model-value="agregarArchivos"
+      >
+        <template #prepend><q-icon name="upload_file" /></template>
+      </q-file>
+    </div>
+
+    <p class="carga-v2-ayuda">
+      Esquema nuevo: un fragmento por artículo, sin jurisprudencia ni doctrina. Se sube a un espacio de prueba;
+      la base que usa Consultas hoy no se modifica. Obligatorios: nombre, tipo, número y vigencia.
+    </p>
+
+    <div v-for="(item, i) in items" :key="item.id" class="carga-v2-item">
+      <div class="row items-center no-wrap q-mb-sm">
+        <q-icon :name="iconoEstado(item.estado)" :color="colorEstado(item.estado)" size="20px" class="q-mr-sm" />
+        <div class="col ellipsis text-weight-medium">{{ item.archivo.name }}</div>
+        <q-btn v-if="!ocupado" flat round dense icon="close" size="sm" @click="items.splice(i, 1)" />
+      </div>
+
+      <div v-if="item.estado === 'leyendo'" class="text-grey-7">Leyendo y analizando…</div>
+      <div v-else-if="item.estado === 'error'" class="text-negative">{{ item.mensaje }}</div>
+
+      <template v-else>
+        <q-banner v-for="aviso in avisosDe(item)" :key="aviso" dense rounded class="bg-orange-1 text-orange-10 q-mb-sm">
+          <template #avatar><q-icon name="warning" color="orange-8" /></template>
+          {{ aviso }}
+        </q-banner>
+
+        <div class="row q-col-gutter-sm">
+          <q-input v-model="item.meta.norma" dense outlined label="Nombre para citar *" class="col-12 col-md-6" :disable="ocupado" />
+          <q-select v-model="item.meta.tipoNorma" dense outlined emit-value map-options :options="opcionesTipo" label="Tipo *" class="col-6 col-md-3" :disable="ocupado" />
+          <q-input v-model="item.meta.numeroNorma" dense outlined label="Número *" placeholder="Ley 29571, D. Leg. 295…" class="col-6 col-md-3" :disable="ocupado" />
+          <q-select v-model="item.meta.vigencia" dense outlined emit-value map-options :options="opcionesVigencia" label="Vigencia de la norma *" class="col-6 col-md-3" :disable="ocupado" />
+          <q-select v-model="item.meta.area" dense outlined emit-value map-options clearable :options="opcionesArea" label="Área" class="col-6 col-md-3" :disable="ocupado" />
+          <q-input v-model="item.meta.fechaPublicacion" dense outlined label="Fecha de publicación" placeholder="AAAA-MM-DD" class="col-6 col-md-3" :disable="ocupado" />
+          <q-input v-model="item.meta.fuenteUrl" dense outlined label="URL de la fuente" class="col-6 col-md-3" :disable="ocupado" />
+        </div>
+
+        <div class="carga-v2-datos">
+          <span><strong>{{ item.resultado?.estadisticas.articulosDistintos ?? 0 }}</strong> artículos</span>
+          <span><strong>{{ registrosDe(item).length }}</strong> fragmentos</span>
+          <span>~<strong>{{ estimarTokens(registrosDe(item)).toLocaleString('es-PE') }}</strong> tokens</span>
+          <span>{{ item.resultado?.estadisticas.derogados ?? 0 }} derogados · {{ item.resultado?.estadisticas.modificados ?? 0 }} modificados <em>(detectados)</em></span>
+          <span>{{ item.resultado?.anotaciones.length ?? 0 }} anotaciones excluidas</span>
+          <span class="text-grey-6">id: {{ normaIdDe(item) }}</span>
+        </div>
+
+        <div v-if="item.plan" class="carga-v2-plan">
+          Plan: {{ item.plan.nuevos.length }} nuevos · {{ item.plan.modificados.length }} modificados ·
+          {{ item.plan.iguales }} sin cambios · {{ item.plan.obsoletos.length }} a borrar
+        </div>
+        <div v-if="item.mensaje" :class="item.estado === 'subido' ? 'text-positive' : 'text-grey-8'">{{ item.mensaje }}</div>
+      </template>
+    </div>
+
+    <div v-if="items.length" class="carga-v2-pie">
+      <div>
+        Total: <strong>{{ totalFragmentos }}</strong> fragmentos · ~<strong>{{ totalTokens.toLocaleString('es-PE') }}</strong> tokens de embedding
+      </div>
+      <div class="row q-gutter-sm">
+        <q-btn outline color="accent" no-caps icon="fact_check" label="Calcular plan" :loading="planificando" :disable="!listas || ocupado" @click="calcularPlan" />
+        <q-btn color="accent" unelevated no-caps icon="cloud_upload" :label="`Subir a ${NAMESPACE_PRUEBA}`" :disable="!listas || ocupado || !conPlan" @click="confirmar = true" />
+      </div>
+    </div>
+
+    <q-dialog v-model="confirmar" persistent>
+      <q-card style="min-width: 360px; max-width: 520px">
+        <q-card-section class="text-h6">Subir a {{ NAMESPACE_PRUEBA }}</q-card-section>
+        <q-card-section>
+          Se subirán <strong>{{ porSubir }}</strong> fragmentos (~{{ tokensPorSubir.toLocaleString('es-PE') }} tokens)
+          y se borrarán {{ porBorrar }} obsoletos, solo en el espacio de prueba. La base de Consultas no cambia.
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat no-caps label="Cancelar" v-close-popup />
+          <q-btn color="accent" unelevated no-caps label="Subir" v-close-popup @click="subir" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+// =========================
+// CARGA DE NORMAS v2 (mejora de Consultas, fase 2)
+// Lee la norma (con recuperación de márgenes en PDF), la corta con el parser
+// v2, completa los datos con el catálogo y la sube al namespace de prueba
+// de forma incremental. No toca la carga actual de Admin ni __default__.
+// =========================
+import { computed, ref } from 'vue'
+import { useQuasar } from 'quasar'
+import { extraerTextoNorma } from '../../utils/extraerTextoNorma'
+import { parsearNormaV2, type ResultadoParserV2 } from '../../utils/normas/parserNormaV2'
+import { construirRegistrosV2, sugerirMetadatosNorma, hashTexto, slug, TIPOS_NORMA, type MetaNorma, type RegistroV2 } from '../../utils/normas/metadatosNorma'
+import { buscarEnCatalogo, NORMAS_EXCLUIDAS } from '../../utils/normas/catalogoNormas'
+import { NAMESPACE_PRUEBA, estimarTokens, planificarCarga, ejecutarCarga, type PlanCarga } from '../../services/normasV2Service'
+import { ESPECIALIDADES } from '../../constants/especialidades'
+
+type Estado = 'leyendo' | 'listo' | 'error' | 'subiendo' | 'subido'
+
+interface ItemV2 {
+  id: number
+  archivo: File
+  estado: Estado
+  mensaje: string
+  texto: string
+  resultado: ResultadoParserV2 | null
+  aviso: string
+  porVerificar: boolean
+  meta: Omit<MetaNorma, 'normaId' | 'area' | 'fechaPublicacion' | 'fuenteUrl'> & { area: string | null; fechaPublicacion: string; fuenteUrl: string; normaId: string }
+  plan: PlanCarga | null
+}
+
+const $q = useQuasar()
+const archivos = ref<File[] | null>(null)
+const items = ref<ItemV2[]>([])
+const planificando = ref(false)
+const ocupado = ref(false)
+const confirmar = ref(false)
+let siguienteId = 1
+
+const opcionesTipo = TIPOS_NORMA.map(t => ({ label: t.etiqueta, value: t.valor }))
+const opcionesVigencia = [
+  { label: 'Vigente', value: 'vigente' },
+  { label: 'Vigente con modificaciones', value: 'modificado' },
+  { label: 'Derogada', value: 'derogado' }
+]
+const opcionesArea = ESPECIALIDADES.map(e => ({ label: e.etiqueta, value: e.valor }))
+
+function normaIdDe(item: ItemV2): string {
+  return item.meta.normaId || slug(item.meta.numeroNorma || item.meta.norma) || 'norma'
+}
+
+function metaDe(item: ItemV2): MetaNorma {
+  const m = item.meta
+  return {
+    normaId: normaIdDe(item),
+    norma: m.norma.trim(),
+    tipoNorma: m.tipoNorma,
+    numeroNorma: m.numeroNorma.trim(),
+    vigencia: m.vigencia,
+    ...(m.area ? { area: m.area } : {}),
+    ...(/^\d{4}-\d{2}-\d{2}$/.test(m.fechaPublicacion) ? { fechaPublicacion: m.fechaPublicacion } : {}),
+    ...(m.fuenteUrl.trim() ? { fuenteUrl: m.fuenteUrl.trim() } : {})
+  }
+}
+
+// Doctrina, jurisprudencia, créditos y presentación quedan fuera (incluirAnotaciones: false)
+const registrosCache = new WeakMap<ItemV2, { clave: string; registros: RegistroV2[] }>()
+function registrosDe(item: ItemV2): RegistroV2[] {
+  if (!item.resultado) return []
+  const meta = metaDe(item)
+  const clave = JSON.stringify(meta)
+  const cache = registrosCache.get(item)
+  if (cache?.clave === clave) return cache.registros
+  const registros = construirRegistrosV2(meta, item.resultado)
+  registrosCache.set(item, { clave, registros })
+  return registros
+}
+
+function avisosDe(item: ItemV2): string[] {
+  const avisos: string[] = []
+  if (item.aviso) avisos.push(item.aviso)
+  if (item.porVerificar) avisos.push('Tipo y número pendientes de verificar contra el texto oficial.')
+  if (NORMAS_EXCLUIDAS.some(n => n.replace(/\s/g, '') === item.meta.numeroNorma.replace(/\s/g, ''))) avisos.push('Esta norma está excluida de la base: no se subirá.')
+  if (item.resultado && item.resultado.estadisticas.articulosDistintos === 0) avisos.push('No se reconoció ningún artículo.')
+  return avisos
+}
+
+function completo(item: ItemV2): boolean {
+  const m = item.meta
+  return item.estado !== 'leyendo' && item.estado !== 'error' && !!m.norma.trim() && !!m.tipoNorma && !!m.numeroNorma.trim() && !!m.vigencia &&
+    registrosDe(item).length > 0 && !NORMAS_EXCLUIDAS.some(n => n.replace(/\s/g, '') === m.numeroNorma.replace(/\s/g, ''))
+}
+
+const listas = computed(() => items.value.length > 0 && items.value.every(completo))
+const conPlan = computed(() => items.value.every(i => i.plan))
+const totalFragmentos = computed(() => items.value.reduce((s, i) => s + registrosDe(i).length, 0))
+const totalTokens = computed(() => items.value.reduce((s, i) => s + estimarTokens(registrosDe(i)), 0))
+const porSubir = computed(() => items.value.reduce((s, i) => s + (i.plan ? i.plan.nuevos.length + i.plan.modificados.length : 0), 0))
+const tokensPorSubir = computed(() => items.value.reduce((s, i) => s + (i.plan ? estimarTokens([...i.plan.nuevos, ...i.plan.modificados]) : 0), 0))
+const porBorrar = computed(() => items.value.reduce((s, i) => s + (i.plan?.obsoletos.length ?? 0), 0))
+
+async function leer(item: ItemV2) {
+  try {
+    item.texto = await extraerTextoNorma(item.archivo, undefined, { recuperarMargenes: true })
+    item.resultado = parsearNormaV2(item.texto)
+    const nombreArchivo = item.archivo.name.replace(/\.(pdf|docx?|html?)$/i, '')
+    const sugerencia = sugerirMetadatosNorma(item.texto, nombreArchivo)
+    const catalogo = buscarEnCatalogo(sugerencia.numeroNorma, sugerencia.tipoNorma, nombreArchivo)
+    item.aviso = sugerencia.aviso ?? ''
+    item.porVerificar = catalogo?.porVerificar ?? false
+    item.meta = {
+      normaId: catalogo?.normaId ?? '',
+      norma: catalogo?.norma ?? '',
+      tipoNorma: catalogo?.tipoNorma ?? sugerencia.tipoNorma,
+      numeroNorma: catalogo?.numeroNorma ?? sugerencia.numeroNorma,
+      vigencia: 'vigente',
+      area: catalogo?.area ?? null,
+      fechaPublicacion: sugerencia.fechaPublicacion ?? '',
+      fuenteUrl: ''
+    }
+    item.estado = 'listo'
+  } catch (err) {
+    item.estado = 'error'
+    item.mensaje = err instanceof Error ? err.message : 'No se pudo leer el archivo'
+  }
+}
+
+function agregarArchivos(valor: File[] | File | null) {
+  const lista = Array.isArray(valor) ? valor : valor ? [valor] : []
+  for (const archivo of lista) {
+    const item: ItemV2 = {
+      id: siguienteId++, archivo, estado: 'leyendo', mensaje: '', texto: '', resultado: null, aviso: '', porVerificar: false, plan: null,
+      meta: { normaId: '', norma: '', tipoNorma: 'otra', numeroNorma: '', vigencia: 'vigente', area: null, fechaPublicacion: '', fuenteUrl: '' }
+    }
+    items.value.push(item)
+    void leer(items.value[items.value.length - 1]!)
+  }
+  archivos.value = null
+}
+
+async function calcularPlan() {
+  planificando.value = true
+  try {
+    for (const item of items.value) item.plan = await planificarCarga(NAMESPACE_PRUEBA, normaIdDe(item), registrosDe(item))
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err instanceof Error ? err.message : 'No se pudo calcular el plan' })
+  } finally {
+    planificando.value = false
+  }
+}
+
+async function subir() {
+  ocupado.value = true
+  for (const item of items.value) {
+    if (!item.plan) continue
+    item.estado = 'subiendo'
+    try {
+      const meta = metaDe(item)
+      const { subidos, eliminados } = await ejecutarCarga(NAMESPACE_PRUEBA, meta.normaId, item.plan, {
+        ...meta,
+        archivo: item.archivo.name,
+        hashDocumento: hashTexto(item.texto),
+        fragmentos: registrosDe(item).length,
+        articulos: item.resultado?.estadisticas.articulosDistintos ?? 0
+      }, (hechos, total) => { item.mensaje = `Subiendo ${hechos} de ${total}…` })
+      item.estado = 'subido'
+      item.mensaje = `Listo: ${subidos} subidos, ${eliminados} borrados, ${item.plan.iguales} sin cambios.`
+      item.plan = null
+    } catch (err) {
+      item.estado = 'error'
+      item.mensaje = err instanceof Error ? err.message : 'No se pudo subir'
+    }
+  }
+  ocupado.value = false
+}
+
+function iconoEstado(e: Estado) {
+  return { leyendo: 'hourglass_top', listo: 'description', error: 'error', subiendo: 'cloud_sync', subido: 'cloud_done' }[e]
+}
+function colorEstado(e: Estado) {
+  return { leyendo: 'grey-6', listo: 'accent', error: 'negative', subiendo: 'accent', subido: 'positive' }[e]
+}
+</script>
+
+<style scoped>
+.carga-v2-selector { min-width: 280px; }
+.carga-v2-ayuda { margin: 0 0 12px; font-size: 0.88rem; color: #5b6475; }
+.carga-v2-item { padding: 14px 0; border-top: 1px solid #e4e7ec; }
+.carga-v2-datos { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 0.88rem; color: #2b3240; }
+.carga-v2-plan { margin-top: 6px; font-size: 0.88rem; color: #1d4e89; }
+.carga-v2-pie { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; border-top: 1px solid #e4e7ec; }
+</style>

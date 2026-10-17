@@ -189,7 +189,13 @@ export interface RegistroV2 {
   parte: number
   totalPartes: number
   vigencia: Vigencia
+  // La vigencia de cada artículo la detecta el parser ("Derogado por...",
+  // notas de modificación): queda como "detectada" hasta que alguien la
+  // verifique contra el texto oficial.
+  vigenciaOrigen: 'detectada' | 'verificada'
+  // La de la norma la elige el admin al subirla
   vigenciaNorma: Vigencia
+  vigenciaNormaOrigen: 'admin'
   notasVigencia?: string
   fechaPublicacion?: string
   fechaNum?: number
@@ -225,6 +231,7 @@ export function construirRegistrosV2(meta: MetaNorma, resultado: ResultadoParser
     tipoNorma: meta.tipoNorma,
     numeroNorma: meta.numeroNorma,
     vigenciaNorma: meta.vigencia,
+    vigenciaNormaOrigen: 'admin' as const,
     ...(meta.fechaPublicacion ? { fechaPublicacion: meta.fechaPublicacion, fechaNum: Number(meta.fechaPublicacion.replace(/-/g, '')) } : {}),
     ...(meta.fuenteUrl ? { fuenteUrl: meta.fuenteUrl } : {}),
     ...(meta.area ? { area: meta.area } : {}),
@@ -258,6 +265,7 @@ export function construirRegistrosV2(meta: MetaNorma, resultado: ResultadoParser
         parte: k + 1,
         totalPartes: total,
         vigencia: a.vigencia,
+        vigenciaOrigen: 'detectada',
         ...(a.notasVigencia.length ? { notasVigencia: a.notasVigencia.join(' | ').slice(0, 1000) } : {}),
         esComentario: false,
         hashTexto: hashTexto(parte),
@@ -281,6 +289,7 @@ export function construirRegistrosV2(meta: MetaNorma, resultado: ResultadoParser
           parte: 1,
           totalPartes: 1,
           vigencia: 'vigente',
+          vigenciaOrigen: 'detectada',
           esComentario: true,
           tipoAnotacion: n.tipo,
           hashTexto: hashTexto(texto),

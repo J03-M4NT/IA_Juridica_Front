@@ -299,7 +299,7 @@ const MARCA_NOTA_SPIJ = /^\(\*+\)\s*(.{0,400})$/s
 const CAMBIO_TOTAL = /^(?:Art[íi]culo|Texto)\s+(?:modificad|sustituid|incorporad)\w*\b.*texto\s+es\s+el\s+siguiente/i
 const CAMBIO_PARCIAL = /^(?:P[áa]rrafo|Numeral|Inciso|Literal|Pen[úu]ltimo|[ÚU]ltimo|Primer|Segundo|Tercer|Cuarto|Quinto|Sexto|Acápite|Sub\s*numeral)\b.*(?:modificad|sustituid|incorporad)\w*\b.*texto\s+es\s+el\s+siguiente/i
 // MINJUS: nota a pie de página "144 Artículo modificado por el Artículo 2º de la Ley Nº 27495..."
-const NOTA_PIE_MINJUS = /^(\d{1,3})\s+(?:Art[íi]culo|Extremo|Inciso|P[áa]rrafo|Numeral|Literal|Texto|Libro|T[íi]tulo|Cap[íi]tulo|Secci[óo]n|Pen[úu]ltimo|[ÚU]ltimo|Primer|Segundo|Tercer|Cuarto|Quinto)\b.{0,160}?(?:modificad|sustituid|incorporad|derogad|vigente|adicionad|agregad)/i
+const NOTA_PIE_MINJUS = /^(\d{1,3})\s+(?:Art[íi]culo|Extremo|Denominaci[óo]n|Ep[íi]grafe|Sumilla|Rubro|Disposici[óo]n|Inciso|P[áa]rrafo|Numeral|Literal|Texto|Libro|T[íi]tulo|Cap[íi]tulo|Secci[óo]n|Pen[úu]ltimo|[ÚU]ltimo|Primer|Segundo|Tercer|Cuarto|Quinto)\b.{0,160}?(?:modificad|sustituid|incorporad|derogad|vigente|adicionad|agregad)/i
 const NOTA_PIE_CITA = /^(\d{1,3})\s+(?:De\s+conformidad|Conforme|Mediante|Seg[úu]n|Por\s+(?:Ley|Decreto|Resoluci[óo]n)|Ver\s|V[ée]ase|Concordancia)\b.{0,300}?(?:Ley|Decreto|Resoluci[óo]n|C[óo]digo)\b/i
 const DEROGACION = /\b(?:derogad[oa]s?|dejad[oa]s?\s+sin\s+efecto|declarad[oa]\s+inconstitucional)\b/i
 const MODIFICACION = /\b(?:modificad[oa]|sustituid[oa]|incorporad[oa])\b/i
@@ -468,18 +468,56 @@ function procesarCuerpo(cuerpo: string, clave: string): CuerpoProcesado {
 // =========================
 // DISPOSICIONES COMPLEMENTARIAS / FINALES / TRANSITORIAS
 // =========================
-const ENCABEZADO_DISPOSICIONES = /(?<=^|\n)[ \t]*((?:DISPOSICI[OÓ]N(?:ES)?)\s+(?:COMPLEMENTARIAS?\s+)?(?:FINAL(?:ES)?|TRANSITORIAS?|MODIFICATORIAS?|DEROGATORIAS?|COMPLEMENTARIAS?)(?:\s*,?\s+(?:Y\s+)?(?:FINAL(?:ES)?|TRANSITORIAS?|MODIFICATORIAS?|DEROGATORIAS?))*)[ \t]*(?=\n)/gi
+const ENCABEZADO_DISPOSICIONES = /(?<=^|\n)[ \t]*((?:DISPOSICI[OÓ]N(?:ES)?)\s+(?:COMPLEMENTARIAS?\s+)?(?:FINAL(?:ES)?|TRANSITORIAS?|MODIFICATORIAS?|DEROGATORIAS?|COMPLEMENTARIAS?)(?:\s*,?\s+(?:Y\s+)?(?:FINAL(?:ES)?|TRANSITORIAS?|MODIFICATORIAS?|DEROGATORIAS?))*(?:\s+ESPECIALES?)?)[ \t]*(?=\n)/gi
 // Apéndices y anexos de la norma (listas de bienes exonerados, tablas): son texto de ley
-const ENCABEZADO_APENDICE = /(?<=^|\n)[ \t]*((?:AP[ÉE]NDICE|ANEXO)\s+(?:[IVXL]+|\d+|[ÚU]NICO)\b)[^\n]*/gi
+const ENCABEZADO_APENDICE = /(?<=^|\n)[ \t]*((?:AP[ÉE]NDICE|ANEXO)\s+(?:[IVXL]+|\d+|[ÚU]NICO)\b|DECLARACI[ÓO]N(?=[ \t]*\n))[^\n]*/gi
+
+// Fin del texto de la norma: lo que sigue (índice, cuadro de modificaciones)
+// no es ley y no se sube
+const FIN_DE_LA_NORMA = /(?<=^|\n)[ \t]*(?:CUADRO\s+DE\s+MODIFICACIONES|[ÍI]NDICE(?:\s+(?:GENERAL|ANAL[ÍI]TICO|SISTEM[ÁA]TICO))?|TABLA\s+DE\s+CONTENIDO)\b[^\n]*(?=\n)/gi
+const LINEA_DE_INDICE = /\.{6,}\s*\d{1,4}\s*$/
+
+// Primer punto, después de "desde", donde empieza el índice o un cuadro final
+function inicioDeMaterialFinal(texto: string, desde: number): number {
+  let fin = texto.length
+  for (const m of texto.matchAll(FIN_DE_LA_NORMA)) {
+    if ((m.index ?? 0) > desde) { fin = Math.min(fin, m.index ?? fin); break }
+  }
+  // Bloque de índice sin título: 5 líneas "....... 72" dentro de 15 líneas seguidas
+  const lineas = texto.slice(desde).split('\n')
+  let pos = desde
+  for (let i = 0; i < lineas.length; i++) {
+    if (LINEA_DE_INDICE.test(lineas[i] ?? '') && lineas.slice(i, i + 15).filter(l => LINEA_DE_INDICE.test(l)).length >= 5) {
+      fin = Math.min(fin, pos)
+      break
+    }
+    pos += (lineas[i] ?? '').length + 1
+  }
+  return fin
+}
+// Índice + 1 = número de la disposición
 const ORDINALES = ['PRIMERA', 'SEGUNDA', 'TERCERA', 'CUARTA', 'QUINTA', 'SEXTA', 'SÉPTIMA', 'OCTAVA', 'NOVENA', 'DÉCIMA',
-  'UNDÉCIMA', 'DUODÉCIMA', 'DÉCIMO TERCERA', 'DÉCIMO CUARTA', 'DÉCIMO QUINTA', 'DÉCIMO SEXTA', 'DÉCIMO SÉPTIMA', 'DÉCIMO OCTAVA', 'DÉCIMO NOVENA', 'VIGÉSIMA']
+  'DÉCIMO PRIMERA', 'DÉCIMO SEGUNDA', 'DÉCIMO TERCERA', 'DÉCIMO CUARTA', 'DÉCIMO QUINTA', 'DÉCIMO SEXTA', 'DÉCIMO SÉPTIMA', 'DÉCIMO OCTAVA', 'DÉCIMO NOVENA', 'VIGÉSIMA']
+const SINONIMOS_ORDINAL: Record<string, number> = { UNDECIMA: 11, DUODECIMA: 12, SETIMA: 7, DECIMOSETIMA: 17 }
+// El texto trae tildes ("Décima", "Undécima"): cada vocal acepta su forma con tilde
+const TILDES: Record<string, string> = { A: 'AÁ', E: 'EÉ', I: 'IÍ', O: 'OÓ', U: 'UÚ' }
+const conTildes = (patron: string) => patron.replace(/[AEIOU]/g, v => `[${TILDES[v] ?? v}]`)
 const sinTildes = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-const ORDINAL_REGEX = new RegExp(`(?<=^|\\n)[ \\t]*[“"]?\\s*(${ORDINALES.map(o => sinTildes(o).replace(/ /g, '\\s*')).join('|')}|DECIMO\\s*PRIMERA|DECIMOPRIMERA)\\s*\\.?\\s*-`, 'gi')
+const ORDINAL_REGEX = new RegExp(`(?<=^|\\n)[ \\t]*[“"]?\\s*(${[...ORDINALES.map(o => sinTildes(o)), ...Object.keys(SINONIMOS_ORDINAL)].sort((a, b) => b.length - a.length).map(o => conTildes(o).replace(/ /g, '\\s*')).join('|')})\\s*\\.?\\s*-`, 'gi')
+
+function numeroDeOrdinal(palabra: string): number | null {
+  const p = sinTildes(palabra).toUpperCase().replace(/\s+/g, '')
+  if (SINONIMOS_ORDINAL[p]) return SINONIMOS_ORDINAL[p]
+  const i = ORDINALES.findIndex(o => sinTildes(o).replace(/\s+/g, '') === p)
+  return i === -1 ? null : i + 1
+}
 
 function prefijoDisposicion(encabezado: string): string {
   const e = sinTildes(encabezado).toUpperCase()
   const comp = /COMPLEMENTARIA/.test(e) ? 'C' : ''
-  if (/TRANSITORIA/.test(e)) return `D${comp}T`
+  const especial = /ESPECIAL/.test(e) ? 'E' : ''
+  if (/FINAL/.test(e) && /TRANSITORIA/.test(e)) return `D${comp}FT${especial}`
+  if (/TRANSITORIA/.test(e)) return `D${comp}T${especial}`
   if (/MODIFICATORIA/.test(e)) return `D${comp}M`
   if (/DEROGATORIA/.test(e)) return `D${comp}D`
   return `D${comp}F`
@@ -533,11 +571,19 @@ export function parsearNormaV2(textoOriginal: string): ResultadoParserV2 {
   const disposiciones = [...texto.matchAll(ENCABEZADO_DISPOSICIONES)].filter(m => (m.index ?? 0) > medio)
   const apendices = [...texto.matchAll(ENCABEZADO_APENDICE)].filter(m => (m.index ?? 0) > medio)
   let finArticulos = texto.length
+  const anotaciones0: AnotacionV2[] = []
   const ultimoArticulo = encabezados[encabezados.length - 1]
+  // Lo que va después del índice o del cuadro de modificaciones final no es ley
+  const finDelDocumento = ultimoArticulo ? inicioDeMaterialFinal(texto, ultimoArticulo.fin) : texto.length
+  if (finDelDocumento < texto.length) {
+    anotaciones0.push({ tipo: 'nota', texto: `Material final del documento (índice o cuadros): ${texto.slice(finDelDocumento).trim()}` })
+    finArticulos = finDelDocumento
+  }
   const primeraDisp = [...disposiciones, ...apendices]
     .filter(m => ultimoArticulo && (m.index ?? 0) > ultimoArticulo.indice)
+    .filter(m => (m.index ?? 0) < finDelDocumento)
     .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))[0]
-  if (primeraDisp) finArticulos = primeraDisp.index ?? texto.length
+  if (primeraDisp) finArticulos = Math.min(finArticulos, primeraDisp.index ?? texto.length)
   // Artículos después de una disposición que rompen la numeración: citas de otra norma
   const citados = new Set<Candidato>()
   const primeraDispMedio = disposiciones[0]?.index
@@ -553,7 +599,7 @@ export function parsearNormaV2(textoOriginal: string): ResultadoParserV2 {
   }
 
   // 3. Preámbulo (antes del primer artículo): solo encabezados de estructura
-  const anotaciones: AnotacionV2[] = []
+  const anotaciones: AnotacionV2[] = [...anotaciones0]
   const articulos: ArticuloV2[] = []
   const pila: Array<{ nivel: number; titulo: string }> = []
   const apilar = (nivel: number, titulo: string) => {
@@ -659,7 +705,8 @@ export function parsearNormaV2(textoOriginal: string): ResultadoParserV2 {
 
   // 4. Zona final: disposiciones (por ordinal) y apéndices/anexos (enteros)
   if (primeraDisp) {
-    const zona = texto.slice(primeraDisp.index ?? 0)
+    const zona = texto.slice(primeraDisp.index ?? 0, finDelDocumento)
+    const prefijosUsados = new Set<string>()
     const secciones = [
       ...[...zona.matchAll(ENCABEZADO_DISPOSICIONES)].map(m => ({ m, tipo: 'disposicion' as const })),
       ...[...zona.matchAll(ENCABEZADO_APENDICE)].map(m => ({ m, tipo: 'apendice' as const }))
@@ -687,13 +734,27 @@ export function parsearNormaV2(textoOriginal: string): ResultadoParserV2 {
         agregar(sinTildes(b[1] ?? '').toUpperCase().replace(/\s+/g, '-'), `${titulo}\n\n${seccion}`, [titulo])
         return
       }
-      const prefijo = prefijoDisposicion(b[1] ?? '')
+      let prefijo = prefijoDisposicion(b[1] ?? '')
+      if (prefijosUsados.has(prefijo)) prefijo = `${prefijo}${k + 1}`
+      prefijosUsados.add(prefijo)
       const ordinales = [...seccion.matchAll(ORDINAL_REGEX)]
+      const numerosUsados = new Set<number>()
       ordinales.forEach((o, n) => {
-        agregar(`${prefijo}-${n + 1}`, seccion.slice(o.index ?? 0, ordinales[n + 1]?.index ?? seccion.length), [titulo])
+        // El número sale del propio ordinal ("Decimosegunda" = 12), no de la posición
+        let numero = numeroDeOrdinal(o[1] ?? '') ?? n + 1
+        while (numerosUsados.has(numero)) numero++
+        numerosUsados.add(numero)
+        agregar(`${prefijo}-${numero}`, seccion.slice(o.index ?? 0, ordinales[n + 1]?.index ?? seccion.length), [titulo])
       })
       if (ordinales.length === 0 && seccion.trim().length > 40) agregar(prefijo, seccion, [titulo])
     })
+  }
+
+  const vistas = new Map<string, number>()
+  for (const a of articulos) {
+    const n = (vistas.get(a.clave) ?? 0) + 1
+    vistas.set(a.clave, n)
+    if (n > 1) a.clave = `${a.clave}-${n}`
   }
 
   // Notas a pie (MINJUS): vigencia del artículo que lleva la llamada

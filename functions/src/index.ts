@@ -36,6 +36,8 @@ export { redactarDocumentoIA, sugerirRedaccionIA } from './redaccion'
 export { obtenerPanoramaDia } from './panorama'
 // Fase 0 de la mejora de Consultas: auditoría de Pinecone, solo lectura y solo admins
 export { auditarPinecone } from './auditoriaPinecone'
+// Fase 2: carga y búsqueda de normas v2 en un namespace aparte (solo admins)
+export { normasV2, buscarNormasV2 } from './normasV2'
 
 if (getApps().length === 0) {
   initializeApp()

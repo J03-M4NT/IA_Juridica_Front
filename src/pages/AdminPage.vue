@@ -132,6 +132,9 @@
       </div>
     </div>
 
+    <!-- Normas v2 (prueba): esquema nuevo en un namespace aparte -->
+    <CargaNormasV2 />
+
     <!-- Actions bar plantillas -->
     <div class="actions-bar q-mb-md">
       <span class="section-label">Plantillas de contratos</span>
@@ -429,6 +432,7 @@ import {
 } from '../services/pineconeService'
 import { extraerTextoNorma, sugerirNombreNorma } from '../utils/extraerTextoNorma'
 import { ESPECIALIDADES, etiquetaEspecialidad } from '../constants/especialidades'
+import CargaNormasV2 from '../components/Admin/CargaNormasV2.vue'
 const $q = useQuasar()
 
 interface Template {
