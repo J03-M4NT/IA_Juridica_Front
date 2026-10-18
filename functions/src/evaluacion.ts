@@ -9,6 +9,9 @@
 //   C · esquema nuevo con búsqueda mejorada: pregunta original + reformulación,
 //       30 candidatos por consulta, fusión (RRF), artículo exacto con letra si
 //       se pide, sin derogados salvo que se pregunte, y reranker.
+//   D · como C, pero el orden final combina el reranker (60 %) con la fusión
+//       (40 %), y en preguntas de varios temas el mejor resultado de cada
+//       subtema queda entre los 5 primeros.
 // No escribe nada en Pinecone ni en Firestore. Solo admins. Las claves son
 // los secretos de Firebase de siempre.
 // =========================
@@ -272,7 +275,10 @@ export function articuloConLetraEnPregunta(pregunta: string): string | undefined
   return m?.[1] ? `${m[1]}${m[2] ? `-${m[2].toUpperCase()}` : ''}` : undefined
 }
 
-async function recuperarMejorado(pinecone: Pinecone, idx: Indice, pregunta: string, decision: DecisionBusqueda | undefined, normas: NormaV2[]) {
+const PESO_RERANK_D = 0.6
+const PUESTOS_GARANTIZADOS_D = 5
+
+async function recuperarMejorado(pinecone: Pinecone, idx: Indice, pregunta: string, decision: DecisionBusqueda | undefined, normas: NormaV2[], modo: 'C' | 'D' = 'C') {
   if (decision?.buscar === false) return []
   const normaNombrada = normaV2EnPregunta(pregunta, normas)
   const articulo = articuloConLetraEnPregunta(pregunta)
@@ -307,13 +313,44 @@ async function recuperarMejorado(pinecone: Pinecone, idx: Indice, pregunta: stri
   let ordenados = candidatos
   if (candidatos.length > 1) {
     const r = await pinecone.inference.rerank({
-      model: MODELO_RERANK, query: pregunta, documents: candidatos.map(c => c.texto), topN: Math.min(20, candidatos.length),
+      model: MODELO_RERANK, query: pregunta, documents: candidatos.map(c => c.texto),
+      topN: modo === 'D' ? candidatos.length : Math.min(20, candidatos.length),
       returnDocuments: false, parameters: { truncate: 'END' }
     })
-    ordenados = r.data.flatMap(d => {
-      const c = candidatos[d.index]
-      return c ? [{ ...c, score: d.score }] : []
-    })
+    if (modo === 'C') {
+      ordenados = r.data.flatMap(d => {
+        const c = candidatos[d.index]
+        return c ? [{ ...c, score: d.score }] : []
+      })
+    } else {
+      // D: combina reranker y fusión (el orden de la búsqueda sigue pesando)
+      const rrfMax = Math.max(...candidatos.map(c => fusion.get(c.id)?.rrf ?? 0)) || 1
+      ordenados = r.data.flatMap(d => {
+        const c = candidatos[d.index]
+        if (!c) return []
+        const rrf = (fusion.get(c.id)?.rrf ?? 0) / rrfMax
+        return [{ ...c, score: PESO_RERANK_D * d.score + (1 - PESO_RERANK_D) * rrf }]
+      }).sort((a, b) => b.score - a.score)
+      // Varios temas: el mejor de cada subtema entra entre los primeros
+      // (reemplaza a los últimos de ese tramo que no son de ningún subtema)
+      const subtemas = (decision?.consultas ?? []).filter(c => c !== pregunta)
+      if (subtemas.length > 1) {
+        const garantizados = subtemas
+          .map(sub => listas[consultas.indexOf(sub)]?.[0])
+          .filter((h): h is NonNullable<typeof h> => !!h)
+          .filter((h, i, l) => l.findIndex(x => x.id === h.id) === i)
+          .slice(0, PUESTOS_GARANTIZADOS_D)
+        const ids = new Set(garantizados.map(g => g.id))
+        const tramo = ordenados.slice(0, PUESTOS_GARANTIZADOS_D)
+        const faltan = garantizados.filter(g => !tramo.some(t => t.id === g.id))
+        if (faltan.length) {
+          const libres = tramo.filter(t => !ids.has(t.id)).slice(0, PUESTOS_GARANTIZADOS_D - garantizados.length)
+          const nuevoTramo = [...tramo.filter(t => ids.has(t.id) || libres.includes(t)), ...faltan.map(f => ordenados.find(o => o.id === f.id) ?? { ...f, score: 0 })]
+          const resto = ordenados.filter(o => !nuevoTramo.some(n => n.id === o.id))
+          ordenados = [...nuevoTramo, ...resto]
+        }
+      }
+    }
   }
   return [...exactos.map(e => ({ ...e, score: 1 })), ...ordenados]
 }
@@ -355,7 +392,7 @@ export const evaluarRecuperacion = onRequest(
       const resultados: Array<{
         id: string; pregunta: string; tipo: string; esperados: Esperado[]
         reformulacion: { buscar: boolean; consultas: string[]; codigo: string | null } | null
-        A: ResultadoVariante; B: ResultadoVariante; C: ResultadoVariante
+        A: ResultadoVariante; B: ResultadoVariante; C: ResultadoVariante; D: ResultadoVariante
       }> = []
       for (const p of preguntas) {
         // La reformulación de Gemini se calcula una vez y se usa en las tres variantes
@@ -387,16 +424,19 @@ export const evaluarRecuperacion = onRequest(
         const C = await correr(async () => (await recuperarMejorado(pinecone, v2, p.pregunta, decision, normas)).slice(0, 40).map(f => ({
           normaId: f.normaId || null, norma: f.nombreDocumento, articulo: f.articulo || null, score: f.score
         })))
+        const D = await correr(async () => (await recuperarMejorado(pinecone, v2, p.pregunta, decision, normas, 'D')).slice(0, 40).map(f => ({
+          normaId: f.normaId || null, norma: f.nombreDocumento, articulo: f.articulo || null, score: f.score
+        })))
 
         resultados.push({
           id: p.id, pregunta: p.pregunta, tipo: p.tipo ?? '', esperados: p.esperados,
           reformulacion: decision ? { buscar: decision.buscar, consultas: decision.consultas ?? [], codigo: decision.codigo ?? null } : null,
-          A, B, C
+          A, B, C, D
         })
       }
 
       // Resumen por variante
-      const resumen = (['A', 'B', 'C'] as const).map(v => {
+      const resumen = (['A', 'B', 'C', 'D'] as const).map(v => {
         const rs = resultados.map(r => r[v])
         const prom = (f: (x: ResultadoVariante) => number) => Number((rs.reduce((s, x) => s + f(x), 0) / rs.length).toFixed(3))
         return {
@@ -410,6 +450,11 @@ export const evaluarRecuperacion = onRequest(
           msPromedio: Math.round(rs.reduce((s, x) => s + x.ms, 0) / rs.length)
         }
       })
+
+      // Preguntas donde D empeora respecto de A
+      const dPeorQueA = resultados.filter(r => r.D.recall8 < r.A.recall8 || (r.D.recall8 === r.A.recall8 && r.D.rr < r.A.rr)).map(r => ({
+        id: r.id, pregunta: r.pregunta, A: { puestos: r.A.puestos, cobertura8: r.A.recall8 }, D: { puestos: r.D.puestos, cobertura8: r.D.recall8 }
+      }))
 
       // Preguntas donde C empeora respecto de A (peor cobertura@8 o peor primer puesto)
       const cPeorQueA = resultados.filter(r => r.C.recall8 < r.A.recall8 || (r.C.recall8 === r.A.recall8 && r.C.rr < r.A.rr)).map(r => ({
@@ -425,10 +470,12 @@ export const evaluarRecuperacion = onRequest(
         variantes: {
           A: 'Producción: flujo actual de Consultas sobre la base actual (__default__)',
           B: `Esquema nuevo (${namespace}) con la búsqueda de hoy`,
-          C: `Esquema nuevo (${namespace}) con búsqueda mejorada: pregunta + reformulación, ${CANDIDATOS_C} candidatos por consulta, fusión RRF, artículo exacto con letra, sin derogados y reranker ${MODELO_RERANK}`
+          C: `Esquema nuevo (${namespace}) con búsqueda mejorada: pregunta + reformulación, ${CANDIDATOS_C} candidatos por consulta, fusión RRF, artículo exacto con letra, sin derogados y reranker ${MODELO_RERANK}`,
+          D: `Como C, con orden final ${Math.round(PESO_RERANK_D * 100)} % reranker + ${Math.round((1 - PESO_RERANK_D) * 100)} % fusión, y el mejor de cada subtema entre los ${PUESTOS_GARANTIZADOS_D} primeros`
         },
         resumen,
         cPeorQueA,
+        dPeorQueA,
         resultados
       })
     } catch (err) {

@@ -126,11 +126,12 @@ export interface InformeEvaluacion {
   variantes: Record<string, string>
   resumen: Array<{ variante: string; acierto1: number; cobertura5: number; cobertura8: number; mrr: number; sinResultados: number; errores: number; msPromedio: number }>
   cPeorQueA: Array<{ id: string; pregunta: string; A: { puestos: Array<number | null>; cobertura8: number }; C: { puestos: Array<number | null>; cobertura8: number } }>
+  dPeorQueA?: Array<{ id: string; pregunta: string; A: { puestos: Array<number | null>; cobertura8: number }; D: { puestos: Array<number | null>; cobertura8: number } }>
   resultados: Array<{
     id: string; pregunta: string; tipo: string
     esperados: Array<{ normaId: string; norma: string; numeroNorma: string; articulo: string }>
     reformulacion: { buscar: boolean; consultas: string[]; codigo: string | null } | null
-    A: ResultadoVariante; B: ResultadoVariante; C: ResultadoVariante
+    A: ResultadoVariante; B: ResultadoVariante; C: ResultadoVariante; D?: ResultadoVariante
   }>
 }
 
