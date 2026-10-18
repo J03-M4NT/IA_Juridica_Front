@@ -53,7 +53,7 @@
 
       <div class="eval-v2-tabla-wrap q-mt-md">
         <table class="eval-v2-tabla">
-          <thead><tr><th>#</th><th>Pregunta</th><th>Esperado</th><th>A</th><th>B</th><th>C</th><th v-if="informe.resultados[0]?.D">D</th></tr></thead>
+          <thead><tr><th>#</th><th>Pregunta</th><th>Esperado</th><th>A</th><th>B</th><th>C</th><th v-if="informe.resultados[0]?.D">D</th><th v-if="informe.resultados[0]?.E">E</th></tr></thead>
           <tbody>
             <tr v-for="r in informe.resultados" :key="r.id">
               <td>{{ r.id }}</td>
@@ -63,6 +63,7 @@
               <td :class="clase(r.B)">{{ puestos(r.B.puestos) }}</td>
               <td :class="clase(r.C)">{{ puestos(r.C.puestos) }}</td>
               <td v-if="r.D" :class="clase(r.D)">{{ puestos(r.D.puestos) }}</td>
+              <td v-if="r.E" :class="clase(r.E)">{{ puestos(r.E.puestos) }}</td>
             </tr>
           </tbody>
         </table>

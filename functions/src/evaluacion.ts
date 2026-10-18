@@ -12,6 +12,8 @@
 //   D · como C, pero el orden final combina el reranker (60 %) con la fusión
 //       (40 %), y en preguntas de varios temas el mejor resultado de cada
 //       subtema queda entre los 5 primeros.
+//   E · D sin reranker (solo la fusión): mide cuánto se pierde si se agota
+//       la cuota mensual del reranker.
 // No escribe nada en Pinecone ni en Firestore. Solo admins. Las claves son
 // los secretos de Firebase de siempre.
 // =========================
@@ -249,7 +251,7 @@ export const evaluarRecuperacion = onRequest(
       const resultados: Array<{
         id: string; pregunta: string; tipo: string; esperados: Esperado[]
         reformulacion: { buscar: boolean; consultas: string[]; codigo: string | null } | null
-        A: ResultadoVariante; B: ResultadoVariante; C: ResultadoVariante; D: ResultadoVariante
+        A: ResultadoVariante; B: ResultadoVariante; C: ResultadoVariante; D: ResultadoVariante; E: ResultadoVariante
       }> = []
       for (const p of preguntas) {
         // La reformulación de Gemini se calcula una vez y se usa en las tres variantes
@@ -284,16 +286,19 @@ export const evaluarRecuperacion = onRequest(
         const D = await correr(async () => (await recuperarMejorado(pinecone, v2, p.pregunta, decision, normas, 'D')).slice(0, 40).map(f => ({
           normaId: f.normaId || null, norma: f.nombreDocumento, articulo: f.articulo || null, score: f.score
         })))
+        const E = await correr(async () => (await recuperarMejorado(pinecone, v2, p.pregunta, decision, normas, 'E')).slice(0, 40).map(f => ({
+          normaId: f.normaId || null, norma: f.nombreDocumento, articulo: f.articulo || null, score: f.score
+        })))
 
         resultados.push({
           id: p.id, pregunta: p.pregunta, tipo: p.tipo ?? '', esperados: p.esperados,
           reformulacion: decision ? { buscar: decision.buscar, consultas: decision.consultas ?? [], codigo: decision.codigo ?? null } : null,
-          A, B, C, D
+          A, B, C, D, E
         })
       }
 
       // Resumen por variante
-      const resumen = (['A', 'B', 'C', 'D'] as const).map(v => {
+      const resumen = (['A', 'B', 'C', 'D', 'E'] as const).map(v => {
         const rs = resultados.map(r => r[v])
         const prom = (f: (x: ResultadoVariante) => number) => Number((rs.reduce((s, x) => s + f(x), 0) / rs.length).toFixed(3))
         return {
@@ -328,6 +333,7 @@ export const evaluarRecuperacion = onRequest(
           A: 'Producción: flujo actual de Consultas sobre la base actual (__default__)',
           B: `Esquema nuevo (${namespace}) con la búsqueda de hoy`,
           C: `Esquema nuevo (${namespace}) con búsqueda mejorada: pregunta + reformulación, ${CANDIDATOS_C} candidatos por consulta, fusión RRF, artículo exacto con letra, sin derogados y reranker ${MODELO_RERANK}`,
+          E: 'Como D, sin reranker (solo la fusión de resultados)',
           D: `Como C, con orden final ${Math.round(PESO_RERANK_D * 100)} % reranker + ${Math.round((1 - PESO_RERANK_D) * 100)} % fusión, y el mejor de cada subtema entre los ${PUESTOS_GARANTIZADOS_D} primeros`
         },
         resumen,

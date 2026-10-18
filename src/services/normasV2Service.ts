@@ -132,7 +132,7 @@ export interface InformeEvaluacion {
     id: string; pregunta: string; tipo: string
     esperados: Array<{ normaId: string; norma: string; numeroNorma: string; articulo: string }>
     reformulacion: { buscar: boolean; consultas: string[]; codigo: string | null } | null
-    A: ResultadoVariante; B: ResultadoVariante; C: ResultadoVariante; D?: ResultadoVariante
+    A: ResultadoVariante; B: ResultadoVariante; C: ResultadoVariante; D?: ResultadoVariante; E?: ResultadoVariante
   }>
 }
 

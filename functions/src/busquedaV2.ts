@@ -12,6 +12,7 @@
 // =========================
 import type { Pinecone } from '@pinecone-database/pinecone'
 import { getFirestore } from 'firebase-admin/firestore'
+import * as logger from 'firebase-functions/logger'
 import type { FragmentoResultado, DecisionBusqueda } from './consultarLexit'
 
 export type Indice = ReturnType<Pinecone['index']>
@@ -129,7 +130,7 @@ export async function recuperarMejorado(
   pregunta: string,
   decision: DecisionBusqueda | undefined,
   normas: NormaV2[],
-  modo: 'C' | 'D' = 'C',
+  modo: 'C' | 'D' | 'E' = 'C',
   opciones: OpcionesBusqueda = {}
 ): Promise<HitV2[]> {
   if (decision?.buscar === false) return []
@@ -165,46 +166,57 @@ export async function recuperarMejorado(
   }
   const candidatos = [...fusion.values()].sort((a, b) => b.rrf - a.rrf).slice(0, 40).map(x => x.hit)
 
-  // 3. Reranker contra la pregunta
-  let ordenados = candidatos
-  if (candidatos.length > 1) {
-    const r = await pinecone.inference.rerank({
-      model: MODELO_RERANK, query: consultaBase, documents: candidatos.map(c => c.texto),
-      topN: modo === 'D' ? candidatos.length : Math.min(20, candidatos.length),
-      returnDocuments: false, parameters: { truncate: 'END' }
-    })
-    if (modo === 'C') {
-      ordenados = r.data.flatMap(d => {
-        const c = candidatos[d.index]
-        return c ? [{ ...c, score: d.score }] : []
+  // 3. Reranker contra la pregunta. Si falla (por ejemplo, se agotó la cuota
+  // mensual del reranker), se sigue con el orden de la fusión: la búsqueda
+  // nueva no se abandona por eso. El modo 'E' no usa reranker (para medirlo).
+  let puntajes: Array<{ index: number; score: number }> | null = null
+  if (candidatos.length > 1 && modo !== 'E') {
+    try {
+      const r = await pinecone.inference.rerank({
+        model: MODELO_RERANK, query: consultaBase, documents: candidatos.map(c => c.texto),
+        topN: modo === 'C' ? Math.min(20, candidatos.length) : candidatos.length,
+        returnDocuments: false, parameters: { truncate: 'END' }
       })
-    } else {
-      // D: combina reranker y fusión (el orden de la búsqueda sigue pesando)
-      const rrfMax = Math.max(...candidatos.map(c => fusion.get(c.id)?.rrf ?? 0)) || 1
-      ordenados = r.data.flatMap(d => {
+      puntajes = r.data.map(d => ({ index: d.index, score: d.score }))
+    } catch (err) {
+      logger.warn(`⚠️ Reranker no disponible, se usa el orden de la fusión: ${(err as Error).message.slice(0, 200)}`)
+    }
+  }
+
+  let ordenados = candidatos
+  if (modo === 'C' && puntajes) {
+    ordenados = puntajes.flatMap(d => {
+      const c = candidatos[d.index]
+      return c ? [{ ...c, score: d.score }] : []
+    })
+  } else if (candidatos.length > 1) {
+    // D: combina reranker y fusión (el orden de la búsqueda sigue pesando).
+    // Sin reranker (modo E o si falló): solo la fusión.
+    const rrfMax = Math.max(...candidatos.map(c => fusion.get(c.id)?.rrf ?? 0)) || 1
+    const rrfDe = (c: HitV2) => (fusion.get(c.id)?.rrf ?? 0) / rrfMax
+    ordenados = puntajes
+      ? puntajes.flatMap(d => {
         const c = candidatos[d.index]
-        if (!c) return []
-        const rrf = (fusion.get(c.id)?.rrf ?? 0) / rrfMax
-        return [{ ...c, score: PESO_RERANK_D * d.score + (1 - PESO_RERANK_D) * rrf }]
+        return c ? [{ ...c, score: PESO_RERANK_D * d.score + (1 - PESO_RERANK_D) * rrfDe(c) }] : []
       }).sort((a, b) => b.score - a.score)
-      // Varios temas: el mejor de cada subtema entra entre los primeros
-      // (reemplaza a los últimos de ese tramo que no son de ningún subtema)
-      const subtemas = (decision?.consultas ?? []).filter(c => c !== consultaBase)
-      if (subtemas.length > 1) {
-        const garantizados = subtemas
-          .map(sub => listas[consultas.indexOf(sub)]?.[0])
-          .filter((h): h is HitV2 => !!h)
-          .filter((h, i, l) => l.findIndex(x => x.id === h.id) === i)
-          .slice(0, PUESTOS_GARANTIZADOS_D)
-        const ids = new Set(garantizados.map(g => g.id))
-        const tramo = ordenados.slice(0, PUESTOS_GARANTIZADOS_D)
-        const faltan = garantizados.filter(g => !tramo.some(t => t.id === g.id))
-        if (faltan.length) {
-          const libres = tramo.filter(t => !ids.has(t.id)).slice(0, PUESTOS_GARANTIZADOS_D - garantizados.length)
-          const nuevoTramo = [...tramo.filter(t => ids.has(t.id) || libres.includes(t)), ...faltan.map(f => ordenados.find(o => o.id === f.id) ?? { ...f, score: 0 })]
-          const resto = ordenados.filter(o => !nuevoTramo.some(n => n.id === o.id))
-          ordenados = [...nuevoTramo, ...resto]
-        }
+      : candidatos.map(c => ({ ...c, score: rrfDe(c) }))
+    // Varios temas: el mejor de cada subtema entra entre los primeros
+    // (reemplaza a los últimos de ese tramo que no son de ningún subtema)
+    const subtemas = (decision?.consultas ?? []).filter(c => c !== consultaBase)
+    if (subtemas.length > 1) {
+      const garantizados = subtemas
+        .map(sub => listas[consultas.indexOf(sub)]?.[0])
+        .filter((h): h is HitV2 => !!h)
+        .filter((h, i, l) => l.findIndex(x => x.id === h.id) === i)
+        .slice(0, PUESTOS_GARANTIZADOS_D)
+      const ids = new Set(garantizados.map(g => g.id))
+      const tramo = ordenados.slice(0, PUESTOS_GARANTIZADOS_D)
+      const faltan = garantizados.filter(g => !tramo.some(t => t.id === g.id))
+      if (faltan.length) {
+        const libres = tramo.filter(t => !ids.has(t.id)).slice(0, PUESTOS_GARANTIZADOS_D - garantizados.length)
+        const nuevoTramo = [...tramo.filter(t => ids.has(t.id) || libres.includes(t)), ...faltan.map(f => ordenados.find(o => o.id === f.id) ?? { ...f, score: 0 })]
+        const resto = ordenados.filter(o => !nuevoTramo.some(n => n.id === o.id))
+        ordenados = [...nuevoTramo, ...resto]
       }
     }
   }
