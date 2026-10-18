@@ -10,6 +10,7 @@ import type { RegistroV2 } from '../utils/normas/metadatosNorma'
 // =========================
 
 export const NAMESPACE_PRUEBA = 'normas-v2-prueba'
+export const NAMESPACE_PRODUCCION = 'normas-v2'
 
 // Mismo cuidado que la carga actual con el límite de tokens/minuto del
 // modelo de embeddings: pausa entre lotes y reintento con espera.
@@ -137,4 +138,24 @@ export interface InformeEvaluacion {
 
 export async function evaluarRecuperacion(preguntas: unknown[], namespace = NAMESPACE_PRUEBA): Promise<InformeEvaluacion> {
   return llamar<InformeEvaluacion>('evaluarRecuperacion', { preguntas, namespace })
+}
+
+// =========================
+// PASO A PRODUCCIÓN (fase 4)
+// =========================
+export interface ConfigBusqueda { modo: 'actual' | 'v2'; namespace: string }
+
+export async function leerConfigBusqueda(): Promise<ConfigBusqueda> {
+  return llamar<ConfigBusqueda>('normasV2', { accion: 'config' })
+}
+
+export async function cambiarBusqueda(modo: 'actual' | 'v2', namespace = NAMESPACE_PRODUCCION): Promise<ConfigBusqueda> {
+  return llamar<ConfigBusqueda>('normasV2', { accion: 'config', modo, namespace })
+}
+
+export interface RespaldoBase { ruta: string; url: string; registros: number; bytesJson: number; bytesGzip: number; sha256: string }
+
+// Respaldo de la base actual (__default__) en Storage, solo lectura de Pinecone
+export async function respaldarBaseActual(): Promise<RespaldoBase> {
+  return llamar<RespaldoBase>('auditarPinecone', { modo: 'respaldo' })
 }

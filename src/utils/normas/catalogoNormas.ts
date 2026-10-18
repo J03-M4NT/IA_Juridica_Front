@@ -26,6 +26,8 @@ export interface NormaCatalogo {
   numeroNorma: string
   area?: string
   porVerificar?: boolean
+  // Otros números con que aparece el archivo (ej. el Código de Comercio en SPIJ empieza con la Ley 16687)
+  otrosNumeros?: string[]
 }
 
 export const CATALOGO_NORMAS: NormaCatalogo[] = [
@@ -35,7 +37,7 @@ export const CATALOGO_NORMAS: NormaCatalogo[] = [
   { normaId: 'codigo-penal', norma: 'Código Penal', tipoNorma: 'codigo', numeroNorma: 'D. Leg. 635', area: 'derecho-penal' },
   { normaId: 'codigo-procesal-civil', norma: 'Código Procesal Civil', tipoNorma: 'codigo', numeroNorma: 'D. Leg. 768', area: 'derecho-civil' },
   { normaId: 'codigo-procesal-penal', norma: 'Nuevo Código Procesal Penal', tipoNorma: 'codigo', numeroNorma: 'D. Leg. 957', area: 'derecho-penal' },
-  { normaId: 'codigo-de-comercio', norma: 'Código de Comercio', tipoNorma: 'codigo', numeroNorma: '', area: 'derecho-comercial' },
+  { normaId: 'codigo-de-comercio', norma: 'Código de Comercio', tipoNorma: 'codigo', numeroNorma: '', area: 'derecho-comercial', otrosNumeros: ['Ley 16687'] },
   { normaId: 'codigo-consumidor', norma: 'Código de Protección y Defensa del Consumidor', tipoNorma: 'codigo', numeroNorma: 'Ley 29571', area: 'derecho-civil' },
 
   { normaId: 'tuo-ley-impuesto-renta', norma: 'TUO de la Ley del Impuesto a la Renta', tipoNorma: 'texto-unico-ordenado', numeroNorma: 'D.S. 179-2004-EF', area: 'derecho-tributario' },
@@ -45,7 +47,7 @@ export const CATALOGO_NORMAS: NormaCatalogo[] = [
   { normaId: 'tuo-cts', norma: 'TUO de la Ley de Compensación por Tiempo de Servicios', tipoNorma: 'texto-unico-ordenado', numeroNorma: 'D.S. 001-97-TR', area: 'derecho-laboral' },
   { normaId: 'tuo-jornada-trabajo', norma: 'TUO de la Ley de Jornada de Trabajo, Horario y Trabajo en Sobretiempo', tipoNorma: 'texto-unico-ordenado', numeroNorma: 'D.S. 007-2002-TR', area: 'derecho-laboral' },
   { normaId: 'tuo-relaciones-colectivas', norma: 'TUO de la Ley de Relaciones Colectivas de Trabajo', tipoNorma: 'texto-unico-ordenado', numeroNorma: 'D.S. 010-2003-TR', area: 'derecho-laboral' },
-  { normaId: 'tuo-mercado-valores', norma: 'TUO de la Ley del Mercado de Valores', tipoNorma: 'texto-unico-ordenado', numeroNorma: 'D.S. 093-2002-EF', area: 'derecho-comercial', porVerificar: true },
+  { normaId: 'tuo-mercado-valores', norma: 'TUO de la Ley del Mercado de Valores', tipoNorma: 'texto-unico-ordenado', numeroNorma: 'D.S. 093-2002-EF', area: 'derecho-comercial', porVerificar: true, otrosNumeros: ['D. Leg. 861'] },
 
   { normaId: 'reglamento-ley-impuesto-renta', norma: 'Reglamento de la Ley del Impuesto a la Renta', tipoNorma: 'reglamento', numeroNorma: 'D.S. 122-94-EF', area: 'derecho-tributario' },
   { normaId: 'reglamento-ley-igv-isc', norma: 'Reglamento de la Ley del IGV e ISC', tipoNorma: 'reglamento', numeroNorma: 'D.S. 029-94-EF', area: 'derecho-tributario' },
@@ -94,7 +96,7 @@ const clave = (s: string) => s.toUpperCase().replace(/(?<!\d)0+(?=\d)/g, '').rep
 export function buscarEnCatalogo(numeroNorma: string, tipoNorma?: TipoNorma, nombre = ''): NormaCatalogo | undefined {
   if (numeroNorma) {
     const k = clave(numeroNorma)
-    const porNumero = CATALOGO_NORMAS.filter(n => n.numeroNorma && clave(n.numeroNorma) === k)
+    const porNumero = CATALOGO_NORMAS.filter(n => (n.numeroNorma && clave(n.numeroNorma) === k) || (n.otrosNumeros ?? []).some(o => clave(o) === k))
     if (porNumero[0]) return porNumero[0]
   }
   if (tipoNorma === 'constitucion') return CATALOGO_NORMAS[0]

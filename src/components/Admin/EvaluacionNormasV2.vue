@@ -4,6 +4,10 @@
       <div>
         <span class="section-label">Evaluación A/B/C · solo lectura</span>
         <q-badge outline color="orange-9" class="q-ml-sm" :label="juego.estado" />
+        <q-btn-toggle
+          v-model="espacio" dense no-caps unelevated toggle-color="accent" color="grey-3" text-color="grey-9" class="q-ml-sm"
+          :options="[{ label: 'Prueba', value: NAMESPACE_PRUEBA }, { label: 'Producción (normas-v2)', value: NAMESPACE_PRODUCCION }]"
+        />
       </div>
       <div class="row q-gutter-sm">
         <q-btn flat dense no-caps color="accent" icon="download" label="Descargar preguntas" @click="descargar(juego, 'preguntas-evaluacion')" />
@@ -81,12 +85,14 @@
 import { ref } from 'vue'
 import { useQuasar } from 'quasar'
 import { PREGUNTAS_BASE, type JuegoPreguntas } from '../../utils/normas/evaluacion/preguntasBase'
-import { evaluarRecuperacion, type InformeEvaluacion, type ResultadoVariante } from '../../services/normasV2Service'
+import { evaluarRecuperacion, NAMESPACE_PRUEBA, NAMESPACE_PRODUCCION, type InformeEvaluacion, type ResultadoVariante } from '../../services/normasV2Service'
 
 const $q = useQuasar()
 const juego = ref<JuegoPreguntas>(PREGUNTAS_BASE)
 const informe = ref<InformeEvaluacion | null>(null)
 const evaluando = ref(false)
+// Espacio del esquema nuevo contra el que se evalúan B, C y D
+const espacio = ref<string>(NAMESPACE_PRUEBA)
 const selector = ref<HTMLInputElement | null>(null)
 
 const pct = (x: number) => `${Math.round(x * 100)} %`
@@ -96,7 +102,7 @@ const clase = (r: ResultadoVariante) => (r.error ? 'eval-v2-error' : r.hit1 ? 'e
 async function evaluar() {
   evaluando.value = true
   try {
-    informe.value = await evaluarRecuperacion(juego.value.preguntas)
+    informe.value = await evaluarRecuperacion(juego.value.preguntas, espacio.value)
     $q.notify({ type: 'positive', message: 'Evaluación terminada' })
   } catch (err) {
     $q.notify({ type: 'negative', message: err instanceof Error ? err.message : 'No se pudo evaluar' })

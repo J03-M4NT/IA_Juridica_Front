@@ -11,7 +11,8 @@
 //   borrar    → borra fragmentos que ya no existen (solo de esa norma)
 //   registrar → guarda el resumen de la norma en Firestore (normas_v2)
 //   listar    → normas que hay en el namespace y cuántos fragmentos tiene cada una
-//   vaciar    → quita TODOS los fragmentos de una norma (solo del namespace de prueba)
+//   vaciar    → quita TODOS los fragmentos de una norma del namespace indicado
+//   config    → lee o cambia el interruptor de la búsqueda de Consultas
 // buscarNormasV2: búsqueda de prueba en el namespace (para la fase 3).
 // =========================
 import { onRequest } from 'firebase-functions/v2/https'
@@ -21,11 +22,13 @@ import { initializeApp, getApps } from 'firebase-admin/app'
 import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 import { ORIGENES_PERMITIDOS, autorizar } from './seguridad'
 import { PINECONE_API_KEY, PINECONE_HOST, PINECONE_INDEX } from './consultarLexit'
+import { leerConfigBusqueda, guardarConfigBusqueda } from './configBusqueda'
 
 if (getApps().length === 0) initializeApp()
 
-// Únicos namespaces aceptados. __default__ (producción) NO está aquí.
-export const NAMESPACES_PERMITIDOS = ['normas-v2-prueba'] as const
+// Únicos namespaces aceptados: el de prueba y el del esquema nuevo en
+// producción. __default__ (la base actual) NO está aquí: no se puede tocar.
+export const NAMESPACES_PERMITIDOS = ['normas-v2-prueba', 'normas-v2'] as const
 type NamespaceV2 = typeof NAMESPACES_PERMITIDOS[number]
 
 const COLECCION = 'normas_v2'
@@ -98,7 +101,27 @@ export const normasV2 = onRequest(
     const uid = await autorizar(req, res, { soloAdmin: true })
     if (!uid) return
 
-    const body = (req.body ?? {}) as { accion?: unknown; namespace?: unknown; normaId?: unknown; registros?: unknown; ids?: unknown; resumen?: unknown }
+    const body = (req.body ?? {}) as { accion?: unknown; namespace?: unknown; normaId?: unknown; registros?: unknown; ids?: unknown; resumen?: unknown; modo?: unknown }
+
+    // Interruptor de Consultas: leer o cambiar ('actual' | 'v2')
+    if (body.accion === 'config') {
+      try {
+        if (body.modo === undefined) {
+          res.json(await leerConfigBusqueda())
+          return
+        }
+        if ((body.modo !== 'actual' && body.modo !== 'v2') || !namespaceValido(body.namespace)) {
+          res.status(400).json({ error: 'modo debe ser "actual" o "v2" y el namespace uno permitido' })
+          return
+        }
+        await guardarConfigBusqueda(body.modo, body.namespace, uid)
+        logger.info(`🔀 Búsqueda de Consultas → ${body.modo} (${body.namespace}) por admin ${uid}`)
+        res.json(await leerConfigBusqueda())
+      } catch (err) {
+        res.status(500).json({ error: (err as Error).message })
+      }
+      return
+    }
     if (!namespaceValido(body.namespace)) {
       res.status(400).json({ error: `Namespace no permitido. Solo: ${NAMESPACES_PERMITIDOS.join(', ')}` })
       return

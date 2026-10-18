@@ -3,7 +3,12 @@
     <div class="actions-bar q-mb-md">
       <div>
         <span class="section-label">Normas v2 · prueba</span>
-        <q-badge outline color="grey-7" class="q-ml-sm" :label="`namespace: ${NAMESPACE_PRUEBA}`" />
+        <q-btn-toggle
+          v-model="destino" dense no-caps unelevated toggle-color="accent" color="grey-3" text-color="grey-9" class="q-ml-sm"
+          :disable="ocupado"
+          :options="[{ label: 'Prueba', value: NAMESPACE_PRUEBA }, { label: 'Producción (normas-v2)', value: NAMESPACE_PRODUCCION }]"
+          @update:model-value="() => { cargadas = null; items.forEach(i => { i.plan = null }) }"
+        />
         <q-btn flat dense no-caps color="accent" icon="fact_check" label="Verificación (solo lectura)" class="q-ml-sm" :loading="verificando" :disable="ocupado" @click="verificar" />
       </div>
       <q-file :dark="false"
@@ -85,7 +90,7 @@
     <q-dialog :model-value="aQuitar !== ''" persistent @update:model-value="v => { if (!v) aQuitar = '' }">
       <q-card :dark="false" style="min-width: 340px">
         <q-card-section>
-          ¿Quitar <strong>{{ aQuitar }}</strong> del espacio de prueba? Se borran todos sus fragmentos de {{ NAMESPACE_PRUEBA }}.
+          ¿Quitar <strong>{{ aQuitar }}</strong> de {{ destino }}? Se borran todos sus fragmentos de ese espacio.
           La base de Consultas no se toca.
         </q-card-section>
         <q-card-actions align="right">
@@ -101,14 +106,14 @@
       </div>
       <div class="row q-gutter-sm">
         <q-btn outline color="accent" no-caps icon="fact_check" label="Calcular plan" :loading="planificando" :disable="!listas || ocupado" @click="calcularPlan" />
-        <q-btn color="accent" unelevated no-caps icon="cloud_upload" :label="`Subir a ${NAMESPACE_PRUEBA}`" :disable="!listas || ocupado || !conPlan" @click="confirmar = true" />
+        <q-btn color="accent" unelevated no-caps icon="cloud_upload" :label="`Subir a ${destino}`" :disable="!listas || ocupado || !conPlan" @click="confirmar = true" />
       </div>
     </div>
 
     <q-dialog v-model="verVerificacion">
       <q-card :dark="false" style="width: 900px; max-width: 95vw">
         <q-card-section class="row items-center">
-          <div class="text-h6 col">Verificación en {{ NAMESPACE_PRUEBA }}</div>
+          <div class="text-h6 col">Verificación en {{ destino }}</div>
           <q-btn flat dense no-caps color="accent" icon="download" label="Descargar JSON" @click="descargarVerificacion" />
           <q-btn flat round dense color="grey-8" icon="close" v-close-popup />
         </q-card-section>
@@ -130,7 +135,12 @@
 
     <q-dialog v-model="confirmar" persistent>
       <q-card :dark="false" style="min-width: 360px; max-width: 520px">
-        <q-card-section class="text-h6">Subir a {{ NAMESPACE_PRUEBA }}</q-card-section>
+        <q-card-section class="text-h6">Subir a {{ destino }}</q-card-section>
+        <q-card-section v-if="destino === NAMESPACE_PRODUCCION" class="q-pt-none">
+          <q-banner dense rounded class="bg-orange-1 text-orange-10">
+            Es el espacio de producción del esquema nuevo. Consultas solo lo usa cuando el interruptor de búsqueda está en "v2".
+          </q-banner>
+        </q-card-section>
         <q-card-section>
           Se subirán <strong>{{ porSubir }}</strong> fragmentos (~{{ tokensPorSubir.toLocaleString('es-PE') }} tokens)
           y se borrarán {{ porBorrar }} obsoletos, solo en el espacio de prueba. La base de Consultas no cambia.
@@ -157,7 +167,7 @@ import { extraerTextoNorma } from '../../utils/extraerTextoNorma'
 import { parsearNormaV2, type ResultadoParserV2 } from '../../utils/normas/parserNormaV2'
 import { construirRegistrosV2, sugerirMetadatosNorma, hashTexto, slug, TIPOS_NORMA, type MetaNorma, type RegistroV2 } from '../../utils/normas/metadatosNorma'
 import { buscarEnCatalogo, NORMAS_EXCLUIDAS, AREAS_NORMAS } from '../../utils/normas/catalogoNormas'
-import { NAMESPACE_PRUEBA, estimarTokens, planificarCarga, ejecutarCarga, buscarNormasV2, listarNormasV2, vaciarNormaV2, type PlanCarga } from '../../services/normasV2Service'
+import { NAMESPACE_PRUEBA, NAMESPACE_PRODUCCION, estimarTokens, planificarCarga, ejecutarCarga, buscarNormasV2, listarNormasV2, vaciarNormaV2, type PlanCarga } from '../../services/normasV2Service'
 
 type Estado = 'leyendo' | 'listo' | 'error' | 'subiendo' | 'subido'
 
@@ -177,6 +187,8 @@ interface ItemV2 {
 }
 
 const $q = useQuasar()
+// Espacio donde se sube: prueba (por defecto) o producción del esquema nuevo
+const destino = ref<string>(NAMESPACE_PRUEBA)
 const archivos = ref<File[] | null>(null)
 const items = ref<ItemV2[]>([])
 const planificando = ref(false)
@@ -293,7 +305,7 @@ function agregarArchivos(valor: File[] | File | null) {
 async function calcularPlan() {
   planificando.value = true
   try {
-    for (const item of items.value) item.plan = await planificarCarga(NAMESPACE_PRUEBA, normaIdDe(item), registrosDe(item))
+    for (const item of items.value) item.plan = await planificarCarga(destino.value, normaIdDe(item), registrosDe(item))
   } catch (err) {
     $q.notify({ type: 'negative', message: err instanceof Error ? err.message : 'No se pudo calcular el plan' })
   } finally {
@@ -308,7 +320,7 @@ async function subir() {
     item.estado = 'subiendo'
     try {
       const meta = metaDe(item)
-      const { subidos, eliminados } = await ejecutarCarga(NAMESPACE_PRUEBA, meta.normaId, item.plan, {
+      const { subidos, eliminados } = await ejecutarCarga(destino.value, meta.normaId, item.plan, {
         ...meta,
         archivo: item.archivo.name,
         hashDocumento: hashTexto(item.texto),
@@ -350,7 +362,7 @@ const quitando = ref(false)
 async function listarCargadas() {
   listando.value = true
   try {
-    cargadas.value = await listarNormasV2(NAMESPACE_PRUEBA)
+    cargadas.value = await listarNormasV2(destino.value)
   } catch (err) {
     $q.notify({ type: 'negative', message: err instanceof Error ? err.message : 'No se pudo listar' })
   } finally {
@@ -361,8 +373,8 @@ async function listarCargadas() {
 async function quitar() {
   quitando.value = true
   try {
-    const eliminados = await vaciarNormaV2(NAMESPACE_PRUEBA, aQuitar.value)
-    $q.notify({ type: 'positive', message: `${aQuitar.value}: ${eliminados} fragmentos quitados del espacio de prueba` })
+    const eliminados = await vaciarNormaV2(destino.value, aQuitar.value)
+    $q.notify({ type: 'positive', message: `${aQuitar.value}: ${eliminados} fragmentos quitados de ${destino.value}` })
     aQuitar.value = ''
     await listarCargadas()
   } catch (err) {
@@ -381,7 +393,7 @@ async function verificar() {
   try {
     const resultados = []
     for (const v of VERIFICACIONES) {
-      const hits = await buscarNormasV2(NAMESPACE_PRUEBA, v.consulta, {
+      const hits = await buscarNormasV2(destino.value, v.consulta, {
         topK: 10,
         filtro: { normaId: { $eq: v.normaId }, articulo: { $eq: v.articulo } }
       })
@@ -403,7 +415,7 @@ async function verificar() {
 }
 
 function descargarVerificacion() {
-  const blob = new Blob([JSON.stringify({ namespace: NAMESPACE_PRUEBA, generadoEn: new Date().toISOString(), resultados: verificacion.value }, null, 2)], { type: 'application/json' })
+  const blob = new Blob([JSON.stringify({ namespace: destino.value, generadoEn: new Date().toISOString(), resultados: verificacion.value }, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const enlace = document.createElement('a')
   enlace.href = url

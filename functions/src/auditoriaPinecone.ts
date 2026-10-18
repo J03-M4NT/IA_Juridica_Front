@@ -13,6 +13,8 @@ import { onRequest } from 'firebase-functions/v2/https'
 import * as logger from 'firebase-functions/logger'
 import { Pinecone } from '@pinecone-database/pinecone'
 import { createHash } from 'crypto'
+import { gzipSync } from 'zlib'
+import { getStorage } from 'firebase-admin/storage'
 import { ORIGENES_PERMITIDOS, autorizar } from './seguridad'
 import { PINECONE_API_KEY, PINECONE_HOST, PINECONE_INDEX } from './consultarLexit'
 
@@ -59,7 +61,7 @@ export const auditarPinecone = onRequest(
     const uid = await autorizar(req, res, { soloAdmin: true })
     if (!uid) return
 
-    const { consulta: consultaPedida } = (req.body ?? {}) as { consulta?: unknown }
+    const { consulta: consultaPedida, modo } = (req.body ?? {}) as { consulta?: unknown; modo?: unknown }
     const consulta = typeof consultaPedida === 'string' && consultaPedida.trim()
       ? consultaPedida.trim().slice(0, 300)
       : CONSULTA_POR_DEFECTO
@@ -95,6 +97,23 @@ export const auditarPinecone = onRequest(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           metadatos.set(id, ((record as any)?.metadata ?? {}) as Meta)
         }
+      }
+
+      // ===== RESPALDO (fase 4): IDs, metadatos y texto de __default__ en Storage =====
+      // Solo lectura de Pinecone; el archivo queda en respaldos/pinecone/ y se
+      // devuelve un enlace de descarga temporal (24 h).
+      if (modo === 'respaldo') {
+        const registros = ids.map(id => ({ id, metadata: metadatos.get(id) ?? {} }))
+        const contenido = JSON.stringify({ generadoEn: new Date().toISOString(), indice: PINECONE_INDEX, namespace: NAMESPACE, total: registros.length, registros })
+        const sha256 = createHash('sha256').update(contenido).digest('hex')
+        const comprimido = gzipSync(Buffer.from(contenido, 'utf8'))
+        const ruta = `respaldos/pinecone/${NAMESPACE}-${new Date().toISOString().replace(/[:.]/g, '-')}.json.gz`
+        const archivo = getStorage().bucket().file(ruta)
+        await archivo.save(comprimido, { contentType: 'application/gzip', metadata: { metadata: { registros: String(registros.length), sha256 } } })
+        const [url] = await archivo.getSignedUrl({ action: 'read', expires: Date.now() + 24 * 60 * 60 * 1000 })
+        logger.info(`💾 Respaldo de ${NAMESPACE}: ${registros.length} registros → ${ruta} (admin ${uid})`)
+        res.json({ ruta, url, registros: registros.length, bytesJson: contenido.length, bytesGzip: comprimido.length, sha256 })
+        return
       }
 
       // ===== 3. Análisis =====

@@ -19,7 +19,6 @@ import { onRequest } from 'firebase-functions/v2/https'
 import * as logger from 'firebase-functions/logger'
 import { Pinecone } from '@pinecone-database/pinecone'
 import { initializeApp, getApps } from 'firebase-admin/app'
-import { getFirestore } from 'firebase-admin/firestore'
 import { ORIGENES_PERMITIDOS, autorizar } from './seguridad'
 import { GEMINI_API_KEY } from './geminiClient'
 import {
@@ -30,11 +29,13 @@ import {
 } from './consultarLexit'
 import { normaEnPregunta } from './especialidades'
 import { NAMESPACES_PERMITIDOS } from './normasV2'
+import {
+  type Indice, type NormaV2, MODELO_RERANK, CANDIDATOS_C, PESO_RERANK_D, PUESTOS_GARANTIZADOS_D,
+  plano, digitos, CODIGO_A_FILTRO, buscarV2, normaV2EnPregunta, recuperarMejorado, cargarNormasV2
+} from './busquedaV2'
 
 if (getApps().length === 0) initializeApp()
 
-const MODELO_RERANK = 'bge-reranker-v2-m3'
-const CANDIDATOS_C = 30
 
 // =========================
 // TIPOS
@@ -52,15 +53,11 @@ interface ResultadoVariante {
   ms: number
   error?: string
 }
-interface NormaV2 { normaId: string; norma: string; numeroNorma: string; tipoNorma: string; area: string }
 
-type Indice = ReturnType<Pinecone['index']>
 
 // =========================
 // UTILIDADES
 // =========================
-const plano = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '')
-const digitos = (t: string) => t.replace(/\D/g, '')
 const claveDe = (normaId: string | null, articulo: string | null) => `${normaId ?? '?'}::${(articulo ?? '?').toUpperCase()}`
 
 function validarPreguntas(valor: unknown): Pregunta[] | string {
@@ -179,39 +176,6 @@ export function normaIdEnProduccion(f: FragmentoResultado, esperados: Esperado[]
 // Mismo algoritmo de buscarEnPineconeInterno; los filtros por "código"
 // (tipoDocumento de la base actual) se traducen a normaId o área.
 // =========================
-const CODIGO_A_FILTRO: Record<string, Record<string, unknown>> = {
-  constitucion: { normaId: { $eq: 'constitucion-1993' } },
-  'codigo-civil': { normaId: { $eq: 'codigo-civil' } },
-  'codigo-penal': { normaId: { $eq: 'codigo-penal' } },
-  'codigo-laboral': { area: { $eq: 'derecho-laboral' } },
-  'codigo-tributario': { area: { $eq: 'derecho-tributario' } }
-}
-
-const txt = (v: unknown): string => (typeof v === 'string' ? v : '')
-
-function fragmentoDeHit(h: { _score?: number; fields?: Record<string, unknown> }): FragmentoResultado & { normaId: string; articulo: string } {
-  const c = h.fields ?? {}
-  return {
-    texto: txt(c.text),
-    nombreDocumento: txt(c.nombreDocumento) || txt(c.norma),
-    tipoDocumento: txt(c.tipoDocumento),
-    documentoId: txt(c.documentoId) || txt(c.normaId),
-    indiceChunk: Number(c.indiceChunk ?? 0),
-    score: h._score ?? 0,
-    ...(typeof c.numeroArticulo === 'number' ? { numeroArticulo: c.numeroArticulo } : {}),
-    esFuentePrimaria: true,
-    ...(c.esComentario === true ? { esComentario: true } : {}),
-    normaId: txt(c.normaId),
-    articulo: txt(c.articulo)
-  }
-}
-
-async function buscarV2(idx: Indice, consulta: string, topK: number, filtro: Record<string, unknown>) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const r: any = await idx.searchRecords({ query: { topK, inputs: { text: consulta }, ...(Object.keys(filtro).length ? { filter: filtro } : {}) } })
-  return ((r?.result?.hits ?? []) as Array<{ _id?: string; _score?: number; fields?: Record<string, unknown> }>).map(h => ({ id: h._id ?? '', ...fragmentoDeHit(h) }))
-}
-
 async function buscarComoHoyV2(idx: Indice, consulta: string, topK: number, articulo: number | undefined, filtroCodigo: Record<string, unknown> | undefined, filtroAlcance: Record<string, unknown>) {
   const con = (extra: Record<string, unknown>) => ({ ...filtroAlcance, ...extra })
   if (articulo !== undefined) {
@@ -251,110 +215,6 @@ async function recuperarHoyEnV2(idx: Indice, pregunta: string, decision: Decisio
   return procesados
 }
 
-// Norma nombrada en la pregunta, entre las del namespace (por nombre o número)
-export function normaV2EnPregunta(pregunta: string, normas: NormaV2[]): NormaV2 | undefined {
-  const t = plano(pregunta)
-  const nums = (pregunta.match(/\d{4,5}(?:-\d{2,4}(?:-[A-Z]{2,4})?)?/g) ?? []).map(digitos)
-  const ALIAS: Record<string, string[]> = {
-    'codigo-civil': ['codigocivil'], 'codigo-penal': ['codigopenal'], 'constitucion-1993': ['constitucion'],
-    'tuo-ley-impuesto-renta': ['impuestoalarenta', 'leydelimpuestoalarenta', 'leydelir']
-  }
-  return normas.find(n => {
-    const nombre = plano(n.norma.replace(/^TUO de la /i, ''))
-    const d = digitos(n.numeroNorma)
-    return (nombre.length >= 8 && t.includes(nombre)) || (ALIAS[n.normaId] ?? []).some(a => t.includes(a)) || (d.length >= 4 && n.tipoNorma === 'ley' && nums.includes(d))
-  })
-}
-
-// =========================
-// C · ESQUEMA NUEVO CON BÚSQUEDA MEJORADA
-// =========================
-// "artículo 14-A", "art. 108-C", "artículo 1351"
-export function articuloConLetraEnPregunta(pregunta: string): string | undefined {
-  const m = /\bart(?:[íi]culo|\.)\s*(\d{1,4})\s*[°º]?\s*(?:-\s*([A-Za-z])\b)?/i.exec(pregunta)
-  return m?.[1] ? `${m[1]}${m[2] ? `-${m[2].toUpperCase()}` : ''}` : undefined
-}
-
-const PESO_RERANK_D = 0.6
-const PUESTOS_GARANTIZADOS_D = 5
-
-async function recuperarMejorado(pinecone: Pinecone, idx: Indice, pregunta: string, decision: DecisionBusqueda | undefined, normas: NormaV2[], modo: 'C' | 'D' = 'C') {
-  if (decision?.buscar === false) return []
-  const normaNombrada = normaV2EnPregunta(pregunta, normas)
-  const articulo = articuloConLetraEnPregunta(pregunta)
-  const preguntaDerogados = /derogad/i.test(pregunta)
-  const base: Record<string, unknown> = { esComentario: { $eq: false }, ...(preguntaDerogados ? {} : { vigencia: { $ne: 'derogado' } }) }
-  const filtroNorma = normaNombrada ? { normaId: { $eq: normaNombrada.normaId } } : {}
-
-  // 1. Artículo pedido por número (con letra): directo y primero
-  const exactos = articulo && normaNombrada
-    ? await buscarV2(idx, pregunta, 10, { normaId: { $eq: normaNombrada.normaId }, articulo: { $eq: articulo } })
-    : []
-
-  // 2. Varias consultas (pregunta original + reformulaciones) y fusión por puesto (RRF)
-  const consultas = [...new Set([pregunta, ...(decision?.consultas ?? [])])].slice(0, 5)
-  const codigo = decision?.codigo ? CODIGO_A_FILTRO[decision.codigo] : undefined
-  const listas = await Promise.all([
-    ...consultas.map(c => buscarV2(idx, c, CANDIDATOS_C, { ...base, ...filtroNorma })),
-    // Preferencia suave por el código que sugiere Gemini (no excluye el resto)
-    ...(codigo && !normaNombrada ? [buscarV2(idx, decision?.consultas?.[0] ?? pregunta, CANDIDATOS_C, { ...base, ...codigo })] : [])
-  ])
-  const fusion = new Map<string, { hit: (typeof listas)[number][number]; rrf: number }>()
-  for (const lista of listas) {
-    lista.forEach((hit, i) => {
-      const actual = fusion.get(hit.id) ?? { hit, rrf: 0 }
-      actual.rrf += 1 / (60 + i + 1)
-      fusion.set(hit.id, actual)
-    })
-  }
-  const candidatos = [...fusion.values()].sort((a, b) => b.rrf - a.rrf).slice(0, 40).map(x => x.hit)
-
-  // 3. Reranker contra la pregunta original
-  let ordenados = candidatos
-  if (candidatos.length > 1) {
-    const r = await pinecone.inference.rerank({
-      model: MODELO_RERANK, query: pregunta, documents: candidatos.map(c => c.texto),
-      topN: modo === 'D' ? candidatos.length : Math.min(20, candidatos.length),
-      returnDocuments: false, parameters: { truncate: 'END' }
-    })
-    if (modo === 'C') {
-      ordenados = r.data.flatMap(d => {
-        const c = candidatos[d.index]
-        return c ? [{ ...c, score: d.score }] : []
-      })
-    } else {
-      // D: combina reranker y fusión (el orden de la búsqueda sigue pesando)
-      const rrfMax = Math.max(...candidatos.map(c => fusion.get(c.id)?.rrf ?? 0)) || 1
-      ordenados = r.data.flatMap(d => {
-        const c = candidatos[d.index]
-        if (!c) return []
-        const rrf = (fusion.get(c.id)?.rrf ?? 0) / rrfMax
-        return [{ ...c, score: PESO_RERANK_D * d.score + (1 - PESO_RERANK_D) * rrf }]
-      }).sort((a, b) => b.score - a.score)
-      // Varios temas: el mejor de cada subtema entra entre los primeros
-      // (reemplaza a los últimos de ese tramo que no son de ningún subtema)
-      const subtemas = (decision?.consultas ?? []).filter(c => c !== pregunta)
-      if (subtemas.length > 1) {
-        const garantizados = subtemas
-          .map(sub => listas[consultas.indexOf(sub)]?.[0])
-          .filter((h): h is NonNullable<typeof h> => !!h)
-          .filter((h, i, l) => l.findIndex(x => x.id === h.id) === i)
-          .slice(0, PUESTOS_GARANTIZADOS_D)
-        const ids = new Set(garantizados.map(g => g.id))
-        const tramo = ordenados.slice(0, PUESTOS_GARANTIZADOS_D)
-        const faltan = garantizados.filter(g => !tramo.some(t => t.id === g.id))
-        if (faltan.length) {
-          const libres = tramo.filter(t => !ids.has(t.id)).slice(0, PUESTOS_GARANTIZADOS_D - garantizados.length)
-          const nuevoTramo = [...tramo.filter(t => ids.has(t.id) || libres.includes(t)), ...faltan.map(f => ordenados.find(o => o.id === f.id) ?? { ...f, score: 0 })]
-          const resto = ordenados.filter(o => !nuevoTramo.some(n => n.id === o.id))
-          ordenados = [...nuevoTramo, ...resto]
-        }
-      }
-    }
-  }
-  return [...exactos.map(e => ({ ...e, score: 1 })), ...ordenados]
-}
-
 // =========================
 // FUNCIÓN
 // =========================
@@ -384,10 +244,7 @@ export const evaluarRecuperacion = onRequest(
       const v2 = produccion.namespace(namespace)
 
       // Normas cargadas en el namespace (para reconocer la norma nombrada)
-      const snap = await getFirestore().collection('normas_v2').where('namespace', '==', namespace).get()
-      const normas: NormaV2[] = snap.docs.map(d => d.data()).map(d => ({
-        normaId: String(d.normaId ?? ''), norma: String(d.norma ?? ''), numeroNorma: String(d.numeroNorma ?? ''), tipoNorma: String(d.tipoNorma ?? ''), area: String(d.area ?? '')
-      }))
+      const normas: NormaV2[] = await cargarNormasV2(namespace)
 
       const resultados: Array<{
         id: string; pregunta: string; tipo: string; esperados: Esperado[]

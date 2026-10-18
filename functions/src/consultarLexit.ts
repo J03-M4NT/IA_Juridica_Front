@@ -14,6 +14,8 @@ import {
 } from './seguridad'
 import { dividirEnSecciones, seleccionarSecciones } from './seccionesContrato'
 import { type Area, esArea, NOMBRE_AREA, filtroDeArea, normaEnPregunta } from './especialidades'
+import { recuperarParaConsultaV2 } from './busquedaV2'
+import { leerConfigBusqueda } from './configBusqueda'
 
 export const PINECONE_INDEX = 'lexit'
 export const PINECONE_HOST = 'https://lexit-rv6se0q.svc.aped-4627-b74a.pinecone.io'
@@ -592,6 +594,8 @@ export const consultarLexit = onRequest(
           const pareceSeguimiento = SEGUIMIENTO_REGEX.test(pregunta.trim())
           const esPosibleSeguimiento = !esSolicitudAnalisis && esPreguntaCorta && (!modoConsulta || pareceSeguimiento)
 
+          // Búsqueda de siempre sobre la base actual (__default__)
+          const recuperarComoHoy = async () => {
           const queryBusqueda = esSolicitudAnalisis && textoDocumentoAdjunto
             ? textoDocumentoAdjunto.slice(0, 600)
             : decision?.consultas?.[0]
@@ -688,6 +692,32 @@ export const consultarLexit = onRequest(
             logger.info(`🧹 Fragmentos útiles: ${fragmentosEncontrados.length} de ${antes}` +
               ` (${fragmentosEncontrados.filter(f => f.esComentario).length} comentario/nota)`)
           }
+          }
+
+          // Consultas con el interruptor en 'v2' (config/consultas): búsqueda D
+          // sobre el esquema nuevo. Análisis (con documento) sigue con la de
+          // siempre. Si la búsqueda nueva falla, se usa la de siempre.
+          let usadaBusquedaV2 = false
+          const configBusqueda = modoConsulta ? await leerConfigBusqueda() : null
+          if (configBusqueda?.modo === 'v2') {
+            try {
+              const consultaBase = esPosibleSeguimiento && preguntaAnterior && !decision?.consultas?.length
+                ? `${preguntaAnterior} ${pregunta}`
+                : pregunta
+              fragmentosEncontrados = await recuperarParaConsultaV2(pinecone, idx.namespace(configBusqueda.namespace), configBusqueda.namespace, pregunta, decision, {
+                consultaBase,
+                tope: (decision?.consultas?.length ?? 0) > 1 ? 8 : 6,
+                // Especialidad elegida: esa área, y la Constitución en todas
+                ...(especialidad ? { filtroExtra: { $or: [{ area: { $eq: especialidad } }, { tipoNorma: { $eq: 'constitucion' } }] } } : {})
+              })
+              usadaBusquedaV2 = true
+              logger.info(`🆕 Búsqueda v2 (${configBusqueda.namespace}): ${fragmentosEncontrados.map(f => `${f.nombreDocumento} ${f.numeroArticulo ?? ''}${f.sufijoArticulo ? `-${f.sufijoArticulo}` : ''}`).join(' · ') || 'sin resultados'}`)
+            } catch (err) {
+              logger.warn('⚠️ Búsqueda v2 falló, se usa la de siempre:', (err as Error).message)
+              fragmentosEncontrados = []
+            }
+          }
+          if (!usadaBusquedaV2) await recuperarComoHoy()
 
           if (fragmentosEncontrados.length > 0 && modoConsulta) {
             const textoFragmentos = fragmentosEncontrados
