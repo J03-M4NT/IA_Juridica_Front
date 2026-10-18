@@ -34,9 +34,9 @@ const FIRMA_DOC_BINARIO = [0xd0, 0xcf, 0x11, 0xe0] // Word 97-2003 (OLE)
 export async function extraerTextoNorma(
   archivo: File,
   onProgreso?: (actual: number, total: number) => void,
-  // recuperarMargenes: solo la carga v2 lo activa (ver pdfTexto.ts); la
+  // recuperarMargenes y marcarLetraPequena: solo la carga v2 los activa (ver pdfTexto.ts); la
   // carga actual de Admin no lo pasa y extrae igual que siempre
-  opciones: { recuperarMargenes?: boolean } = {}
+  opciones: { recuperarMargenes?: boolean; marcarLetraPequena?: boolean } = {}
 ): Promise<string> {
   const nombre = archivo.name.toLowerCase()
 

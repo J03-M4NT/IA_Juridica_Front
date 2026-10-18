@@ -84,8 +84,50 @@ function normalizarSignos(texto: string): string {
   return texto.replace(/[\u2010-\u2015\u2212]/g, '-').replace(/\u00a0/g, ' ')
 }
 
+// =========================
+// LETRA PEQUEÑA (opción marcarLetraPequena del extractor de PDF)
+// El extractor encierra entre ⟦ ⟧ el texto en letra más pequeña que el
+// cuerpo de la página. Solo se separa como nota lo que además tiene forma
+// de nota; el resto (tablas en letra pequeña, por ejemplo) sigue como texto.
+// =========================
+const ABRE = String.fromCharCode(0x27e6)
+const CIERRA = String.fromCharCode(0x27e7)
+export const MARCA_NOTA = '§NOTA§ '
+const RUN_MARCADO = new RegExp(`${ABRE}([^${ABRE}${CIERRA}]*)${CIERRA}`, 'g')
+const RUN_NUMERICO = new RegExp(`${ABRE}([\\d\\s.,;:°º()-]*)${CIERRA}`, 'g')
+// Nota de modificación en letra normal y sin número: empieza el párrafo y cita una norma publicada
+const NOTA_SIN_NUMERO = /^(?:P[áa]rrafo|Art[íi]culo|Inciso|Numeral|Literal|Extremo|Primer|Segundo|Tercer|Cuarto|Quinto|[ÚU]ltimo|Pen[úu]ltimo|Denominaci[óo]n|Ep[íi]grafe)\s+(?:\S+\s+){0,3}?(?:incorporad|modificad|sustituid|adicionad|agregad|derogad)[oa]s?\s+por\s.{0,250}?(?:publicad[oa]|Ley\s+N|Decreto)/i
+const PARECE_NOTA = /^(?:\d{1,3}\s+\S.{10,}|(?:P[áa]rrafo|Art[íi]culo|Inciso|Numeral|Literal|Texto|Extremo|Denominaci[óo]n|Ep[íi]grafe|Sumilla|Primer|Segundo|Tercer|Cuarto|Quinto|[ÚU]ltimo|Pen[úu]ltimo)\b.{0,160}?(?:incorporad|modificad|sustituid|derogad|adicionad|agregad|vigente)|(?:De\s+conformidad|Conforme\s+a|Mediante|V[ée]ase|Concordancia|Texto\s+anterior|Nota\s*:))/i
+
+function separarLetraPequena(texto: string): string {
+  if (!texto.includes(ABRE)) return texto
+  // Marcas vacías (espacios o caracteres invisibles) y fragmentos contiguos como una sola pieza
+  let t = texto.replace(new RegExp(`${ABRE}(?:\\s|\\u200b|\\u200c|\\u200d|\\ufeff)*${CIERRA}`, 'g'), ' ')
+  t = t.replace(new RegExp(`${CIERRA}(\\s*)${ABRE}`, 'g'), '$1')
+  // Encabezados de página repetidos en letra pequeña ("DECRETO LEGISLATIVO N° 635 CÓDIGO PENAL")
+  const veces = new Map<string, number>()
+  for (const m of t.matchAll(RUN_MARCADO)) {
+    const k = (m[1] ?? '').replace(/\s+/g, ' ').trim()
+    if (k.length >= 4 && k.length <= 80) veces.set(k, (veces.get(k) ?? 0) + 1)
+  }
+  t = t.replace(RUN_MARCADO, (todo, contenido: string) => {
+    const k = contenido.replace(/\s+/g, ' ').trim()
+    if (!k) return ' '
+    // Llamadas a nota ("66 67 68 69"): quedan marcadas para procesarCuerpo
+    if (/^[\d\s.,;:°º()-]*$/.test(k)) return /\d/.test(k) ? todo : ' '
+    if ((veces.get(k) ?? 0) >= 5) return ' '
+    if (PARECE_NOTA.test(k)) return `\n\n${MARCA_NOTA}${k}\n\n`
+    return contenido
+  })
+  return t
+}
+
+function sinMarcas(texto: string): string {
+  return texto.replace(RUN_MARCADO, ' ').split(ABRE).join('').split(CIERRA).join('')
+}
+
 function limpiar(texto: string): string {
-  return normalizarSignos(texto)
+  return separarLetraPequena(normalizarSignos(texto))
     .replace(PIE_DECRETO_REGEX, ' ')
     .replace(PIE_MINISTERIO_REGEX, ' ')
     // Títulos con letras separadas por la tipografía ("T Í TULO I", "CAP Í TULO I", "SECCI Ó N")
@@ -93,6 +135,8 @@ function limpiar(texto: string): string {
     .replace(/SECCI\s?([ÓO])\s?N/g, 'SECCI$1N')
     .replace(/\r\n?/g, '\n')
     .replace(/[ \t]{2,}/g, ' ')
+    .replace(/(^|\n)[ \t]*\d{1,4}[ \t]+(?=(?:LIBRO|SECCI[ÓO]N|T[ÍI]TULO|CAP[ÍI]TULO|SUBCAP[ÍI]TULO|DISPOSICI[ÓO]N(?:ES)?|AP[ÉE]NDICE|ANEXO|[ÍI]NDICE|CUADRO)\b)/g, '$1')
+    .replace(/(^|\n)[ \t]*\d{1,4}[ \t]*(?=\n)/g, '$1')
 }
 
 function partirSinPerderTexto(texto: string, max: number): string[] {
@@ -305,12 +349,12 @@ const CAMBIO_TOTAL = /^(?:Art[íi]culo|Texto)\s+(?:modificad|sustituid|incorpora
 const CAMBIO_PARCIAL = /^(?:P[áa]rrafo|Numeral|Inciso|Literal|Pen[úu]ltimo|[ÚU]ltimo|Primer|Segundo|Tercer|Cuarto|Quinto|Sexto|Acápite|Sub\s*numeral)\b.*(?:modificad|sustituid|incorporad)\w*\b.*texto\s+es\s+el\s+siguiente/i
 // MINJUS: nota a pie de página "144 Artículo modificado por el Artículo 2º de la Ley Nº 27495..."
 const NOTA_PIE_MINJUS = /^(\d{1,3})\s+(?:Art[íi]culo|Extremo|Denominaci[óo]n|Ep[íi]grafe|Sumilla|Rubro|Disposici[óo]n|Inciso|P[áa]rrafo|Numeral|Literal|Texto|Libro|T[íi]tulo|Cap[íi]tulo|Secci[óo]n|Pen[úu]ltimo|[ÚU]ltimo|Primer|Segundo|Tercer|Cuarto|Quinto)\b.{0,160}?(?:modificad|sustituid|incorporad|derogad|vigente|adicionad|agregad)/i
-const NOTA_PIE_CITA = /^(\d{1,3})\s+(?:De\s+conformidad|Conforme|Mediante|Seg[úu]n|Por\s+(?:Ley|Decreto|Resoluci[óo]n)|Ver\s|V[ée]ase|Concordancia)\b.{0,300}?(?:Ley|Decreto|Resoluci[óo]n|C[óo]digo)\b/i
+const NOTA_PIE_CITA = /^(\d{1,3})\s+(?:De\s+conformidad|Conforme|Mediante|Seg[úu]n|Por\s+(?:Ley|Decreto|Resoluci[óo]n)|Ver\s|V[ée]ase|Concordancia)\b.{0,300}?(?:Ley|Decreto|Resoluci[óo]n|C[óo]digo|Sentencia|Tribunal|Exp\.)/i
 const DEROGACION = /\b(?:derogad[oa]s?|dejad[oa]s?\s+sin\s+efecto|declarad[oa]\s+inconstitucional)\b/i
 const MODIFICACION = /\b(?:modificad[oa]|sustituid[oa]|incorporad[oa])\b/i
 
 function quitarMarcasSpij(texto: string): string {
-  return texto
+  return sinMarcas(texto)
     .replace(/\s*\(\*+\)\s*/g, ' ')
     .replace(/^[\s“”"]+|[\s“”"]+$/g, '')
     .replace(/[ \t]{2,}/g, ' ')
@@ -358,14 +402,21 @@ function procesarCuerpo(cuerpo: string, clave: string): CuerpoProcesado {
 
   // 2. Párrafos. Una nota a pie MINJUS pegada al final de un párrafo
   // ("...al. 43 Artículo modificado por...") empieza su propio párrafo.
+  // Y una nota sin número al inicio de una línea, también
+  cuerpo = cuerpo.replace(/\n(?=(?:P[áa]rrafo|Art[íi]culo|Inciso|Numeral|Literal|Extremo)\s+(?:\S+\s+){0,3}?(?:incorporad|modificad|sustituid|adicionad|agregad|derogad)[oa]s?\s+por\s)/g, '\n\n')
   cuerpo = cuerpo.replace(
     /([.;:”"])\s+(\d{1,3}\s+(?:(?:Primer|Segundo|Tercer|Cuarto|Quinto|[ÚU]ltimo|Pen[úu]ltimo)\s+p[áa]rrafo|Art[íi]culo|Extremo|Inciso|P[áa]rrafo|Numeral|Literal|Texto)\s+(?:\S+\s+){0,2}?(?:modificad|sustituid|incorporad|derogad|adicionad|agregad))/g,
     '$1\n\n$2'
   )
+  const llamadas: number[] = []
+  // Llamadas a nota en letra pequeña ("armas de guerra ⟦66 67 68 69⟧"): se anotan y se quitan
+  cuerpo = cuerpo.replace(RUN_NUMERICO, (_todo, numeros: string) => {
+    for (const n of numeros.match(/\d{1,3}/g) ?? []) llamadas.push(Number(n))
+    return ' '
+  })
   const parrafos = cuerpo.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
   let ley: string[] = []
   const notasPie: Array<{ numero: number; texto: string }> = []
-  const llamadas: number[] = []
   let enConcordancias = false
   for (let i = 0; i < parrafos.length; i++) {
     const p = parrafos[i] ?? ''
@@ -402,6 +453,22 @@ function procesarCuerpo(cuerpo: string, clave: string): CuerpoProcesado {
       continue
     }
     enConcordancias = false
+
+    // Nota en letra pequeña ya identificada por separarLetraPequena, o nota de
+    // modificación en letra normal sin número
+    const esNotaMarcada = plano.startsWith(MARCA_NOTA.trim())
+    if (esNotaMarcada || NOTA_SIN_NUMERO.test(plano)) {
+      const contenido = esNotaMarcada ? plano.slice(MARCA_NOTA.trim().length).trim() : plano
+      const corte = contenido.search(/Texto\s+anterior\s+a\s+la\s+modificaci[óo]n\s*:/i)
+      const textoNota = (corte === -1 ? contenido : contenido.slice(0, corte)).trim()
+      const numero = /^(\d{1,3})\s+/.exec(textoNota)
+      if (textoNota) {
+        if (numero) notasPie.push({ numero: Number(numero[1]), texto: textoNota.replace(/^\d{1,3}\s+/, '') })
+        anotaciones.push({ tipo: 'nota', texto: textoNota, articuloRelacionado: clave })
+      }
+      if (corte !== -1) anotaciones.push({ tipo: 'version-anterior', texto: contenido.slice(corte), articuloRelacionado: clave })
+      continue
+    }
 
     // Nota a pie de página (MINJUS): es del artículo que lleva esa llamada,
     // que puede ser otro de la misma página; el "texto anterior" no es ley vigente
@@ -451,6 +518,12 @@ function procesarCuerpo(cuerpo: string, clave: string): CuerpoProcesado {
       } else {
         anotaciones.push({ tipo: 'nota', texto: contenido, articuloRelacionado: clave })
       }
+      continue
+    }
+
+    // Párrafo que solo tiene números o signos ("65", "69.", "."): llamadas o restos de página
+    if (/^[\d\s.,;:°º()-]*$/.test(plano)) {
+      for (const n of plano.match(/\d{1,3}/g) ?? []) llamadas.push(Number(n))
       continue
     }
 
@@ -617,7 +690,18 @@ export function parsearNormaV2(textoOriginal: string): ResultadoParserV2 {
   const inicios = encabezados.map((e, i) => {
     const desde = i === 0 ? 0 : encabezados[i - 1]?.fin ?? 0
     const ultimoPunto = texto.lastIndexOf('.', e.indice - 1)
-    return ultimoPunto >= desde && e.indice - (ultimoPunto + 1) <= MAX_SUMILLA ? ultimoPunto + 1 : e.indice
+    if (!(ultimoPunto >= desde && e.indice - (ultimoPunto + 1) <= MAX_SUMILLA)) return e.indice
+    // Sumilla con un punto interno en su propia línea ("Derechos Constitucionales.
+    // Númerus Apertus"): si la línea empieza en mayúscula, es corta y la anterior
+    // cierra una oración, la sumilla empieza al inicio de esa línea.
+    const inicioLinea = texto.lastIndexOf('\n', ultimoPunto) + 1
+    const previa = texto.slice(Math.max(desde, inicioLinea - 200), Math.max(desde, inicioLinea - 1)).trimEnd()
+    const delante = texto.slice(inicioLinea, ultimoPunto)
+    if (inicioLinea > desde && delante.length <= 60 && !delante.includes('.') && /^[A-ZÁÉÍÓÚÑ]/.test(delante) &&
+      (previa === '' || /[.:;]$/.test(previa)) && texto.slice(inicioLinea, e.indice).split('\n').length <= 3) {
+      return inicioLinea
+    }
+    return ultimoPunto + 1
   })
 
   // ¿La norma pone la sumilla ANTES del encabezado (ediciones MINJUS)? Si
@@ -629,8 +713,11 @@ export function parsearNormaV2(textoOriginal: string): ResultadoParserV2 {
   }).length
   const sinSumillaAntes = conSumillaAntes < encabezados.length * 0.3
 
-  const notasPie = new Map<number, string>()
-  const llamadasPorArticulo = new Map<ArticuloV2, number[]>()
+  // Notas a pie halladas en cada bloque (por posición). La numeración de las
+  // notas puede reiniciarse por página, así que una llamada solo se resuelve
+  // con notas del mismo bloque o de los siguientes (misma página).
+  const notasPorBloque: Array<Array<{ numero: number; texto: string }>> = []
+  const llamadasPorArticulo = new Map<ArticuloV2, { bloque: number; numeros: number[] }>()
 
   const preambulo = texto.slice(0, inicios[0] ?? 0)
   for (const linea of preambulo.split(/\n\s*\n/).map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean)) {
@@ -663,7 +750,7 @@ export function parsearNormaV2(textoOriginal: string): ResultadoParserV2 {
       sumilla = primeraLinea
     }
     // Sin el número de nota pegado al final ("Vigencia 30")
-    sumilla = sumilla.replace(/\s*\(\d{1,3}\)/g, '').replace(/(?:\s+\d{1,3})+$/, '').trim()
+    sumilla = sinMarcas(sumilla).replace(/\s+/g, ' ').replace(/\s*\(\d{1,3}\)/g, '').replace(/(?:\s+\d{1,3})+$/, '').trim()
 
     if (citados.has(e)) {
       anotaciones.push({ tipo: 'nota', texto: `Cita de otra norma: ${despues.trim()}` })
@@ -672,7 +759,7 @@ export function parsearNormaV2(textoOriginal: string): ResultadoParserV2 {
 
     const procesado = procesarCuerpo(despues, clave)
     anotaciones.push(...procesado.anotaciones)
-    for (const n of procesado.notasPie) notasPie.set(n.numero, n.texto)
+    notasPorBloque[i] = procesado.notasPie
 
     // Vigencia por las notas al final del documento: "(25)" justo después del encabezado
     const notasVigencia = [...procesado.notasVigencia]
@@ -703,7 +790,7 @@ export function parsearNormaV2(textoOriginal: string): ResultadoParserV2 {
         partes: textoArticulo.length > MAX_LONGITUD_PARTE ? partirSinPerderTexto(textoArticulo, MAX_LONGITUD_PARTE) : [textoArticulo]
       })
       const agregado = articulos[articulos.length - 1]
-      if (agregado && procesado.llamadas.length) llamadasPorArticulo.set(agregado, procesado.llamadas)
+      if (agregado && procesado.llamadas.length) llamadasPorArticulo.set(agregado, { bloque: i, numeros: procesado.llamadas })
     }
     for (const j of procesado.jerarquiaSiguiente) apilar(j.nivel, j.titulo)
   })
@@ -763,9 +850,11 @@ export function parsearNormaV2(textoOriginal: string): ResultadoParserV2 {
   }
 
   // Notas a pie (MINJUS): vigencia del artículo que lleva la llamada
-  for (const [articulo, numeros] of llamadasPorArticulo) {
-    for (const n of numeros) {
-      const nota = notasPie.get(n)
+  const BLOQUES_CERCANOS = 3
+  for (const [articulo, { bloque, numeros }] of llamadasPorArticulo) {
+    for (const n of new Set(numeros)) {
+      let nota: string | undefined
+      for (let b = bloque; b <= bloque + BLOQUES_CERCANOS && !nota; b++) nota = notasPorBloque[b]?.find(x => x.numero === n)?.texto
       if (!nota) continue
       articulo.notasVigencia.push(nota)
       if (/^(?:Art[íi]culo\s+)?derogad/i.test(nota)) articulo.vigencia = 'derogado'

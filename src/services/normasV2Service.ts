@@ -85,6 +85,18 @@ export async function ejecutarCarga(
   return { subidos: aSubir.length, eliminados: plan.obsoletos.length }
 }
 
+// Normas que hay en el namespace (y cuántos fragmentos tiene cada una)
+export async function listarNormasV2(namespace: string): Promise<Array<{ normaId: string; fragmentos: number }>> {
+  const data = await llamar<{ normas: Array<{ normaId: string; fragmentos: number }> }>('normasV2', { accion: 'listar', namespace })
+  return data.normas
+}
+
+// Quita todos los fragmentos de una norma del namespace de prueba
+export async function vaciarNormaV2(namespace: string, normaId: string): Promise<number> {
+  const data = await llamar<{ eliminados: number }>('normasV2', { accion: 'vaciar', namespace, normaId })
+  return data.eliminados
+}
+
 export interface HitV2 { _id: string; _score: number; fields: Record<string, unknown> }
 
 export async function buscarNormasV2(namespace: string, query: string, opciones: { topK?: number; filtro?: Record<string, unknown>; rerank?: boolean } = {}): Promise<HitV2[]> {

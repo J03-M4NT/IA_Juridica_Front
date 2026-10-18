@@ -30,7 +30,7 @@
       <div class="row items-center no-wrap q-mb-sm">
         <q-icon :name="iconoEstado(item.estado)" :color="colorEstado(item.estado)" size="20px" class="q-mr-sm" />
         <div class="col ellipsis text-weight-medium">{{ item.archivo.name }}</div>
-        <q-btn v-if="!ocupado" flat round dense icon="close" size="sm" @click="items.splice(i, 1)" />
+        <q-btn v-if="!ocupado" flat round dense color="grey-8" icon="close" size="sm" @click="items.splice(i, 1)" />
       </div>
 
       <div v-if="item.estado === 'leyendo'" class="text-grey-7">Leyendo y analizando…</div>
@@ -69,6 +69,32 @@
       </template>
     </div>
 
+    <div class="carga-v2-cargadas">
+      <div class="row items-center q-mb-xs">
+        <span class="text-weight-medium">En el espacio de prueba</span>
+        <q-btn flat dense no-caps color="accent" icon="refresh" label="Actualizar" class="q-ml-sm" :loading="listando" @click="listarCargadas" />
+      </div>
+      <div v-if="cargadas === null" class="text-grey-7">Pulsa "Actualizar" para ver qué normas hay cargadas.</div>
+      <div v-else-if="!cargadas.length" class="text-grey-7">Vacío.</div>
+      <div v-for="n in cargadas" :key="n.normaId" class="row items-center no-wrap carga-v2-cargada">
+        <span class="col">{{ n.normaId }} · {{ n.fragmentos }} fragmentos</span>
+        <q-btn flat dense no-caps color="negative" icon="delete" label="Quitar" :disable="ocupado" @click="aQuitar = n.normaId" />
+      </div>
+    </div>
+
+    <q-dialog :model-value="aQuitar !== ''" persistent @update:model-value="v => { if (!v) aQuitar = '' }">
+      <q-card :dark="false" style="min-width: 340px">
+        <q-card-section>
+          ¿Quitar <strong>{{ aQuitar }}</strong> del espacio de prueba? Se borran todos sus fragmentos de {{ NAMESPACE_PRUEBA }}.
+          La base de Consultas no se toca.
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat no-caps color="grey-8" label="Cancelar" @click="aQuitar = ''" />
+          <q-btn unelevated no-caps color="negative" label="Quitar" :loading="quitando" @click="quitar" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <div v-if="items.length" class="carga-v2-pie">
       <div>
         Total: <strong>{{ totalFragmentos }}</strong> fragmentos · ~<strong>{{ totalTokens.toLocaleString('es-PE') }}</strong> tokens de embedding
@@ -83,8 +109,8 @@
       <q-card :dark="false" style="width: 900px; max-width: 95vw">
         <q-card-section class="row items-center">
           <div class="text-h6 col">Verificación en {{ NAMESPACE_PRUEBA }}</div>
-          <q-btn flat dense no-caps icon="download" label="Descargar JSON" @click="descargarVerificacion" />
-          <q-btn flat round dense icon="close" v-close-popup />
+          <q-btn flat dense no-caps color="accent" icon="download" label="Descargar JSON" @click="descargarVerificacion" />
+          <q-btn flat round dense color="grey-8" icon="close" v-close-popup />
         </q-card-section>
         <q-card-section class="q-pt-none" style="max-height: 70vh; overflow: auto">
           <div v-for="v in verificacion" :key="v.etiqueta" class="carga-v2-item">
@@ -110,7 +136,7 @@
           y se borrarán {{ porBorrar }} obsoletos, solo en el espacio de prueba. La base de Consultas no cambia.
         </q-card-section>
         <q-card-actions align="right">
-          <q-btn flat no-caps label="Cancelar" v-close-popup />
+          <q-btn flat no-caps color="grey-8" label="Cancelar" v-close-popup />
           <q-btn color="accent" unelevated no-caps label="Subir" v-close-popup @click="subir" />
         </q-card-actions>
       </q-card>
@@ -131,7 +157,7 @@ import { extraerTextoNorma } from '../../utils/extraerTextoNorma'
 import { parsearNormaV2, type ResultadoParserV2 } from '../../utils/normas/parserNormaV2'
 import { construirRegistrosV2, sugerirMetadatosNorma, hashTexto, slug, TIPOS_NORMA, type MetaNorma, type RegistroV2 } from '../../utils/normas/metadatosNorma'
 import { buscarEnCatalogo, NORMAS_EXCLUIDAS } from '../../utils/normas/catalogoNormas'
-import { NAMESPACE_PRUEBA, estimarTokens, planificarCarga, ejecutarCarga, buscarNormasV2, type PlanCarga } from '../../services/normasV2Service'
+import { NAMESPACE_PRUEBA, estimarTokens, planificarCarga, ejecutarCarga, buscarNormasV2, listarNormasV2, vaciarNormaV2, type PlanCarga } from '../../services/normasV2Service'
 import { ESPECIALIDADES } from '../../constants/especialidades'
 
 type Estado = 'leyendo' | 'listo' | 'error' | 'subiendo' | 'subido'
@@ -227,7 +253,7 @@ const porBorrar = computed(() => items.value.reduce((s, i) => s + (i.plan?.obsol
 
 async function leer(item: ItemV2) {
   try {
-    item.texto = await extraerTextoNorma(item.archivo, undefined, { recuperarMargenes: true })
+    item.texto = await extraerTextoNorma(item.archivo, undefined, { recuperarMargenes: true, marcarLetraPequena: true })
     item.resultado = parsearNormaV2(item.texto)
     const nombreArchivo = item.archivo.name.replace(/\.(pdf|docx?|html?)$/i, '')
     const sugerencia = sugerirMetadatosNorma(item.texto, nombreArchivo)
@@ -314,6 +340,39 @@ const VERIFICACIONES = [
 ]
 
 interface FragmentoVerificado { id: string; texto: string; metadatos: Record<string, unknown> }
+// =========================
+// NORMAS YA CARGADAS en el espacio de prueba (y quitar una)
+// =========================
+const cargadas = ref<Array<{ normaId: string; fragmentos: number }> | null>(null)
+const listando = ref(false)
+const aQuitar = ref('')
+const quitando = ref(false)
+
+async function listarCargadas() {
+  listando.value = true
+  try {
+    cargadas.value = await listarNormasV2(NAMESPACE_PRUEBA)
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err instanceof Error ? err.message : 'No se pudo listar' })
+  } finally {
+    listando.value = false
+  }
+}
+
+async function quitar() {
+  quitando.value = true
+  try {
+    const eliminados = await vaciarNormaV2(NAMESPACE_PRUEBA, aQuitar.value)
+    $q.notify({ type: 'positive', message: `${aQuitar.value}: ${eliminados} fragmentos quitados del espacio de prueba` })
+    aQuitar.value = ''
+    await listarCargadas()
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err instanceof Error ? err.message : 'No se pudo quitar' })
+  } finally {
+    quitando.value = false
+  }
+}
+
 const verificando = ref(false)
 const verVerificacion = ref(false)
 const verificacion = ref<Array<{ etiqueta: string; fragmentos: FragmentoVerificado[] }>>([])
@@ -377,5 +436,7 @@ function colorEstado(e: Estado) {
 .carga-v2-plan { margin-top: 6px; font-size: 0.88rem; color: #1d4e89; }
 .carga-v2-pre { margin: 4px 0 0; padding: 10px 12px; background: #f6f7f9; border-radius: 4px; font-size: 0.8rem; white-space: pre-wrap; word-break: break-word; }
 .carga-v2-meta { color: #5b6475; }
+.carga-v2-cargadas { margin: 4px 0 8px; padding: 10px 0; border-top: 1px solid #e4e7ec; font-size: 0.9rem; }
+.carga-v2-cargada { padding: 2px 0; }
 .carga-v2-pie { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; border-top: 1px solid #e4e7ec; }
 </style>

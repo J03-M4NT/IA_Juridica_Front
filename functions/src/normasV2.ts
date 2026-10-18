@@ -10,6 +10,8 @@
 //   subir     → upsert de un lote (≤ 96) de registros validados
 //   borrar    → borra fragmentos que ya no existen (solo de esa norma)
 //   registrar → guarda el resumen de la norma en Firestore (normas_v2)
+//   listar    → normas que hay en el namespace y cuántos fragmentos tiene cada una
+//   vaciar    → quita TODOS los fragmentos de una norma (solo del namespace de prueba)
 // buscarNormasV2: búsqueda de prueba en el namespace (para la fase 3).
 // =========================
 import { onRequest } from 'firebase-functions/v2/https'
@@ -101,11 +103,35 @@ export const normasV2 = onRequest(
       res.status(400).json({ error: `Namespace no permitido. Solo: ${NAMESPACES_PERMITIDOS.join(', ')}` })
       return
     }
+    const ns = body.namespace
+
+    // listar no necesita normaId: agrupa los IDs del namespace por norma ("{normaId}#...")
+    if (body.accion === 'listar') {
+      try {
+        const idx = indice(ns)
+        const conteo = new Map<string, number>()
+        let token: string | undefined = undefined
+        do {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const pagina: any = await idx.listPaginated({ limit: 100, ...(token ? { paginationToken: token } : {}) })
+          for (const v of (pagina.vectors ?? []) as { id?: string }[]) {
+            const norma = v.id?.split('#')[0]
+            if (norma) conteo.set(norma, (conteo.get(norma) ?? 0) + 1)
+          }
+          token = pagina.pagination?.next
+        } while (token)
+        res.json({ normas: [...conteo.entries()].map(([id, fragmentos]) => ({ normaId: id, fragmentos })).sort((a, b) => a.normaId.localeCompare(b.normaId)) })
+      } catch (err) {
+        logger.error('❌ Error listando normasV2:', (err as Error).message)
+        res.status(500).json({ error: (err as Error).message })
+      }
+      return
+    }
+
     if (typeof body.normaId !== 'string' || !ID_NORMA.test(body.normaId)) {
       res.status(400).json({ error: 'normaId inválido' })
       return
     }
-    const ns = body.namespace
     const normaId = body.normaId
 
     try {
@@ -159,6 +185,15 @@ export const normasV2 = onRequest(
         return
       }
 
+      if (body.accion === 'vaciar') {
+        const ids = await idsDeNorma(idx, normaId)
+        for (let i = 0; i < ids.length; i += 100) await idx.deleteMany({ ids: ids.slice(i, i + 100) })
+        await getFirestore().collection(COLECCION).doc(`${ns}__${normaId}`).delete()
+        logger.info(`🗑️ normasV2 ${ns}: norma ${normaId} vaciada (${ids.length} fragmentos, admin ${uid})`)
+        res.json({ success: true, eliminados: ids.length })
+        return
+      }
+
       if (body.accion === 'registrar') {
         const r = (body.resumen ?? {}) as Record<string, unknown>
         const texto = (v: unknown, max = 300) => (typeof v === 'string' ? v.slice(0, max) : '')
@@ -184,7 +219,7 @@ export const normasV2 = onRequest(
         return
       }
 
-      res.status(400).json({ error: 'acción inválida (estado, subir, borrar o registrar)' })
+      res.status(400).json({ error: 'acción inválida (estado, subir, borrar, registrar, listar o vaciar)' })
     } catch (err) {
       const error = err as Error
       logger.error('❌ Error en normasV2:', error.message)
