@@ -134,6 +134,7 @@
 
     <!-- Normas v2 (prueba): esquema nuevo en un namespace aparte -->
     <CargaNormasV2 />
+    <EvaluacionNormasV2 />
 
     <!-- Actions bar plantillas -->
     <div class="actions-bar q-mb-md">
@@ -433,6 +434,7 @@ import {
 import { extraerTextoNorma, sugerirNombreNorma } from '../utils/extraerTextoNorma'
 import { ESPECIALIDADES, etiquetaEspecialidad } from '../constants/especialidades'
 import CargaNormasV2 from '../components/Admin/CargaNormasV2.vue'
+import EvaluacionNormasV2 from '../components/Admin/EvaluacionNormasV2.vue'
 const $q = useQuasar()
 
 interface Template {

@@ -156,9 +156,8 @@ import { useQuasar } from 'quasar'
 import { extraerTextoNorma } from '../../utils/extraerTextoNorma'
 import { parsearNormaV2, type ResultadoParserV2 } from '../../utils/normas/parserNormaV2'
 import { construirRegistrosV2, sugerirMetadatosNorma, hashTexto, slug, TIPOS_NORMA, type MetaNorma, type RegistroV2 } from '../../utils/normas/metadatosNorma'
-import { buscarEnCatalogo, NORMAS_EXCLUIDAS } from '../../utils/normas/catalogoNormas'
+import { buscarEnCatalogo, NORMAS_EXCLUIDAS, AREAS_NORMAS } from '../../utils/normas/catalogoNormas'
 import { NAMESPACE_PRUEBA, estimarTokens, planificarCarga, ejecutarCarga, buscarNormasV2, listarNormasV2, vaciarNormaV2, type PlanCarga } from '../../services/normasV2Service'
-import { ESPECIALIDADES } from '../../constants/especialidades'
 
 type Estado = 'leyendo' | 'listo' | 'error' | 'subiendo' | 'subido'
 
@@ -191,7 +190,7 @@ const opcionesVigencia = [
   { label: 'Vigente con modificaciones', value: 'modificado' },
   { label: 'Derogada', value: 'derogado' }
 ]
-const opcionesArea = ESPECIALIDADES.map(e => ({ label: e.etiqueta, value: e.valor }))
+const opcionesArea = AREAS_NORMAS.map(e => ({ label: e.etiqueta, value: e.valor }))
 
 function normaIdDe(item: ItemV2): string {
   return item.meta.normaId || slug(item.meta.numeroNorma || item.meta.norma) || 'norma'

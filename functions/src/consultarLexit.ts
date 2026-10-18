@@ -271,7 +271,7 @@ export function tieneEncabezadoDeArticulo(fragmento: FragmentoResultado): boolea
 // con un umbral de score, una llamada corta a Gemini decide si la pregunta
 // necesita el texto de una norma y, si sí, con qué términos buscar.
 // =========================
-interface DecisionBusqueda {
+export interface DecisionBusqueda {
   buscar: boolean
   // 1 a 4 búsquedas cortas, una por subtema. Una sola frase ("derechos
   // reales derivados de la propiedad") trae los artículos que REPITEN esas
@@ -284,7 +284,7 @@ interface DecisionBusqueda {
 const CODIGOS_VALIDOS = ['constitucion', 'codigo-civil', 'codigo-penal', 'codigo-laboral', 'codigo-tributario']
 const MAX_SUBCONSULTAS = 4
 
-async function decidirSiBuscar(pregunta: string, preguntaAnterior: string): Promise<DecisionBusqueda> {
+export async function decidirSiBuscar(pregunta: string, preguntaAnterior: string): Promise<DecisionBusqueda> {
   const prompt = [
     'Eres el filtro de búsqueda de un asistente jurídico peruano. Decide si para responder la PREGUNTA hace falta consultar el TEXTO de una norma peruana (Constitución, Código Civil, Código Penal u otro código).',
     '',
@@ -327,7 +327,7 @@ async function decidirSiBuscar(pregunta: string, preguntaAnterior: string): Prom
 const SEGUIMIENTO_REGEX = /^[¿¡]?\s*(?:y|e|pero|entonces|o sea|adem[aá]s|tambi[eé]n)\b|\b(?:eso|esto|ese|esa|este|esta|esos|esas|aquel|aquello|dicho|dicha|anterior|mismo|misma|lo que dijiste|el inciso|ese art[ií]culo)\b|\bm[aá]s\s+(?:detalle|informaci[oó]n|ejemplos?|sobre)\b|\b(?:expl[ií]ca(?:me)?|ampl[ií]a|profundiza|desarrolla)\b/i
 
 // Número de artículo nombrado en la pregunta ("artículo 2", "art. 1681°").
-function numeroArticuloEnPregunta(pregunta: string): number | undefined {
+export function numeroArticuloEnPregunta(pregunta: string): number | undefined {
   const match = /\bart(?:[íi]culo|\.)\s*(\d{1,4})\b/i.exec(pregunta)
   return match?.[1] ? Number(match[1]) : undefined
 }

@@ -103,3 +103,37 @@ export async function buscarNormasV2(namespace: string, query: string, opciones:
   const data = await llamar<{ hits: HitV2[] }>('buscarNormasV2', { namespace, query, ...opciones })
   return data.hits
 }
+
+// =========================
+// EVALUACIÓN A/B/C (Cloud Function evaluarRecuperacion, solo lectura)
+// =========================
+export interface ResultadoVariante {
+  articulos: Array<{ normaId: string | null; norma: string; articulo: string | null; score: number }>
+  puestos: Array<number | null>
+  hit1: boolean
+  recall5: number
+  recall8: number
+  rr: number
+  ms: number
+  error?: string
+}
+
+export interface InformeEvaluacion {
+  generadoEn: string
+  segundos: number
+  namespace: string
+  normasEnNamespace: string[]
+  variantes: Record<string, string>
+  resumen: Array<{ variante: string; acierto1: number; cobertura5: number; cobertura8: number; mrr: number; sinResultados: number; errores: number; msPromedio: number }>
+  cPeorQueA: Array<{ id: string; pregunta: string; A: { puestos: Array<number | null>; cobertura8: number }; C: { puestos: Array<number | null>; cobertura8: number } }>
+  resultados: Array<{
+    id: string; pregunta: string; tipo: string
+    esperados: Array<{ normaId: string; norma: string; numeroNorma: string; articulo: string }>
+    reformulacion: { buscar: boolean; consultas: string[]; codigo: string | null } | null
+    A: ResultadoVariante; B: ResultadoVariante; C: ResultadoVariante
+  }>
+}
+
+export async function evaluarRecuperacion(preguntas: unknown[], namespace = NAMESPACE_PRUEBA): Promise<InformeEvaluacion> {
+  return llamar<InformeEvaluacion>('evaluarRecuperacion', { preguntas, namespace })
+}

@@ -8,6 +8,16 @@
 // oficial. La Ley 27285 (demarcación de Manu) queda fuera de la base.
 // =========================
 import type { TipoNorma } from './metadatosNorma'
+import { ESPECIALIDADES } from '../../constants/especialidades'
+
+// Áreas del esquema nuevo: las de hoy más las que se suben después (Derecho
+// Administrativo, Constitucional). El selector de Consultas en producción no
+// cambia hasta la fase 4.
+export const AREAS_NORMAS = [
+  ...ESPECIALIDADES.map(e => ({ valor: e.valor as string, etiqueta: e.etiqueta as string })),
+  { valor: 'derecho-administrativo', etiqueta: 'Derecho Administrativo' },
+  { valor: 'derecho-constitucional', etiqueta: 'Derecho Constitucional' }
+]
 
 export interface NormaCatalogo {
   normaId: string

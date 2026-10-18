@@ -38,6 +38,8 @@ export { obtenerPanoramaDia } from './panorama'
 export { auditarPinecone } from './auditoriaPinecone'
 // Fase 2: carga y búsqueda de normas v2 en un namespace aparte (solo admins)
 export { normasV2, buscarNormasV2 } from './normasV2'
+// Fase 3: evaluación de la recuperación A/B/C (solo lectura, solo admins)
+export { evaluarRecuperacion } from './evaluacion'
 
 if (getApps().length === 0) {
   initializeApp()
