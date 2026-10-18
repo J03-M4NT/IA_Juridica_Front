@@ -140,7 +140,21 @@ function limpiar(texto: string): string {
 }
 
 function partirSinPerderTexto(texto: string, max: number): string[] {
-  const piezas = texto.split(/(?<=[.;:])\s+/)
+  // El número o la letra de un inciso ("4.", "b.", "12)") va con su texto, no al final del trozo anterior
+  const piezas = texto.split(/(?<=[.;:])\s+/).reduce<string[]>((acc, pieza) => {
+    const anterior = acc[acc.length - 1]
+    if (anterior !== undefined && /^(?:\d{1,3}|[a-zA-Z])[.)]$/.test(anterior.trim())) acc[acc.length - 1] = `${anterior} ${pieza}`
+    else acc.push(pieza)
+    return acc
+  }, [])
+  // Número de inciso pegado al final de una pieza ("...caso investigado 4."): pasa a la siguiente
+  for (let i = 0; i < piezas.length - 1; i++) {
+    const cola = /\s((?:\d{1,3}|[a-zA-Z])[.)])$/.exec(piezas[i] ?? '')
+    if (cola) {
+      piezas[i] = (piezas[i] ?? '').slice(0, cola.index)
+      piezas[i + 1] = `${cola[1]} ${piezas[i + 1] ?? ''}`
+    }
+  }
   const trozos: string[] = []
   let actual = ''
   for (const pieza of piezas) {
