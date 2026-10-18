@@ -753,7 +753,25 @@ export function parsearNormaV2(textoOriginal: string): ResultadoParserV2 {
     for (const enc of estructura.encabezados) apilar(enc.nivel, enc.titulo)
     // Sin referencias a notas sueltas ("(22)")
     const previo = estructura.resto.join(' ').replace(/\(\d{1,3}\)/g, ' ').replace(/\s+/g, ' ').trim()
-    let sumilla = !sinSumillaAntes && pareceSumilla(previo) ? previo : ''
+    // La sumilla son las últimas líneas antes del encabezado: se descarta lo
+    // que venga antes y sea jurisprudencia ("(Considerandos 5 al 11)…") y el
+    // número de nota pegado al inicio ("35º Incapacidad relativa")
+    const lineasPrevias: string[] = []
+    for (const original of [...estructura.resto].reverse()) {
+      // Lo que sigue al cierre de una cita ("…civil) Indemnización por daño…",
+      // "1) del Reglamento Posesión ilegítima…") es la sumilla; y sin números
+      // de nota pegados al inicio ("45 46 Nombre del adoptado")
+      const recortada = original.replace(/^.*\)\s+(?=[A-ZÁÉÍÓÚÑ][^()]*$)/, '')
+      const linea = recortada.replace(/^(?:\d{1,3}\s*[°º]?\s+)+(?=[A-ZÁÉÍÓÚÑ])/, '')
+      if (/\((?:Considerandos?|Fj\.?|Fundamentos?)\b|Casaci[óo]n\s+N|Sentencia\s+reca[íi]da|Expediente\s+N|Exp\.\s*N/i.test(linea)) break
+      // Restos de una cita: entre paréntesis o que empiezan con número o signo
+      if (/^\(|\)\s*$|^[\d,;.)]/.test(linea)) break
+      lineasPrevias.unshift(linea)
+      if (recortada !== original) break
+      if (lineasPrevias.join(' ').length > 150) break
+    }
+    const sumillaPrevia = lineasPrevias.join(' ').replace(/\(\d{1,3}\)/g, ' ').replace(/\s+/g, ' ').trim()
+    let sumilla = !sinSumillaAntes && pareceSumilla(sumillaPrevia) ? sumillaPrevia : ''
     // Si no es sumilla, ese texto es una nota (SPIJ): se conserva como anotación
     if (!sumilla && previo.length > 40) anotaciones.push({ tipo: 'nota', texto: previo, articuloRelacionado: clave })
     const despues = bloque.slice(e.indice - inicio)
