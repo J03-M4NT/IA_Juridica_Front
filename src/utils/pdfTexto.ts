@@ -14,6 +14,24 @@ export interface OpcionesTextoPdf {
   // queda arriba o abajo de la página. Apagado por defecto: sin esta opción
   // el texto sale exactamente igual que siempre.
   recuperarMargenes?: boolean
+  // Encierra entre ⟦ ⟧ el texto en letra más pequeña que el cuerpo de la
+  // página (notas a pie y llamadas a nota en las ediciones MINJUS), para que
+  // el parser de normas v2 lo separe del texto de ley. Apagado por defecto.
+  marcarLetraPequena?: boolean
+}
+
+export const MARCA_ABRE = String.fromCharCode(0x27e6)
+export const MARCA_CIERRA = String.fromCharCode(0x27e7)
+// Por debajo de esta fracción de la altura de letra típica de la página
+const PROPORCION_LETRA_PEQUENA = 0.8
+
+function marcarLetraPequena(items: ItemConLimite[]): ItemConLimite[] {
+  const alturas = items.map(({ item }) => item.height).filter(h => h > 0).sort((a, b) => a - b)
+  if (alturas.length === 0) return items
+  const mediana = alturas[Math.floor(alturas.length / 2)] ?? 0
+  return items.map(i => (i.item.str.trim() && i.item.height > 0 && i.item.height < mediana * PROPORCION_LETRA_PEQUENA
+    ? { ...i, item: { ...i.item, str: `${MARCA_ABRE}${i.item.str}${MARCA_CIERRA}` } }
+    : i))
 }
 
 // =========================
@@ -177,7 +195,7 @@ export async function textoDeDocumentoPdf(
         return (y > MARGEN && y < (viewport.height - MARGEN)) || (conservar?.has(`${i}:${Math.round(y)}`) ?? false)
       })
 
-    const textoPagina = textoDePaginaConSaltos(items)
+    const textoPagina = textoDePaginaConSaltos(opciones.marcarLetraPequena ? marcarLetraPequena(items) : items)
 
     // Cada página termina en punto: evita que dividirEnChunks fusione el
     // final de una página con el encabezado/inicio de la siguiente en un
