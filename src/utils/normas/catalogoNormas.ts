@@ -37,7 +37,8 @@ export const CATALOGO_NORMAS: NormaCatalogo[] = [
   { normaId: 'codigo-penal', norma: 'Código Penal', tipoNorma: 'codigo', numeroNorma: 'D. Leg. 635', area: 'derecho-penal' },
   { normaId: 'codigo-procesal-civil', norma: 'Código Procesal Civil', tipoNorma: 'codigo', numeroNorma: 'D. Leg. 768', area: 'derecho-civil' },
   { normaId: 'codigo-procesal-penal', norma: 'Nuevo Código Procesal Penal', tipoNorma: 'codigo', numeroNorma: 'D. Leg. 957', area: 'derecho-penal' },
-  { normaId: 'codigo-de-comercio', norma: 'Código de Comercio', tipoNorma: 'codigo', numeroNorma: '', area: 'derecho-comercial', otrosNumeros: ['Ley 16687'] },
+  // No tiene número de ley: se identifica por su año de promulgación
+  { normaId: 'codigo-de-comercio', norma: 'Código de Comercio', tipoNorma: 'codigo', numeroNorma: 'Código de Comercio de 1902', area: 'derecho-comercial', otrosNumeros: ['Ley 16687'] },
   { normaId: 'codigo-consumidor', norma: 'Código de Protección y Defensa del Consumidor', tipoNorma: 'codigo', numeroNorma: 'Ley 29571', area: 'derecho-civil' },
 
   { normaId: 'tuo-ley-impuesto-renta', norma: 'TUO de la Ley del Impuesto a la Renta', tipoNorma: 'texto-unico-ordenado', numeroNorma: 'D.S. 179-2004-EF', area: 'derecho-tributario' },

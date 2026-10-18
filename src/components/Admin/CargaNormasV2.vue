@@ -100,6 +100,14 @@
       </q-card>
     </q-dialog>
 
+    <q-banner v-if="pendientes.length" dense rounded class="bg-orange-1 text-orange-10 q-mt-sm">
+      <template #avatar><q-icon name="info" color="orange-8" /></template>
+      Para calcular el plan, todos los archivos deben estar listos:
+      <ul class="q-my-xs">
+        <li v-for="p in pendientes" :key="p.nombre"><strong>{{ p.nombre }}</strong>: {{ p.motivo }}</li>
+      </ul>
+    </q-banner>
+
     <div v-if="items.length" class="carga-v2-pie">
       <div>
         Total: <strong>{{ totalFragmentos }}</strong> fragmentos · ~<strong>{{ totalTokens.toLocaleString('es-PE') }}</strong> tokens de embedding
@@ -248,11 +256,22 @@ function avisosDe(item: ItemV2): string[] {
   return avisos
 }
 
-function completo(item: ItemV2): boolean {
+// Por qué un archivo todavía no se puede subir (vacío = listo)
+function motivoPendiente(item: ItemV2): string {
   const m = item.meta
-  return item.estado !== 'leyendo' && item.estado !== 'error' && !!m.norma.trim() && !!m.tipoNorma && !!m.numeroNorma.trim() && !!m.vigencia &&
-    registrosDe(item).length > 0 && !NORMAS_EXCLUIDAS.some(n => n.replace(/\s/g, '') === m.numeroNorma.replace(/\s/g, ''))
+  if (item.estado === 'leyendo') return 'todavía se está leyendo'
+  if (item.estado === 'error') return `error al leer: ${item.mensaje}`
+  if (NORMAS_EXCLUIDAS.some(n => n.replace(/\s/g, '') === m.numeroNorma.replace(/\s/g, ''))) return 'norma excluida: quítala de la lista'
+  if (registrosDe(item).length === 0) return 'no se reconoció ningún artículo: quítala de la lista'
+  const faltan = [!m.norma.trim() && 'nombre', !m.tipoNorma && 'tipo', !m.numeroNorma.trim() && 'número', !m.vigencia && 'vigencia'].filter(Boolean)
+  return faltan.length ? `falta: ${faltan.join(', ')}` : ''
 }
+
+function completo(item: ItemV2): boolean {
+  return motivoPendiente(item) === ''
+}
+
+const pendientes = computed(() => items.value.map(i => ({ nombre: i.archivo.name, motivo: motivoPendiente(i) })).filter(p => p.motivo))
 
 const listas = computed(() => items.value.length > 0 && items.value.every(completo))
 const conPlan = computed(() => items.value.every(i => i.plan))
