@@ -22,6 +22,7 @@ setGlobalOptions({ maxInstances: 10 })
 // es el token), pero evita que otra web use las funciones con la sesión
 // de un usuario.
 export const ORIGENES_PERMITIDOS = [
+  'https://lexit-ai-rho.vercel.app',
   'https://j03-m4nt.github.io',
   /^http:\/\/localhost:\d+$/
 ]

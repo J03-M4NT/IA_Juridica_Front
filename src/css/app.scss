@@ -255,11 +255,24 @@ h1, h2, h3 {
   color: #686A57;
   font-size: 1.1rem;
 }
+
+// boot/notify.ts pone textColor 'white' por defecto (clase text-white con
+// !important), que dejaba el texto y la X invisibles sobre el fondo claro.
+.q-notification.lexit-toast.text-white,
+.q-notification.lexit-toast .q-notification__actions .q-btn {
+  color: #17211B !important;
+}
+
 // Variante de error: rojo suave (no la barra roja intensa de Quasar).
 .q-notification.lexit-toast--error {
   background: #FBEDEA;
   color: #7A1D14;
   border-color: rgba(194, 59, 46, 0.28);
+}
+
+.q-notification.lexit-toast--error.text-white,
+.q-notification.lexit-toast--error .q-notification__actions .q-btn {
+  color: #7A1D14 !important;
 }
 
 .q-notification.lexit-toast--error .q-notification__icon {

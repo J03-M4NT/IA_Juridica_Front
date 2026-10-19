@@ -170,14 +170,14 @@ onMounted(async () => {
 
   gsap.set(fotos, { clipPath: 'inset(100% 0% 0% 0%)', opacity: 1 })
   gsap.set(imagenes, { scale: 1.28 })
-  gsap.set(velo, { opacity: 1, clipPath: 'inset(50% 0% 50% 0%)' })
+  gsap.set(velo, { opacity: 0, clipPath: 'inset(36% 0% 36% 0%)' })
   gsap.set(centro, { opacity: 1 })
   gsap.set(letras, { yPercent: 110, opacity: 1 })
   gsap.set(lineaDecorativa, { scaleX: 0 })
   gsap.set([lema, saludo], { opacity: 0, y: 10 })
   gsap.set(progreso, { scaleX: 0 })
 
-  const DURACION = 4.15
+  const DURACION = 4.5
   linea = gsap.timeline({ onComplete: terminar })
   // Barra de avance durante toda la bienvenida.
   linea.to(progreso, { scaleX: 1, duration: DURACION, ease: 'none' }, 0)
@@ -194,14 +194,17 @@ onMounted(async () => {
     linea!.to(f, { x: sentido * 46, duration: 2.4, ease: 'sine.inOut' }, 0.3)
   })
 
-  // 3. Una banda navy se abre desde la línea central y cubre el mosaico.
-  linea.to(velo, { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.95, ease: 'power4.inOut' }, 1.75)
+  // 3. Cuando ya se descubrieron todas las fotos, la banda navy se abre
+  //    desde el centro mientras aparece de a poco: las fotos se siguen
+  //    viendo a través de ella y no hay un corte de golpe.
+  linea.to(velo, { clipPath: 'inset(0% 0% 0% 0%)', duration: 1.3, ease: 'power2.inOut' }, 1.85)
+  linea.to(velo, { opacity: 1, duration: 1.1, ease: 'sine.inOut' }, 1.85)
 
   // 4. "LexIT" sube letra por letra, se traza la línea, lema y saludo.
-  linea.to(letras, { yPercent: 0, duration: 0.8, ease: 'power4.out', stagger: 0.06 }, 2.25)
-  linea.to(lineaDecorativa, { scaleX: 1, duration: 0.7, ease: 'power3.inOut' }, 2.6)
-  linea.to(lema, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, 2.75)
-  linea.to(saludo, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }, 2.9)
+  linea.to(letras, { yPercent: 0, duration: 0.8, ease: 'power4.out', stagger: 0.06 }, 2.55)
+  linea.to(lineaDecorativa, { scaleX: 1, duration: 0.7, ease: 'power3.inOut' }, 2.9)
+  linea.to(lema, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out' }, 3.05)
+  linea.to(saludo, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }, 3.2)
 
   // 5. Todo sube como un telón y deja la app a la vista.
   linea.to(centro, { y: -40, opacity: 0, duration: 0.5, ease: 'power2.in' }, DURACION - 0.1)
