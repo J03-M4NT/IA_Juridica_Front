@@ -36,6 +36,8 @@ yarn-error.log*
 # secretos locales del emulador de Functions
 .secret.local
 functions/.secret.local
+# configuración local de la CLI de Vercel
+.vercel
 
 # firebase cache
 firebase-debug.log
