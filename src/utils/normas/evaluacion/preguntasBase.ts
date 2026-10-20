@@ -21,7 +21,9 @@ export interface ArticuloEsperado {
 export interface PreguntaEvaluacion {
   id: string
   pregunta: string
-  tipo: 'articulo' | 'tema' | 'varios-temas' | 'norma-nombrada' | 'ley-especial'
+  // 'sin-base': tema que no está en las normas cargadas (esperados vacíos);
+  // sirve para calibrar el umbral de confianza y no cuenta en la cobertura
+  tipo: 'articulo' | 'tema' | 'varios-temas' | 'norma-nombrada' | 'ley-especial' | 'sin-base'
   area?: string
   esperados: ArticuloEsperado[]
   comentario?: string
@@ -84,6 +86,12 @@ export const PREGUNTAS_BASE: JuegoPreguntas = {
     { id: 'p19', tipo: 'ley-especial', area: 'derecho-penal', pregunta: '¿Qué es el delito de acceso ilícito a un sistema informático?', esperados: [{ ...L30096, articulo: '2' }] },
     {
       id: 'p20', tipo: 'norma-nombrada', area: 'derecho-civil', pregunta: 'Según la Ley de Conciliación, ¿qué es la conciliación?', esperados: [{ ...L26872, articulo: '5' }]
-    }
+    },
+    // Calibración del umbral: temas fuera de las normas cargadas
+    { id: 's01', tipo: 'sin-base', pregunta: '¿Cuál es la multa por exceder el límite de velocidad en una avenida de Lima?', esperados: [] },
+    { id: 's02', tipo: 'sin-base', pregunta: '¿Qué requisitos pide la municipalidad para otorgar una licencia de funcionamiento a una bodega?', esperados: [] },
+    { id: 's03', tipo: 'sin-base', pregunta: '¿Qué obligaciones tiene el dueño de un perro de raza potencialmente peligrosa?', esperados: [] },
+    { id: 's04', tipo: 'sin-base', pregunta: '¿Qué requisitos debe cumplir un candidato para postular a alcalde?', esperados: [] },
+    { id: 's05', tipo: 'sin-base', pregunta: '¿Cuántos días tiene una entidad pública para responder una solicitud de acceso a la información pública?', esperados: [] }
   ]
 }

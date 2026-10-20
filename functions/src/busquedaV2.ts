@@ -14,6 +14,7 @@ import type { Pinecone } from '@pinecone-database/pinecone'
 import { getFirestore } from 'firebase-admin/firestore'
 import * as logger from 'firebase-functions/logger'
 import type { FragmentoResultado, DecisionBusqueda } from './consultarLexit'
+import { type IndiceId, INDICE_POR_DEFECTO } from './indicesPinecone'
 
 export type Indice = ReturnType<Pinecone['index']>
 
@@ -37,7 +38,12 @@ export const CODIGO_A_FILTRO: Record<string, Record<string, unknown>> = {
   'codigo-tributario': { area: { $eq: 'derecho-tributario' } }
 }
 
-export type HitV2 = FragmentoResultado & { id: string; normaId: string; articulo: string; parte: number; totalPartes: number; tituloArticulo: string; norma: string }
+export type HitV2 = FragmentoResultado & {
+  id: string; normaId: string; articulo: string; parte: number; totalPartes: number; tituloArticulo: string; norma: string
+  numeroNorma: string; vigenciaArticulo: string; vigenciaOrigen: string
+  // Similitud de la búsqueda y puntaje del reranker (para el umbral de confianza)
+  denso: number; rerank?: number
+}
 
 function fragmentoDeHit(h: { _id?: string; _score?: number; fields?: Record<string, unknown> }): HitV2 {
   const c = h.fields ?? {}
@@ -57,7 +63,11 @@ function fragmentoDeHit(h: { _id?: string; _score?: number; fields?: Record<stri
     parte: Number(c.parte ?? 1),
     totalPartes: Number(c.totalPartes ?? 1),
     tituloArticulo: txt(c.tituloArticulo),
-    norma: txt(c.norma)
+    norma: txt(c.norma),
+    numeroNorma: txt(c.numeroNorma),
+    vigenciaArticulo: txt(c.vigencia),
+    vigenciaOrigen: txt(c.vigenciaOrigen),
+    denso: h._score ?? 0
   }
 }
 
@@ -71,14 +81,16 @@ export async function buscarV2(idx: Indice, consulta: string, topK: number, filt
 // NORMAS DEL NAMESPACE (Firestore normas_v2), con caché de 5 minutos
 // =========================
 const cacheNormas = new Map<string, { leidoEn: number; normas: NormaV2[] }>()
-export async function cargarNormasV2(namespace: string): Promise<NormaV2[]> {
-  const enCache = cacheNormas.get(namespace)
+export async function cargarNormasV2(namespace: string, indice: IndiceId = INDICE_POR_DEFECTO): Promise<NormaV2[]> {
+  const clave = `${indice}::${namespace}`
+  const enCache = cacheNormas.get(clave)
   if (enCache && Date.now() - enCache.leidoEn < 5 * 60 * 1000) return enCache.normas
   const snap = await getFirestore().collection('normas_v2').where('namespace', '==', namespace).get()
-  const normas = snap.docs.map(d => d.data()).map(d => ({
+  // Los documentos sin "indice" son del índice de siempre
+  const normas = snap.docs.map(d => d.data()).filter(d => (d.indice ?? INDICE_POR_DEFECTO) === indice).map(d => ({
     normaId: txt(d.normaId), norma: txt(d.norma), numeroNorma: txt(d.numeroNorma), tipoNorma: txt(d.tipoNorma), area: txt(d.area)
   }))
-  cacheNormas.set(namespace, { leidoEn: Date.now(), normas })
+  cacheNormas.set(clave, { leidoEn: Date.now(), normas })
   return normas
 }
 
@@ -187,7 +199,7 @@ export async function recuperarMejorado(
   if (modo === 'C' && puntajes) {
     ordenados = puntajes.flatMap(d => {
       const c = candidatos[d.index]
-      return c ? [{ ...c, score: d.score }] : []
+      return c ? [{ ...c, rerank: d.score, score: d.score }] : []
     })
   } else if (candidatos.length > 1) {
     // D: combina reranker y fusión (el orden de la búsqueda sigue pesando).
@@ -197,7 +209,7 @@ export async function recuperarMejorado(
     ordenados = puntajes
       ? puntajes.flatMap(d => {
         const c = candidatos[d.index]
-        return c ? [{ ...c, score: PESO_RERANK_D * d.score + (1 - PESO_RERANK_D) * rrfDe(c) }] : []
+        return c ? [{ ...c, rerank: d.score, score: PESO_RERANK_D * d.score + (1 - PESO_RERANK_D) * rrfDe(c) }] : []
       }).sort((a, b) => b.score - a.score)
       : candidatos.map(c => ({ ...c, score: rrfDe(c) }))
     // Varios temas: el mejor de cada subtema entra entre los primeros
@@ -221,7 +233,7 @@ export async function recuperarMejorado(
     }
   }
   const vistos = new Set<string>()
-  return [...exactos.map(e => ({ ...e, score: 1 })), ...ordenados].filter(h => {
+  return [...exactos.map(e => ({ ...e, score: 1, rerank: 1 })), ...ordenados].filter(h => {
     if (vistos.has(h.id)) return false
     vistos.add(h.id)
     return true
@@ -240,16 +252,28 @@ function etiquetaUnidad(h: HitV2): string {
   return (partes[partes.length - 1] ?? h.articulo).replace(/\s*\[parte \d+ de \d+\]$/, '').replace(/^DEROGADO$/, h.articulo)
 }
 
+export interface ResultadoConsultaV2 {
+  fragmentos: FragmentoResultado[]
+  // Confianza del mejor resultado: puntaje del reranker (si hubo) y similitud de la búsqueda
+  confianza: { rerank: number | null; denso: number }
+}
+
 export async function recuperarParaConsultaV2(
   pinecone: Pinecone,
   idx: Indice,
   namespace: string,
+  indice: IndiceId,
   pregunta: string,
   decision: DecisionBusqueda | undefined,
   opciones: OpcionesBusqueda & { tope: number }
-): Promise<FragmentoResultado[]> {
-  const normas = await cargarNormasV2(namespace)
+): Promise<ResultadoConsultaV2> {
+  const normas = await cargarNormasV2(namespace, indice)
   const hits = await recuperarMejorado(pinecone, idx, pregunta, decision, normas, 'D', opciones)
+  const conRerank = hits.filter(h => h.rerank !== undefined)
+  const confianza = {
+    rerank: conRerank.length ? Math.max(...conRerank.map(h => h.rerank ?? 0)) : null,
+    denso: hits.length ? Math.max(...hits.map(h => h.denso)) : 0
+  }
 
   // Un fragmento por artículo, en el orden del ranking
   const porArticulo = new Map<string, HitV2>()
@@ -278,7 +302,7 @@ export async function recuperarParaConsultaV2(
   }
   const sinEncabezado = (t: string) => t.split('\n').slice(1).join('\n').trim() || t
 
-  return elegidos.map(h => {
+  const fragmentos: FragmentoResultado[] = elegidos.map(h => {
     let texto = sinEncabezado(h.texto)
     if (h.totalPartes > 1) {
       const base = h.id.replace(/#p\d+$/, '')
@@ -290,9 +314,14 @@ export async function recuperarParaConsultaV2(
     }
     const letra = /^\d+-([A-Z])$/.exec(h.articulo)?.[1]
     const esArticulo = h.numeroArticulo !== undefined && /^\d+(?:-[A-Z])?$/.test(h.articulo)
+    // "Código Civil (D. Leg. 295)": norma y número de norma en la cita
+    const norma = h.norma || h.nombreDocumento
+    const conNumero = h.numeroNorma && !norma.includes(h.numeroNorma) ? `${norma} (${h.numeroNorma})` : norma
+    const vigencia = h.vigenciaArticulo ? `${h.vigenciaArticulo}${h.vigenciaOrigen === 'detectada' ? ' (detectada)' : ''}` : ''
     return {
       texto,
-      nombreDocumento: esArticulo ? h.norma || h.nombreDocumento : `${h.norma || h.nombreDocumento} · ${etiquetaUnidad(h)}`,
+      nombreDocumento: esArticulo ? conNumero : `${conNumero} · ${etiquetaUnidad(h)}`,
+      ...(vigencia ? { vigencia } : {}),
       tipoDocumento: h.tipoDocumento,
       documentoId: h.normaId,
       indiceChunk: h.indiceChunk,
@@ -302,4 +331,5 @@ export async function recuperarParaConsultaV2(
       esFuentePrimaria: true
     }
   })
+  return { fragmentos, confianza }
 }

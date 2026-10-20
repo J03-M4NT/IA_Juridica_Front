@@ -9,6 +9,12 @@
           :options="[{ label: 'Prueba', value: NAMESPACE_PRUEBA }, { label: 'Producción (normas-v2)', value: NAMESPACE_PRODUCCION }]"
           @update:model-value="() => { cargadas = null; items.forEach(i => { i.plan = null }) }"
         />
+        <q-btn-toggle
+          v-model="indice" dense no-caps unelevated toggle-color="accent" color="grey-3" text-color="grey-9" class="q-ml-sm"
+          :disable="ocupado"
+          :options="INDICES_V2.map(i => ({ label: i.nombre, value: i.id }))"
+          @update:model-value="() => { cargadas = null; items.forEach(i => { i.plan = null }) }"
+        />
         <q-btn flat dense no-caps color="accent" icon="fact_check" label="Verificación (solo lectura)" class="q-ml-sm" :loading="verificando" :disable="ocupado" @click="verificar" />
       </div>
       <q-file :dark="false"
@@ -121,7 +127,7 @@
     <q-dialog v-model="verVerificacion">
       <q-card :dark="false" style="width: 900px; max-width: 95vw">
         <q-card-section class="row items-center">
-          <div class="text-h6 col">Verificación en {{ destino }}</div>
+          <div class="text-h6 col">Verificación en {{ indice }} / {{ destino }}</div>
           <q-btn flat dense no-caps color="accent" icon="download" label="Descargar JSON" @click="descargarVerificacion" />
           <q-btn flat round dense color="grey-8" icon="close" v-close-popup />
         </q-card-section>
@@ -143,7 +149,7 @@
 
     <q-dialog v-model="confirmar" persistent>
       <q-card :dark="false" style="min-width: 360px; max-width: 520px">
-        <q-card-section class="text-h6">Subir a {{ destino }}</q-card-section>
+        <q-card-section class="text-h6">Subir a {{ indice }} / {{ destino }}</q-card-section>
         <q-card-section v-if="destino === NAMESPACE_PRODUCCION" class="q-pt-none">
           <q-banner dense rounded class="bg-orange-1 text-orange-10">
             Es el espacio de producción del esquema nuevo. Consultas solo lo usa cuando el interruptor de búsqueda está en "v2".
@@ -151,7 +157,7 @@
         </q-card-section>
         <q-card-section>
           Se subirán <strong>{{ porSubir }}</strong> fragmentos (~{{ tokensPorSubir.toLocaleString('es-PE') }} tokens)
-          y se borrarán {{ porBorrar }} obsoletos, solo en el espacio de prueba. La base de Consultas no cambia.
+          y se borrarán {{ porBorrar }} obsoletos, solo en {{ indice }} / {{ destino }}. La base actual de Consultas (__default__) no cambia.
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat no-caps color="grey-8" label="Cancelar" v-close-popup />
@@ -175,7 +181,7 @@ import { extraerTextoNorma } from '../../utils/extraerTextoNorma'
 import { parsearNormaV2, type ResultadoParserV2 } from '../../utils/normas/parserNormaV2'
 import { construirRegistrosV2, sugerirMetadatosNorma, hashTexto, slug, TIPOS_NORMA, type MetaNorma, type RegistroV2 } from '../../utils/normas/metadatosNorma'
 import { buscarEnCatalogo, NORMAS_EXCLUIDAS, AREAS_NORMAS } from '../../utils/normas/catalogoNormas'
-import { NAMESPACE_PRUEBA, NAMESPACE_PRODUCCION, estimarTokens, planificarCarga, ejecutarCarga, buscarNormasV2, listarNormasV2, vaciarNormaV2, type PlanCarga } from '../../services/normasV2Service'
+import { NAMESPACE_PRUEBA, NAMESPACE_PRODUCCION, INDICES_V2, maxCaracteresDe, estimarTokens, planificarCarga, ejecutarCarga, buscarNormasV2, listarNormasV2, vaciarNormaV2, type PlanCarga, type IndiceV2 } from '../../services/normasV2Service'
 
 type Estado = 'leyendo' | 'listo' | 'error' | 'subiendo' | 'subido'
 
@@ -197,6 +203,8 @@ interface ItemV2 {
 const $q = useQuasar()
 // Espacio donde se sube: prueba (por defecto) o producción del esquema nuevo
 const destino = ref<string>(NAMESPACE_PRUEBA)
+// Índice: lexit (el de siempre) o lexit-e5 (fragmentos más cortos)
+const indice = ref<IndiceV2>('lexit')
 const archivos = ref<File[] | null>(null)
 const items = ref<ItemV2[]>([])
 const planificando = ref(false)
@@ -235,10 +243,11 @@ const registrosCache = new WeakMap<ItemV2, { clave: string; registros: RegistroV
 function registrosDe(item: ItemV2): RegistroV2[] {
   if (!item.resultado) return []
   const meta = metaDe(item)
-  const clave = JSON.stringify(meta)
+  const maxCaracteres = maxCaracteresDe(indice.value)
+  const clave = JSON.stringify({ meta, maxCaracteres })
   const cache = registrosCache.get(item)
   if (cache?.clave === clave) return cache.registros
-  const registros = construirRegistrosV2(meta, item.resultado)
+  const registros = construirRegistrosV2(meta, item.resultado, { maxCaracteres })
   registrosCache.set(item, { clave, registros })
   return registros
 }
@@ -324,7 +333,7 @@ function agregarArchivos(valor: File[] | File | null) {
 async function calcularPlan() {
   planificando.value = true
   try {
-    for (const item of items.value) item.plan = await planificarCarga(destino.value, normaIdDe(item), registrosDe(item))
+    for (const item of items.value) item.plan = await planificarCarga(destino.value, normaIdDe(item), registrosDe(item), indice.value)
   } catch (err) {
     $q.notify({ type: 'negative', message: err instanceof Error ? err.message : 'No se pudo calcular el plan' })
   } finally {
@@ -345,7 +354,7 @@ async function subir() {
         hashDocumento: hashTexto(item.texto),
         fragmentos: registrosDe(item).length,
         articulos: item.resultado?.estadisticas.articulosDistintos ?? 0
-      }, (hechos, total) => { item.mensaje = `Subiendo ${hechos} de ${total}…` })
+      }, (hechos, total) => { item.mensaje = `Subiendo ${hechos} de ${total}…` }, indice.value)
       item.estado = 'subido'
       item.mensaje = `Listo: ${subidos} subidos, ${eliminados} borrados, ${item.plan.iguales} sin cambios.`
       item.plan = null
@@ -381,7 +390,7 @@ const quitando = ref(false)
 async function listarCargadas() {
   listando.value = true
   try {
-    cargadas.value = await listarNormasV2(destino.value)
+    cargadas.value = await listarNormasV2(destino.value, indice.value)
   } catch (err) {
     $q.notify({ type: 'negative', message: err instanceof Error ? err.message : 'No se pudo listar' })
   } finally {
@@ -392,7 +401,7 @@ async function listarCargadas() {
 async function quitar() {
   quitando.value = true
   try {
-    const eliminados = await vaciarNormaV2(destino.value, aQuitar.value)
+    const eliminados = await vaciarNormaV2(destino.value, aQuitar.value, indice.value)
     $q.notify({ type: 'positive', message: `${aQuitar.value}: ${eliminados} fragmentos quitados de ${destino.value}` })
     aQuitar.value = ''
     await listarCargadas()
@@ -414,7 +423,8 @@ async function verificar() {
     for (const v of VERIFICACIONES) {
       const hits = await buscarNormasV2(destino.value, v.consulta, {
         topK: 10,
-        filtro: { normaId: { $eq: v.normaId }, articulo: { $eq: v.articulo } }
+        filtro: { normaId: { $eq: v.normaId }, articulo: { $eq: v.articulo } },
+        indice: indice.value
       })
       const fragmentos = hits
         .map(h => {
@@ -434,7 +444,7 @@ async function verificar() {
 }
 
 function descargarVerificacion() {
-  const blob = new Blob([JSON.stringify({ namespace: destino.value, generadoEn: new Date().toISOString(), resultados: verificacion.value }, null, 2)], { type: 'application/json' })
+  const blob = new Blob([JSON.stringify({ indice: indice.value, namespace: destino.value, generadoEn: new Date().toISOString(), resultados: verificacion.value }, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const enlace = document.createElement('a')
   enlace.href = url

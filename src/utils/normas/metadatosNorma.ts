@@ -221,7 +221,35 @@ function etiquetaArticulo(a: ArticuloV2): string {
   return `Artículo ${a.clave}`
 }
 
-export function construirRegistrosV2(meta: MetaNorma, resultado: ResultadoParserV2, opciones: { incluirAnotaciones?: boolean } = {}): RegistroV2[] {
+// =========================
+// PARTES PARA MODELOS CON LÍMITE DE LONGITUD (multilingual-e5-large: ~507 tokens)
+// Parte el texto por párrafo o inciso; un párrafo que no entra se parte por
+// oración y, en último caso, por palabras. Nunca se pierde texto.
+// =========================
+export function partirParaModelo(texto: string, max: number): string[] {
+  const piezas: string[] = []
+  for (const parrafo of texto.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)) {
+    if (parrafo.length <= max) { piezas.push(parrafo); continue }
+    for (const oracion of parrafo.split(/(?<=[.;:])\s+/)) {
+      if (oracion.length <= max) { piezas.push(oracion); continue }
+      let actual = ''
+      for (const palabra of oracion.split(/\s+/)) {
+        if (actual && actual.length + 1 + palabra.length > max) { piezas.push(actual); actual = palabra } else actual = actual ? `${actual} ${palabra}` : palabra
+      }
+      if (actual) piezas.push(actual)
+    }
+  }
+  // Se juntan piezas consecutivas mientras quepan
+  const partes: string[] = []
+  let actual = ''
+  for (const pieza of piezas) {
+    if (actual && actual.length + 2 + pieza.length > max) { partes.push(actual); actual = pieza } else actual = actual ? `${actual}\n\n${pieza}` : pieza
+  }
+  if (actual) partes.push(actual)
+  return partes.length ? partes : [texto]
+}
+
+export function construirRegistrosV2(meta: MetaNorma, resultado: ResultadoParserV2, opciones: { incluirAnotaciones?: boolean; maxCaracteres?: number | null } = {}): RegistroV2[] {
   const registros: RegistroV2[] = []
   const instrumento = meta.numeroNorma && !meta.norma.includes(meta.numeroNorma) ? ` (${meta.numeroNorma})` : ''
 
@@ -244,16 +272,32 @@ export function construirRegistrosV2(meta: MetaNorma, resultado: ResultadoParser
 
   let indice = 0
   for (const a of resultado.articulos) {
-    const jerarquia = a.jerarquia.join(' › ')
+    let jerarquia = a.jerarquia.join(' › ')
     const etiqueta = etiquetaArticulo(a)
-    a.partes.forEach((parte, k) => {
-      const total = a.partes.length
-      const encabezado = [
-        `${meta.norma}${instrumento}`,
-        jerarquia,
-        `${etiqueta}${a.sumilla ? ` (${a.sumilla})` : ''}${total > 1 ? ` [parte ${k + 1} de ${total}]` : ''}`,
-        a.vigencia === 'derogado' ? 'DEROGADO' : ''
-      ].filter(Boolean).join(' | ')
+    const armarEncabezado = (k: number, total: number) => [
+      `${meta.norma}${instrumento}`,
+      jerarquia,
+      `${etiqueta}${a.sumilla ? ` (${a.sumilla})` : ''}${total > 1 ? ` [parte ${k + 1} de ${total}]` : ''}`,
+      a.vigencia === 'derogado' ? 'DEROGADO' : ''
+    ].filter(Boolean).join(' | ')
+
+    // Con límite de longitud (índice e5): cada parte, con su encabezado
+    // completo, cabe en maxCaracteres. Si el encabezado es muy largo, la
+    // jerarquía se acorta a sus dos últimos niveles.
+    let partes = a.partes
+    const max = opciones.maxCaracteres
+    if (max) {
+      let presupuesto = max - armarEncabezado(98, 99).length - 1
+      if (presupuesto < 500 && a.jerarquia.length > 2) {
+        jerarquia = a.jerarquia.slice(-2).join(' › ')
+        presupuesto = max - armarEncabezado(98, 99).length - 1
+      }
+      partes = partirParaModelo(a.texto, Math.max(400, presupuesto))
+    }
+
+    partes.forEach((parte, k) => {
+      const total = partes.length
+      const encabezado = armarEncabezado(k, total)
       registros.push({
         ...comunes,
         id: `${meta.normaId}#art-${a.clave}${total > 1 ? `#p${k + 1}` : ''}`,

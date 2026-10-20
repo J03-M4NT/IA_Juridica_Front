@@ -335,6 +335,8 @@ export interface FragmentoResultado {
   // Letra de artículos como "108°-C" (la calcula consultarLexit)
   sufijoArticulo?: string
   esFuentePrimaria?: boolean
+  // Vigencia del artículo en el esquema nuevo, p. ej. "vigente (detectada)"
+  vigencia?: string
 }
 
 // El modelo de embeddings integrado de Pinecone (llama-text-embed-v2) tiene

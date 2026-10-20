@@ -8,13 +8,23 @@
           v-model="espacio" dense no-caps unelevated toggle-color="accent" color="grey-3" text-color="grey-9" class="q-ml-sm"
           :options="[{ label: 'Prueba', value: NAMESPACE_PRUEBA }, { label: 'Producción (normas-v2)', value: NAMESPACE_PRODUCCION }]"
         />
+        <q-btn-toggle
+          v-model="indice" dense no-caps unelevated toggle-color="accent" color="grey-3" text-color="grey-9" class="q-ml-sm"
+          :options="INDICES_V2.map(i => ({ label: i.nombre, value: i.id }))"
+        />
       </div>
       <div class="row q-gutter-sm">
         <q-btn flat dense no-caps color="accent" icon="download" label="Descargar preguntas" @click="descargar(juego, 'preguntas-evaluacion')" />
         <q-btn flat dense no-caps color="accent" icon="upload_file" label="Cargar preguntas (JSON)" @click="selector?.click()" />
         <input ref="selector" type="file" accept=".json,application/json" class="hidden" @change="cargarJuego">
-        <q-btn unelevated no-caps color="accent" icon="science" label="Ejecutar evaluación" :loading="evaluando" @click="evaluar" />
+        <q-btn unelevated no-caps color="accent" icon="science" label="Ejecutar evaluación" :loading="evaluando" :disable="evaluandoCitas" @click="evaluar" />
+        <q-btn outlined no-caps color="accent" icon="format_quote" label="Precisión de citas" :loading="evaluandoCitas" :disable="evaluando" @click="confirmarCitas = true" />
       </div>
+    </div>
+    <div class="row items-center q-gutter-sm q-mb-sm eval-v2-variantes">
+      <span>Variantes:</span>
+      <q-checkbox v-for="v in TODAS" :key="v" v-model="variantes" :val="v" :label="v" dense color="accent" :dark="false" />
+      <span class="text-grey-7">A usa la base actual (__default__, modelo llama): falla mientras su cuota esté agotada.</span>
     </div>
 
     <p class="eval-v2-ayuda">
@@ -23,6 +33,17 @@
     </p>
 
     <template v-if="informe">
+      <div v-if="informe.calibracion" class="q-mb-md">
+        <strong>Calibración del umbral (variante D, {{ informe.indice ?? 'lexit' }})</strong>
+        <ul class="q-my-xs">
+          <li v-for="(c, clave) in informe.calibracion" :key="clave">
+            {{ clave === 'rerank' ? 'Reranker' : 'Similitud densa' }}:
+            <template v-if="c.recomendado !== null">umbral recomendado <strong>{{ c.recomendado }}</strong> ({{ c.aciertos }} preguntas bien separadas).</template>
+            <template v-else>sin datos suficientes.</template>
+            Con base: {{ rango(c.positivos) }} · Sin base: {{ rango(c.negativos) }}
+          </li>
+        </ul>
+      </div>
       <div class="eval-v2-tabla-wrap">
         <table class="eval-v2-tabla">
           <thead>
@@ -73,6 +94,53 @@
         <q-btn flat dense no-caps color="accent" icon="download" label="Descargar informe (JSON)" @click="descargar(informe, 'evaluacion-normas-v2')" />
       </div>
     </template>
+
+    <template v-if="informeCitas">
+      <div class="q-mt-lg">
+        <strong>Precisión de citas · {{ informeCitas.indice }} / {{ informeCitas.namespace }}</strong>
+        <ul class="q-my-xs">
+          <li>Citas que son artículos esperados: <strong>{{ informeCitas.resumenCitas.precisionCitas === null ? '—' : pct(informeCitas.resumenCitas.precisionCitas) }}</strong></li>
+          <li>Preguntas que citan al menos un artículo esperado: {{ informeCitas.resumenCitas.preguntasQueCitanUnEsperado }}</li>
+          <li>Menciones marcadas "no verificado": {{ informeCitas.resumenCitas.mencionesNoVerificadas }}</li>
+          <li>Preguntas sin base reconocidas como tales: {{ informeCitas.resumenCitas.sinBaseReconocidas }}</li>
+          <li>Errores: {{ informeCitas.resumenCitas.errores }} · Tiempo prom.: {{ informeCitas.resumenCitas.msPromedio }} ms</li>
+        </ul>
+      </div>
+      <div class="eval-v2-tabla-wrap">
+        <table class="eval-v2-tabla">
+          <thead><tr><th>#</th><th>Pregunta</th><th>Esperado</th><th>Citó</th><th>Correctas</th><th>No verif.</th></tr></thead>
+          <tbody>
+            <tr v-for="r in informeCitas.resultadosCitas" :key="r.id">
+              <td>{{ r.id }}</td>
+              <td>{{ r.pregunta }}</td>
+              <td>{{ r.esperados?.join(' · ') || 'sin base' }}</td>
+              <td :class="r.error ? 'eval-v2-error' : ''">{{ r.error ?? (r.citas?.join(' · ') || '—') }}</td>
+              <td :class="r.error ? '' : (r.esperados?.length ? (r.citaAlgunEsperado ? 'eval-v2-bien' : 'eval-v2-mal') : (r.citasTotales ? 'eval-v2-medio' : 'eval-v2-bien'))">
+                {{ r.error ? '' : `${r.citasCorrectas} de ${r.citasTotales}` }}
+              </td>
+              <td>{{ r.noVerificadas ?? '' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="q-mt-sm row items-center justify-end">
+        <q-btn flat dense no-caps color="accent" icon="download" label="Descargar informe de citas (JSON)" @click="descargar(informeCitas, 'citas-normas-v2')" />
+      </div>
+    </template>
+
+    <q-dialog v-model="confirmarCitas">
+      <q-card :dark="false" style="max-width: 480px">
+        <q-card-section class="text-h6">Precisión de citas</q-card-section>
+        <q-card-section class="q-pt-none">
+          Se harán {{ juego.preguntas.length }} consultas completas (Gemini) contra {{ indice }} / {{ espacio }}, como admin.
+          Usan tu cupo diario de consultas y una llamada al reranker cada una. Consultas de los usuarios no cambia.
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat no-caps color="grey-8" label="Cancelar" v-close-popup />
+          <q-btn color="accent" unelevated no-caps label="Ejecutar" v-close-popup @click="evaluarPrecisionCitas" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 
@@ -86,7 +154,7 @@
 import { ref } from 'vue'
 import { useQuasar } from 'quasar'
 import { PREGUNTAS_BASE, type JuegoPreguntas } from '../../utils/normas/evaluacion/preguntasBase'
-import { evaluarRecuperacion, NAMESPACE_PRUEBA, NAMESPACE_PRODUCCION, type InformeEvaluacion, type ResultadoVariante } from '../../services/normasV2Service'
+import { evaluarRecuperacion, evaluarCitas, NAMESPACE_PRUEBA, NAMESPACE_PRODUCCION, INDICES_V2, type IndiceV2, type InformeEvaluacion, type InformeCitas, type ResultadoVariante } from '../../services/normasV2Service'
 
 const $q = useQuasar()
 const juego = ref<JuegoPreguntas>(PREGUNTAS_BASE)
@@ -94,21 +162,40 @@ const informe = ref<InformeEvaluacion | null>(null)
 const evaluando = ref(false)
 // Espacio del esquema nuevo contra el que se evalúan B, C y D
 const espacio = ref<string>(NAMESPACE_PRUEBA)
+const indice = ref<IndiceV2>('lexit')
+const TODAS = ['A', 'B', 'C', 'D', 'E']
+const variantes = ref<string[]>([...TODAS])
+const informeCitas = ref<InformeCitas | null>(null)
+const evaluandoCitas = ref(false)
+const confirmarCitas = ref(false)
 const selector = ref<HTMLInputElement | null>(null)
 
 const pct = (x: number) => `${Math.round(x * 100)} %`
 const puestos = (p: Array<number | null>) => p.map(x => (x === null ? '—' : `${x}.º`)).join(' / ')
+const rango = (xs: number[]) => (xs.length ? `${Math.min(...xs).toFixed(3)} a ${Math.max(...xs).toFixed(3)}` : '—')
 const clase = (r: ResultadoVariante) => (r.error ? 'eval-v2-error' : r.hit1 ? 'eval-v2-bien' : r.recall8 > 0 ? 'eval-v2-medio' : 'eval-v2-mal')
 
 async function evaluar() {
   evaluando.value = true
   try {
-    informe.value = await evaluarRecuperacion(juego.value.preguntas, espacio.value)
+    informe.value = await evaluarRecuperacion(juego.value.preguntas, espacio.value, indice.value, variantes.value)
     $q.notify({ type: 'positive', message: 'Evaluación terminada' })
   } catch (err) {
     $q.notify({ type: 'negative', message: err instanceof Error ? err.message : 'No se pudo evaluar' })
   } finally {
     evaluando.value = false
+  }
+}
+
+async function evaluarPrecisionCitas() {
+  evaluandoCitas.value = true
+  try {
+    informeCitas.value = await evaluarCitas(juego.value.preguntas, espacio.value, indice.value)
+    $q.notify({ type: 'positive', message: 'Evaluación de citas terminada' })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err instanceof Error ? err.message : 'No se pudo evaluar las citas' })
+  } finally {
+    evaluandoCitas.value = false
   }
 }
 
@@ -125,6 +212,7 @@ async function cargarJuego(e: Event) {
       preguntas: datos.preguntas
     }
     informe.value = null
+    informeCitas.value = null
     $q.notify({ type: 'positive', message: `${datos.preguntas.length} preguntas cargadas` })
   } catch (err) {
     $q.notify({ type: 'negative', message: err instanceof Error ? err.message : 'Archivo inválido' })
@@ -146,6 +234,7 @@ function descargar(datos: unknown, nombre: string) {
 
 <style scoped>
 .eval-v2 { color: var(--ink, #1a1f2b); }
+.eval-v2-variantes { font-size: 0.85rem; color: #5b6475; }
 .eval-v2-ayuda { margin: 0 0 12px; font-size: 0.88rem; color: #5b6475; }
 .eval-v2-tabla-wrap { overflow-x: auto; }
 .eval-v2-tabla { width: 100%; border-collapse: collapse; font-size: 0.85rem; }

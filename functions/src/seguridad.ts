@@ -82,6 +82,13 @@ export async function autorizar(
   return uid
 }
 
+// ¿El usuario es admin? (sin responder al cliente: para opciones solo de admin dentro
+// de funciones que también usan usuarios normales)
+export async function esAdmin(uid: string): Promise<boolean> {
+  const perfil = await getFirestore().collection('users').doc(uid).get()
+  return perfil.get('role') === 'admin'
+}
+
 function fechaPeru(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' }) // YYYY-MM-DD
 }

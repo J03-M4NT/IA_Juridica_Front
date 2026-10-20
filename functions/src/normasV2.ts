@@ -13,6 +13,9 @@
 //   listar    → normas que hay en el namespace y cuántos fragmentos tiene cada una
 //   vaciar    → quita TODOS los fragmentos de una norma del namespace indicado
 //   config    → lee o cambia el interruptor de la búsqueda de Consultas
+//   infoIndices → índices de la cuenta (dimensión, métrica, modelo) y límites del plan
+//   crearIndiceE5 → crea el índice temporal lexit-e5 (multilingual-e5-large) si no existe
+// Todas las acciones aceptan "indice" ('lexit' por defecto o 'lexit-e5').
 // buscarNormasV2: búsqueda de prueba en el namespace (para la fase 3).
 // =========================
 import { onRequest } from 'firebase-functions/v2/https'
@@ -21,8 +24,9 @@ import { Pinecone } from '@pinecone-database/pinecone'
 import { initializeApp, getApps } from 'firebase-admin/app'
 import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 import { ORIGENES_PERMITIDOS, autorizar } from './seguridad'
-import { PINECONE_API_KEY, PINECONE_HOST, PINECONE_INDEX } from './consultarLexit'
+import { PINECONE_API_KEY } from './consultarLexit'
 import { leerConfigBusqueda, guardarConfigBusqueda } from './configBusqueda'
+import { INDICES, INDICE_POR_DEFECTO, type IndiceId, abrirIndice, esIndiceId } from './indicesPinecone'
 
 if (getApps().length === 0) initializeApp()
 
@@ -74,12 +78,19 @@ function errorDeRegistro(r: unknown, normaId: string): string | null {
   return null
 }
 
-function indice(ns: NamespaceV2) {
+// Nube y región de un índice serverless (el tipo del SDK también admite BYOC)
+const serverless = (spec: unknown) => (spec as { serverless?: { cloud?: string; region?: string } } | undefined)?.serverless
+
+async function indice(ns: NamespaceV2, id: IndiceId = INDICE_POR_DEFECTO) {
   const pinecone = new Pinecone({ apiKey: PINECONE_API_KEY.value() })
-  return pinecone.index(PINECONE_INDEX, PINECONE_HOST).namespace(ns)
+  return (await abrirIndice(pinecone, id)).namespace(ns)
 }
 
-async function idsDeNorma(idx: ReturnType<typeof indice>, normaId: string): Promise<string[]> {
+// Documento del catálogo normas_v2: el índice de siempre conserva su ID de antes
+export const idCatalogo = (id: IndiceId, ns: string, normaId: string) =>
+  id === INDICE_POR_DEFECTO ? `${ns}__${normaId}` : `${id}__${ns}__${normaId}`
+
+async function idsDeNorma(idx: Awaited<ReturnType<typeof indice>>, normaId: string): Promise<string[]> {
   const ids: string[] = []
   let token: string | undefined = undefined
   do {
@@ -101,23 +112,87 @@ export const normasV2 = onRequest(
     const uid = await autorizar(req, res, { soloAdmin: true })
     if (!uid) return
 
-    const body = (req.body ?? {}) as { accion?: unknown; namespace?: unknown; normaId?: unknown; registros?: unknown; ids?: unknown; resumen?: unknown; modo?: unknown }
+    const body = (req.body ?? {}) as {
+      accion?: unknown; namespace?: unknown; normaId?: unknown; registros?: unknown; ids?: unknown; resumen?: unknown
+      modo?: unknown; indice?: unknown; umbralRerank?: unknown; umbralDenso?: unknown
+    }
+    if (body.indice !== undefined && !esIndiceId(body.indice)) {
+      res.status(400).json({ error: `Índice no permitido. Solo: ${Object.keys(INDICES).join(', ')}` })
+      return
+    }
+    const indiceId: IndiceId = esIndiceId(body.indice) ? body.indice : INDICE_POR_DEFECTO
 
-    // Interruptor de Consultas: leer o cambiar ('actual' | 'v2')
+    // Interruptor de Consultas: leer o cambiar (modo, índice, umbrales)
     if (body.accion === 'config') {
       try {
-        if (body.modo === undefined) {
+        const hayCambios = body.modo !== undefined || body.indice !== undefined || body.umbralRerank !== undefined || body.umbralDenso !== undefined
+        if (!hayCambios) {
           res.json(await leerConfigBusqueda())
           return
         }
-        if ((body.modo !== 'actual' && body.modo !== 'v2') || !namespaceValido(body.namespace)) {
+        if ((body.modo !== undefined && body.modo !== 'actual' && body.modo !== 'v2') || (body.namespace !== undefined && !namespaceValido(body.namespace))) {
           res.status(400).json({ error: 'modo debe ser "actual" o "v2" y el namespace uno permitido' })
           return
         }
-        await guardarConfigBusqueda(body.modo, body.namespace, uid)
-        logger.info(`🔀 Búsqueda de Consultas → ${body.modo} (${body.namespace}) por admin ${uid}`)
-        res.json(await leerConfigBusqueda())
+        const umbral = (v: unknown) => (typeof v === 'number' && v >= 0 && v <= 1 ? v : undefined)
+        await guardarConfigBusqueda({
+          ...(body.modo === 'actual' || body.modo === 'v2' ? { modo: body.modo } : {}),
+          ...(esIndiceId(body.indice) ? { indice: body.indice } : {}),
+          ...(namespaceValido(body.namespace) ? { namespace: body.namespace } : {}),
+          ...(umbral(body.umbralRerank) !== undefined ? { umbralRerank: umbral(body.umbralRerank)! } : {}),
+          ...(umbral(body.umbralDenso) !== undefined ? { umbralDenso: umbral(body.umbralDenso)! } : {})
+        }, uid)
+        const config = await leerConfigBusqueda()
+        logger.info(`🔀 Búsqueda de Consultas → ${JSON.stringify(config)} por admin ${uid}`)
+        res.json(config)
       } catch (err) {
+        res.status(500).json({ error: (err as Error).message })
+      }
+      return
+    }
+
+    // Índices de la cuenta: dimensión, métrica y modelo de cada uno
+    if (body.accion === 'infoIndices') {
+      try {
+        const pinecone = new Pinecone({ apiKey: PINECONE_API_KEY.value() })
+        const lista = await pinecone.listIndexes()
+        const indices = (lista.indexes ?? []).map(i => ({
+          nombre: i.name, dimension: i.dimension, metrica: i.metric, estado: i.status?.state,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          modelo: (i as any).embed?.model ?? null, nube: serverless(i.spec)?.cloud ?? null, region: serverless(i.spec)?.region ?? null
+        }))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const e5: any = await pinecone.inference.getModel(INDICES['lexit-e5'].modelo).catch((e: unknown) => ({ error: (e as Error).message }))
+        res.json({ indices, modeloE5: e5 })
+      } catch (err) {
+        res.status(500).json({ error: (err as Error).message })
+      }
+      return
+    }
+
+    // Crea el índice temporal lexit-e5 (no toca ningún otro índice)
+    if (body.accion === 'crearIndiceE5') {
+      try {
+        const pinecone = new Pinecone({ apiKey: PINECONE_API_KEY.value() })
+        const existentes = (await pinecone.listIndexes()).indexes ?? []
+        if (existentes.some(i => i.name === INDICES['lexit-e5'].nombre)) {
+          res.json({ creado: false, mensaje: 'El índice lexit-e5 ya existe' })
+          return
+        }
+        // Misma nube y región que el índice de siempre (las del plan gratuito)
+        const actual = await pinecone.describeIndex(INDICES.lexit.nombre)
+        await pinecone.createIndexForModel({
+          name: INDICES['lexit-e5'].nombre,
+          cloud: serverless(actual.spec)?.cloud ?? 'aws',
+          region: serverless(actual.spec)?.region ?? 'us-east-1',
+          embed: { model: INDICES['lexit-e5'].modelo, fieldMap: { text: 'text' } },
+          waitUntilReady: true
+        })
+        const creado = await pinecone.describeIndex(INDICES['lexit-e5'].nombre)
+        logger.info(`🆕 Índice lexit-e5 creado por admin ${uid}`)
+        res.json({ creado: true, nombre: creado.name, dimension: creado.dimension, metrica: creado.metric, estado: creado.status?.state })
+      } catch (err) {
+        logger.error('❌ Error creando lexit-e5:', (err as Error).message)
         res.status(500).json({ error: (err as Error).message })
       }
       return
@@ -131,7 +206,7 @@ export const normasV2 = onRequest(
     // listar no necesita normaId: agrupa los IDs del namespace por norma ("{normaId}#...")
     if (body.accion === 'listar') {
       try {
-        const idx = indice(ns)
+        const idx = await indice(ns, indiceId)
         const conteo = new Map<string, number>()
         let token: string | undefined = undefined
         do {
@@ -158,7 +233,7 @@ export const normasV2 = onRequest(
     const normaId = body.normaId
 
     try {
-      const idx = indice(ns)
+      const idx = await indice(ns, indiceId)
 
       if (body.accion === 'estado') {
         const ids = await idsDeNorma(idx, normaId)
@@ -191,7 +266,7 @@ export const normasV2 = onRequest(
         }
         // El índice tiene embedding integrado (field map "text"): Pinecone genera el vector
         await idx.upsertRecords({ records: registros as Array<{ id: string; text: string } & Record<string, string | number | boolean>> })
-        logger.info(`📥 normasV2 ${ns}: ${registros.length} registros de ${normaId} (admin ${uid})`)
+        logger.info(`📥 normasV2 ${indiceId}/${ns}: ${registros.length} registros de ${normaId} (admin ${uid})`)
         res.json({ success: true, count: registros.length })
         return
       }
@@ -211,7 +286,7 @@ export const normasV2 = onRequest(
       if (body.accion === 'vaciar') {
         const ids = await idsDeNorma(idx, normaId)
         for (let i = 0; i < ids.length; i += 100) await idx.deleteMany({ ids: ids.slice(i, i + 100) })
-        await getFirestore().collection(COLECCION).doc(`${ns}__${normaId}`).delete()
+        await getFirestore().collection(COLECCION).doc(idCatalogo(indiceId, ns, normaId)).delete()
         logger.info(`🗑️ normasV2 ${ns}: norma ${normaId} vaciada (${ids.length} fragmentos, admin ${uid})`)
         res.json({ success: true, eliminados: ids.length })
         return
@@ -220,7 +295,8 @@ export const normasV2 = onRequest(
       if (body.accion === 'registrar') {
         const r = (body.resumen ?? {}) as Record<string, unknown>
         const texto = (v: unknown, max = 300) => (typeof v === 'string' ? v.slice(0, max) : '')
-        await getFirestore().collection(COLECCION).doc(`${ns}__${normaId}`).set({
+        await getFirestore().collection(COLECCION).doc(idCatalogo(indiceId, ns, normaId)).set({
+          indice: indiceId,
           namespace: ns,
           normaId,
           norma: texto(r.norma),
@@ -262,7 +338,7 @@ export const buscarNormasV2 = onRequest(
     const uid = await autorizar(req, res, { soloAdmin: true })
     if (!uid) return
 
-    const { namespace, query, topK, filtro, rerank } = (req.body ?? {}) as { namespace?: unknown; query?: unknown; topK?: unknown; filtro?: unknown; rerank?: unknown }
+    const { namespace, query, topK, filtro, rerank, indice: indicePedido } = (req.body ?? {}) as { namespace?: unknown; query?: unknown; topK?: unknown; filtro?: unknown; rerank?: unknown; indice?: unknown }
     if (!namespaceValido(namespace)) {
       res.status(400).json({ error: `Namespace no permitido. Solo: ${NAMESPACES_PERMITIDOS.join(', ')}` })
       return
@@ -273,7 +349,7 @@ export const buscarNormasV2 = onRequest(
     }
     const k = Math.min(Math.max(Number(topK) || 10, 1), 50)
     try {
-      const idx = indice(namespace)
+      const idx = await indice(namespace, esIndiceId(indicePedido) ? indicePedido : INDICE_POR_DEFECTO)
       const conRerank = rerank === true
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const r: any = await idx.searchRecords({

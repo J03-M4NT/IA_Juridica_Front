@@ -102,7 +102,7 @@
                   >
                     <div class="fuente-detalle-cabecera">
                       <span class="fuente-doc-name">
-                        [{{ citaAbierta[index]! + 1 }}] {{ mensaje.fuentes[citaAbierta[index]!]!.nombreDocumento || 'Documento' }}<template v-if="mensaje.fuentes[citaAbierta[index]!]!.numeroArticulo"> · Artículo {{ mensaje.fuentes[citaAbierta[index]!]!.numeroArticulo }}°{{ mensaje.fuentes[citaAbierta[index]!]!.sufijoArticulo ? `-${mensaje.fuentes[citaAbierta[index]!]!.sufijoArticulo}` : '' }}</template>
+                        [{{ citaAbierta[index]! + 1 }}] {{ mensaje.fuentes[citaAbierta[index]!]!.nombreDocumento || 'Documento' }}<template v-if="mensaje.fuentes[citaAbierta[index]!]!.numeroArticulo"> · Artículo {{ mensaje.fuentes[citaAbierta[index]!]!.numeroArticulo }}°{{ mensaje.fuentes[citaAbierta[index]!]!.sufijoArticulo ? `-${mensaje.fuentes[citaAbierta[index]!]!.sufijoArticulo}` : '' }}</template><template v-if="mensaje.fuentes[citaAbierta[index]!]!.vigencia"> · {{ mensaje.fuentes[citaAbierta[index]!]!.vigencia }}</template>
                       </span>
                       <button type="button" class="fuente-detalle-cerrar" aria-label="Cerrar cita" @click="cerrarCita(index)">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
