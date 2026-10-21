@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { getErrorMessage } from '../utils/errors'
 import type { FragmentoResultado } from '../services/pineconeService'
 import { consultarLexit } from '../services/consultaLexitService'
+import { metaBuscar, leerUsosOpciones, type ResultadoMetaBusqueda, type UsosOpciones } from '../services/metaBusquedaService'
 import { guardarSesion, obtenerHistorial, eliminarSesion, type SesionConsulta } from '../services/historialService'
 import { useAuthStore } from './auth'
 
@@ -11,6 +12,11 @@ export interface Mensaje {
   timestamp: Date
   referencias?: string[]
   fuentes?: FragmentoResultado[]
+  // Meta búsqueda: información complementaria de fuentes oficiales de
+  // internet, aparte de las fuentes de LexIT
+  complementoWeb?: { estado: 'cargando' | 'listo' | 'error'; resultado?: ResultadoMetaBusqueda; error?: string }
+  // La respuesta se generó con razonamiento profundo
+  razonamientoProfundo?: boolean
 }
 
 // El documento adjunto ahora vive en analisis-contratos-store.ts — se
@@ -34,6 +40,10 @@ interface ConsultasState {
   // Especialización elegida en el chat (ver constants/especialidades.ts);
   // null = General (toda la base jurídica).
   especialidad: string | null
+  // Opciones de Consultas (cada una con su cupo diario)
+  metaBusqueda: boolean
+  razonamiento: boolean
+  usosOpciones: UsosOpciones | null
 }
 
 // Ritmo del efecto "escribiéndose" al mostrar la respuesta (ver
@@ -62,7 +72,10 @@ export const useConsultasStore = defineStore('consultas', {
     fragmentosEncontrados: 0,
     sesionActualId: null,
     historialSesiones: [],
-    especialidad: null
+    especialidad: null,
+    metaBusqueda: false,
+    razonamiento: false,
+    usosOpciones: null
   }),
 
   actions: {
@@ -134,9 +147,29 @@ export const useConsultasStore = defineStore('consultas', {
         // priorización de fuente primaria, dedupe, guardrails de 3 partes,
         // anti-alucinación) vive en la Cloud Function consultarLexit — ver
         // consultarLexit.ts.
+        // Meta búsqueda en paralelo (no demora la respuesta de LexIT)
+        let complemento: Promise<void> | null = null
+        if (this.metaBusqueda) {
+          const mensajeConComplemento = mensajeIA
+          mensajeConComplemento.complementoWeb = { estado: 'cargando' }
+          complemento = metaBuscar(pregunta, this.especialidad ? { especialidad: this.especialidad } : {})
+            .then(r => {
+              mensajeConComplemento.complementoWeb = { estado: 'listo', resultado: r }
+              if (this.usosOpciones) this.usosOpciones.metaBusqueda.restantes = r.restantes
+            })
+            .catch((err: unknown) => {
+              mensajeConComplemento.complementoWeb = { estado: 'error', error: getErrorMessage(err) }
+            })
+        }
+
         const resultado = await consultarLexit(pregunta, historialMensajes, {
-          ...(this.especialidad ? { especialidad: this.especialidad } : {})
+          ...(this.especialidad ? { especialidad: this.especialidad } : {}),
+          ...(this.razonamiento ? { razonamiento: true } : {})
         })
+        if (resultado.razonamiento) {
+          mensajeIA.razonamientoProfundo = resultado.razonamiento.usado
+          if (this.usosOpciones) this.usosOpciones.razonamiento.restantes = resultado.razonamiento.restantes
+        }
 
         this.usandoPinecone = resultado.usandoPinecone
         this.fragmentosEncontrados = resultado.fragmentosEncontrados
@@ -152,6 +185,8 @@ export const useConsultasStore = defineStore('consultas', {
 
         mensajeIA.fuentes = resultado.fragmentos
         this.respuesta = resultado.respuesta
+        // Se espera la meta búsqueda para guardarla en el historial
+        if (complemento) await complemento
 
       } catch (err) {
         const message = getErrorMessage(err)
@@ -206,6 +241,15 @@ export const useConsultasStore = defineStore('consultas', {
         this.loading = false
       }
 
+    },
+
+    // Cupos que le quedan hoy a las opciones (para mostrarlo en los interruptores)
+    async cargarUsosOpciones() {
+      try {
+        this.usosOpciones = await leerUsosOpciones()
+      } catch (error) {
+        console.error('Error leyendo los cupos de las opciones', error)
+      }
     },
 
     async cargarHistorial() {

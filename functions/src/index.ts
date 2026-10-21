@@ -40,6 +40,7 @@ export { auditarPinecone } from './auditoriaPinecone'
 export { normasV2, buscarNormasV2 } from './normasV2'
 // Fase 3: evaluación de la recuperación A/B/C (solo lectura, solo admins)
 export { evaluarRecuperacion } from './evaluacion'
+export { metaBusqueda } from './metaBusqueda'
 
 if (getApps().length === 0) {
   initializeApp()

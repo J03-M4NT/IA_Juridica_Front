@@ -52,6 +52,7 @@
                 <span>Redactando la respuesta…</span>
               </span>
               <span class="pensando-lector">Pensando…</span>
+              <span v-if="store.razonamiento" class="pensando-nota">Razonamiento profundo: puede tardar hasta un minuto</span>
             </div>
             <template v-else>
               <div
@@ -114,6 +115,52 @@
                   </div>
                 </Transition>
               </div>
+
+              <div v-if="mensaje.razonamientoProfundo" class="razonamiento-marca">Respuesta con razonamiento profundo</div>
+
+              <!-- Meta búsqueda: fuentes oficiales de internet, aparte de las
+                   de LexIT y sin numeración [n] (no son citas verificadas) -->
+              <section v-if="mensaje.complementoWeb" class="complemento-web" aria-label="Información complementaria de internet">
+                <div class="complemento-web-cabecera">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z"/></svg>
+                  <span>Información complementaria de fuentes oficiales en internet</span>
+                </div>
+                <p class="complemento-web-aviso">
+                  LexIT no puede verificar estas fuentes. No forman parte de la base de normas de LexIT; revisa siempre el texto oficial.
+                </p>
+                <div v-if="mensaje.complementoWeb.estado === 'cargando'" class="complemento-web-estado">
+                  <q-spinner size="14px" /> Buscando en fuentes oficiales…
+                </div>
+                <div v-else-if="mensaje.complementoWeb.estado === 'error'" class="complemento-web-estado">
+                  {{ mensaje.complementoWeb.error }}
+                </div>
+                <template v-else-if="mensaje.complementoWeb.resultado">
+                  <div v-if="!mensaje.complementoWeb.resultado.resumen.length" class="complemento-web-estado">
+                    No se encontró información en fuentes oficiales para esta consulta.
+                  </div>
+                  <ul v-else class="complemento-web-lista">
+                    <li v-for="(frase, fi) in mensaje.complementoWeb.resultado.resumen" :key="fi">
+                      {{ frase.texto }}
+                      <span class="complemento-web-refs">
+                        <a
+                          v-for="n in frase.fuentes"
+                          :key="n"
+                          :href="mensaje.complementoWeb.resultado.fuentes[n - 1]?.url"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          :title="mensaje.complementoWeb.resultado.fuentes[n - 1]?.dominio"
+                        >web {{ n }}</a>
+                      </span>
+                    </li>
+                  </ul>
+                  <ol v-if="mensaje.complementoWeb.resultado.fuentes.length" class="complemento-web-fuentes">
+                    <li v-for="f in mensaje.complementoWeb.resultado.fuentes" :key="f.n">
+                      <a :href="f.url" target="_blank" rel="noopener noreferrer">{{ f.titulo }}</a>
+                      <span class="complemento-web-dominio">{{ f.dominio }}</span>
+                    </li>
+                  </ol>
+                </template>
+              </section>
 
               <div class="msg-actions">
                 <button type="button" class="msg-action-btn" title="Copiar" @click="copiarMensaje(mensaje.contenido, index)">
@@ -220,6 +267,44 @@
                 </div>
               </q-menu>
             </button>
+
+            <!-- Opciones con cupo diario propio: Meta búsqueda (fuentes
+                 oficiales de internet, en una sección aparte) y Razonamiento
+                 profundo (la IA piensa más antes de responder). -->
+            <div class="opciones-consulta">
+              <button
+                type="button"
+                class="opcion-consulta"
+                :class="{ 'opcion-consulta--activa': store.metaBusqueda }"
+                :aria-pressed="store.metaBusqueda"
+                :disabled="store.loading || (!store.metaBusqueda && store.usosOpciones?.metaBusqueda.restantes === 0)"
+                @click="store.metaBusqueda = !store.metaBusqueda"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z"/></svg>
+                <span>Meta búsqueda</span>
+                <span v-if="store.usosOpciones" class="opcion-consulta-cupo">{{ store.usosOpciones.metaBusqueda.restantes }}</span>
+                <q-tooltip :delay="350" max-width="260px">
+                  Busca información complementaria en fuentes oficiales de internet (.gob.pe y El Peruano). Se muestra aparte: LexIT no puede verificar esas fuentes.
+                  <template v-if="store.usosOpciones"> Te quedan {{ store.usosOpciones.metaBusqueda.restantes }} de {{ store.usosOpciones.metaBusqueda.limite }} hoy.</template>
+                </q-tooltip>
+              </button>
+              <button
+                type="button"
+                class="opcion-consulta"
+                :class="{ 'opcion-consulta--activa': store.razonamiento }"
+                :aria-pressed="store.razonamiento"
+                :disabled="store.loading || (!store.razonamiento && store.usosOpciones?.razonamiento.restantes === 0)"
+                @click="store.razonamiento = !store.razonamiento"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>
+                <span>Razonamiento profundo</span>
+                <span v-if="store.usosOpciones" class="opcion-consulta-cupo">{{ store.usosOpciones.razonamiento.restantes }}</span>
+                <q-tooltip :delay="350" max-width="260px">
+                  La IA analiza la consulta con más detenimiento antes de responder. Tarda más (hasta un minuto).
+                  <template v-if="store.usosOpciones"> Te quedan {{ store.usosOpciones.razonamiento.restantes }} de {{ store.usosOpciones.razonamiento.limite }} hoy.</template>
+                </q-tooltip>
+              </button>
+            </div>
 
             <button
               class="ask-btn-round"
@@ -357,6 +442,7 @@ const chatDesplazado = ref(false)
 // Puramente visual: si el menú de especializaciones está abierto, para
 // girar la flechita del selector (QMenu no marca aria-expanded solo).
 const menuEspecialidades = ref(false)
+onMounted(() => { void store.cargarUsosOpciones() })
 
 function onMessagesScroll(event: Event) {
   chatDesplazado.value = (event.target as HTMLElement).scrollTop > 16
@@ -1301,6 +1387,149 @@ watch(mensajes, async () => {
 /* El campo aparece justo después del saludo */
 .consultas-page--vacia .input-area {
   animation: saludoEntrada 0.7s 0.65s ease both;
+}
+
+/* Opciones Meta búsqueda / Razonamiento profundo (junto a Especialización) */
+.opciones-consulta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-right: auto;
+  min-width: 0;
+}
+
+.opcion-consulta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--lc-border);
+  background: var(--lc-surface);
+  color: var(--lc-text-muted);
+  font-family: 'Urbanist', 'Figtree', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.18s, border-color 0.18s, color 0.18s, transform 0.18s;
+}
+
+.opcion-consulta:hover:not(:disabled) {
+  background: var(--lc-surface-sunken);
+  border-color: var(--lc-border-strong);
+  color: var(--lc-text);
+}
+
+.opcion-consulta:active:not(:disabled) { transform: scale(0.97); }
+.opcion-consulta:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.opcion-consulta--activa {
+  background: var(--lc-accent-soft);
+  border-color: var(--lc-accent);
+  color: var(--lc-text);
+}
+
+.opcion-consulta:focus-visible {
+  outline: 2px solid var(--lc-accent);
+  outline-offset: 2px;
+}
+
+.opcion-consulta-cupo {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--lc-surface-sunken);
+  color: var(--lc-text-muted);
+  font-size: 0.7rem;
+  line-height: 18px;
+  text-align: center;
+}
+
+.pensando-nota {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: var(--lc-text-muted);
+}
+
+.razonamiento-marca {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: var(--lc-text-muted);
+}
+
+@media (max-width: 600px) {
+  /* En móvil, solo icono y cupo (el nombre queda en el aviso al tocar) */
+  .opcion-consulta > span:first-of-type { display: none; }
+}
+
+/* Meta búsqueda: sección aparte, con aviso de fuentes no verificadas */
+.complemento-web {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--lc-border-strong);
+  border-left: 3px solid #b7791f;
+  border-radius: var(--border-radius-small);
+  background: var(--lc-surface);
+}
+
+.complemento-web-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: 'Baskervville', 'EB Garamond', serif;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--lc-text);
+}
+
+.complemento-web-aviso {
+  margin: 6px 0 8px;
+  font-size: 0.78rem;
+  color: #9a5b13;
+}
+
+.complemento-web-estado {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--lc-text-muted);
+}
+
+.complemento-web-lista {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.86rem;
+  color: var(--lc-text);
+}
+
+.complemento-web-lista li { margin-bottom: 4px; }
+
+.complemento-web-refs a {
+  margin-left: 4px;
+  font-size: 0.72rem;
+  color: var(--lc-accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.complemento-web-refs a:hover { text-decoration: underline; }
+
+.complemento-web-fuentes {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 0.78rem;
+  color: var(--lc-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.complemento-web-fuentes a { color: var(--lc-accent); }
+
+.complemento-web-dominio {
+  margin-left: 6px;
+  color: var(--lc-text-muted);
 }
 
 /* Selector de especialización dentro del campo de consulta */

@@ -3,6 +3,7 @@ import { defineSecret } from 'firebase-functions/params'
 import { Pinecone } from '@pinecone-database/pinecone'
 import * as logger from 'firebase-functions/logger'
 import { GEMINI_API_KEY, TIMEOUT_FUNCIONES_IA_SEGUNDOS, conModeloDeRespaldo } from './geminiClient'
+import { consumirOpcion } from './cuotasExtra'
 import {
   ORIGENES_PERMITIDOS,
   MAX_CARACTERES_CONTRATO,
@@ -76,6 +77,8 @@ interface ConsultarLexitRequest {
   // Solo admins (evaluación): usar la búsqueda nueva con este índice y
   // namespace sin cambiar el interruptor de todos los usuarios.
   busquedaPrueba?: { indice?: string; namespace?: string }
+  // Opción "Razonamiento profundo" de Consultas (cupo diario propio)
+  razonamiento?: boolean
 }
 
 interface ConsultarLexitResponse {
@@ -83,6 +86,8 @@ interface ConsultarLexitResponse {
   usandoPinecone: boolean
   fragmentosEncontrados: number
   fragmentos: FragmentoResultado[]
+  // Solo si se pidió razonamiento profundo
+  razonamiento?: { usado: boolean; restantes: number; limite: number }
 }
 
 // =========================
@@ -579,7 +584,8 @@ export const consultarLexit = onRequest(
         nombreDocumentoAdjunto,
         esSolicitudAnalisis = false,
         especialidad: especialidadRecibida,
-        busquedaPrueba
+        busquedaPrueba,
+        razonamiento: razonamientoPedido
       } = req.body as ConsultarLexitRequest
       // Solo en Consultas (sin documento adjunto) y solo valores conocidos.
       const especialidad: Area | undefined = !textoDocumentoAdjunto && esArea(especialidadRecibida) ? especialidadRecibida : undefined
@@ -947,7 +953,18 @@ export const consultarLexit = onRequest(
 
       // El chat se arma dentro del callback: si el modelo principal está
       // saturado, se vuelve a armar con el modelo de respaldo.
-      const enviarAlChat = (mensaje: string) => conModeloDeRespaldo(model => model.startChat({
+      // Razonamiento profundo (solo Consultas, si el usuario lo activó y le
+      // queda cupo): el mismo modelo piensa más antes de responder. Si el
+      // modelo no admite la opción, se responde como siempre.
+      const cupoRazonamiento = razonamientoPedido === true && modoConsulta && !tratarComoTrivial
+        ? await consumirOpcion(uid, 'razonamiento')
+        : null
+      let pensarMas = cupoRazonamiento?.permitido === true
+      const configPensar = (nombreModelo: string): Record<string, unknown> => /gemini-2\.5/.test(nombreModelo)
+        ? { thinkingConfig: { thinkingBudget: 8192 }, maxOutputTokens: 4096 + 8192 }
+        : { thinkingConfig: { thinkingLevel: 'high' }, maxOutputTokens: 16384 }
+
+      const enviarAlChatCon = (mensaje: string, pensar: boolean) => conModeloDeRespaldo(model => model.startChat({
         history: historialMensajes.map(m => ({
           role: m.esIA ? 'model' : 'user',
           // Las [n] de respuestas anteriores apuntaban a las fuentes de ESE
@@ -957,7 +974,7 @@ export const consultarLexit = onRequest(
         })),
         // Consultas pide respuestas desarrolladas (ver instrucción de
         // profundidad abajo): más margen para que no se corten.
-        generationConfig: { maxOutputTokens: modoConsulta ? 4096 : 2000 },
+        generationConfig: { maxOutputTokens: modoConsulta ? 4096 : 2000, ...(pensar ? configPensar(model.model) : {}) },
         systemInstruction: {
           role: 'user',
           parts: [{
@@ -981,6 +998,18 @@ export const consultarLexit = onRequest(
           }]
         }
       }).sendMessage(mensaje))
+      const enviarAlChat = async (mensaje: string) => {
+        if (pensarMas) {
+          try {
+            return await enviarAlChatCon(mensaje, true)
+          } catch (err) {
+            if (esBloqueoPorRecitacion(err)) throw err
+            logger.warn(`🧠 Razonamiento profundo no disponible, se responde como siempre: ${(err as Error).message.slice(0, 160)}`)
+            pensarMas = false
+          }
+        }
+        return enviarAlChatCon(mensaje, false)
+      }
 
       // Gemini bloquea la respuesta ("RECITATION") si reproduce demasiado
       // texto literal parecido a obras existentes — pasa con artículos de
@@ -1066,7 +1095,8 @@ export const consultarLexit = onRequest(
         fragmentosEncontrados: fragmentosDevueltos.length,
         fragmentos: fragmentosDevueltos.map(({ esComentario, ...f }) => esComentario
           ? { ...f, nombreDocumento: `${f.nombreDocumento} · Comentario o nota` }
-          : f)
+          : f),
+        ...(cupoRazonamiento ? { razonamiento: { usado: pensarMas, restantes: cupoRazonamiento.restantes, limite: cupoRazonamiento.limite } } : {})
       }
 
       res.json(respuesta)
