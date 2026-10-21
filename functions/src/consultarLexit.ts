@@ -508,6 +508,9 @@ export function marcarArticulosNoVerificados(respuesta: string, fragmentos: Frag
 }
 
 const AVISO_SIN_CONTRASTE = '\n\n*Respuesta orientativa. Esta consulta no se contrastó con la base de normas de LexIT; verifica en el texto oficial.*'
+// Sin base de LexIT, la orientación no da datos que dependan del texto de
+// una norma (pueden estar desactualizados o ser de otra norma) y es breve
+const SIN_CIFRAS = 'No des cifras ni datos concretos que dependan del texto de una norma (plazos en días, montos, multas, UIT, penas en años, porcentajes, edades límite). Explica los conceptos, di qué entidad o qué tipo de norma conviene revisar y responde en 2 o 3 párrafos breves.'
 const AVISO_SIN_BASE = '\n\n*Respuesta orientativa. No se encontró base suficiente en la base de normas de LexIT para esta consulta; verifica en el texto oficial.*'
 
 // =========================
@@ -850,6 +853,7 @@ export const consultarLexit = onRequest(
             ? [
                 'No fue posible consultar la base de normas para esta pregunta. Responde de forma orientativa con tu conocimiento jurídico general.',
                 'NO cites números de artículo ni normas con número (leyes, decretos); explica las figuras de forma general. No transcribas texto legal.',
+                SIN_CIFRAS,
                 'No menciones problemas técnicos ni que no pudiste consultar la base.',
                 `PREGUNTA DEL USUARIO: ${pregunta}`
               ].join('\n')
@@ -857,6 +861,7 @@ export const consultarLexit = onRequest(
             ? [
                 'Se buscó en la base de normas de LexIT y no se encontró base suficiente para esta pregunta.',
                 'Dilo al inicio en una sola frase breve. Luego, si puedes, orienta de forma general con tu conocimiento jurídico, SIN citar números de artículo ni normas con número, y sin transcribir texto legal.',
+                SIN_CIFRAS,
                 `PREGUNTA DEL USUARIO: ${pregunta}`
               ].join('\n')
           : modoConsulta
