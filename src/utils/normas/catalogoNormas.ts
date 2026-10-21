@@ -5,7 +5,8 @@
 // lo usa para completar el formulario al subir una norma al esquema nuevo;
 // el admin siempre puede corregirlo antes de subir.
 // ⚠ Mercado de Valores y Nuevo RUS: pendientes de verificar contra el texto
-// oficial. La Ley 27285 (demarcación de Manu) queda fuera de la base.
+// oficial. La Ley 27285 (demarcación de Manu) sí se incluye; en SPIJ viene
+// en el archivo "Ley 27287.doc", que no es la Ley de Títulos Valores.
 // =========================
 import type { TipoNorma } from './metadatosNorma'
 import { ESPECIALIDADES } from '../../constants/especialidades'
@@ -68,6 +69,7 @@ export const CATALOGO_NORMAS: NormaCatalogo[] = [
 
   { normaId: 'decision-486', norma: 'Régimen Común sobre Propiedad Industrial', tipoNorma: 'decision-andina', numeroNorma: 'Decisión 486', area: 'derecho-comercial' },
 
+  { normaId: 'ley-27285', norma: 'Ley de Demarcación Territorial de la Provincia de Manu, Departamento de Madre de Dios', tipoNorma: 'ley', numeroNorma: 'Ley 27285', area: 'derecho-administrativo' },
   { normaId: 'ley-26702', norma: 'Ley General del Sistema Financiero y del Sistema de Seguros y Orgánica de la SBS', tipoNorma: 'ley', numeroNorma: 'Ley 26702', area: 'derecho-comercial' },
   { normaId: 'ley-26872', norma: 'Ley de Conciliación', tipoNorma: 'ley', numeroNorma: 'Ley 26872', area: 'derecho-civil' },
   { normaId: 'ley-26887', norma: 'Ley General de Sociedades', tipoNorma: 'ley', numeroNorma: 'Ley 26887', area: 'derecho-comercial' },
@@ -87,7 +89,7 @@ export const CATALOGO_NORMAS: NormaCatalogo[] = [
 ]
 
 // Normas que no se suben al esquema nuevo
-export const NORMAS_EXCLUIDAS = ['Ley 27285']
+export const NORMAS_EXCLUIDAS: string[] = []
 
 // "D.S. 029-94-EF" y "D.S. 29-94-EF" son la misma norma: sin ceros a la izquierda
 const clave = (s: string) => s.toUpperCase().replace(/(?<!\d)0+(?=\d)/g, '').replace(/[^A-Z0-9]/g, '').replace(/^(DLEG|DECRETOLEGISLATIVO)/, 'DLEG').replace(/^(DS|DECRETOSUPREMO)/, 'DS')
