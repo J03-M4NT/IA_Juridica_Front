@@ -485,8 +485,12 @@ function verificarCitas(respuesta: string, fragmentos: FragmentoResultado[]): { 
 // Toda mención de un artículo ("artículo 1969 del Código Civil") que no
 // corresponda a un fragmento recuperado se marca como no verificada. Así una
 // cita que Gemini haya sacado de memoria nunca se presenta como válida.
+// Si el artículo no recuperado es una remisión que hace el texto de un
+// artículo recuperado (el 108-C remite al "artículo 36"), se dice eso: la
+// remisión sí está en la ley, pero el texto del artículo remitido no se leyó.
 // =========================
 const MARCA_NO_VERIFICADO = ' (no verificado en la base de LexIT)'
+const marcaRemision = (f: FragmentoResultado) => ` (remisión del art. ${f.numeroArticulo}°${f.sufijoArticulo ? `-${f.sufijoArticulo}` : ''}; su texto no se consultó en LexIT)`
 
 export function marcarArticulosNoVerificados(respuesta: string, fragmentos: FragmentoResultado[]): { respuesta: string; marcados: number } {
   const articulos = fragmentos.filter(f => !f.esComentario && f.numeroArticulo !== undefined)
@@ -496,13 +500,22 @@ export function marcarArticulosNoVerificados(respuesta: string, fragmentos: Frag
     const mencion = completa.replace(/\s+$/, '')
     const espacio = completa.slice(mencion.length)
     // Ya marcada antes
-    if (respuesta.slice(inicio + mencion.length, inicio + mencion.length + MARCA_NO_VERIFICADO.length) === MARCA_NO_VERIFICADO) return completa
+    const siguiente = respuesta.slice(inicio + mencion.length, inicio + mencion.length + 40)
+    if (siguiente.startsWith(MARCA_NO_VERIFICADO) || siguiente.startsWith(' (remisión del art.')) return completa
     const contexto = respuesta.slice(Math.max(0, inicio - 120), inicio + mencion.length + 80)
     const codigo = claveDeCodigo(contexto)
-    const verificado = articulosMencionados(mencion).every(m => articulos.some(f => coincideConMencion(f, [m], codigo)))
+    const mencionados = articulosMencionados(mencion)
+    const verificado = mencionados.every(m => articulos.some(f => coincideConMencion(f, [m], codigo)))
     if (verificado) return completa
     marcados++
-    return `${mencion}${MARCA_NO_VERIFICADO}${espacio}`
+    // ¿Lo menciona el texto de un artículo recuperado (del mismo código)?
+    const remitente = articulos.find(f => {
+      const codigoFragmento = claveDeCodigo(f.nombreDocumento)
+      if (codigo && codigoFragmento && codigo !== codigoFragmento) return false
+      const enTexto = articulosMencionados(f.texto)
+      return mencionados.every(m => enTexto.some(t => t.numero === m.numero && (!m.sufijo || t.sufijo === m.sufijo)))
+    })
+    return `${mencion}${remitente ? marcaRemision(remitente) : MARCA_NO_VERIFICADO}${espacio}`
   })
   return { respuesta: resultado, marcados }
 }
