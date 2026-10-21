@@ -15,6 +15,7 @@ import { getFirestore } from 'firebase-admin/firestore'
 import * as logger from 'firebase-functions/logger'
 import type { FragmentoResultado, DecisionBusqueda } from './consultarLexit'
 import { type IndiceId, INDICE_POR_DEFECTO } from './indicesPinecone'
+import { quedaRerank, contarRerank } from './cuotaPinecone'
 
 export type Indice = ReturnType<Pinecone['index']>
 
@@ -181,8 +182,9 @@ export async function recuperarMejorado(
   // 3. Reranker contra la pregunta. Si falla (por ejemplo, se agotó la cuota
   // mensual del reranker), se sigue con el orden de la fusión: la búsqueda
   // nueva no se abandona por eso. El modo 'E' no usa reranker (para medirlo).
+  // Tampoco se usa al llegar al tope mensual (cuotaPinecone.ts).
   let puntajes: Array<{ index: number; score: number }> | null = null
-  if (candidatos.length > 1 && modo !== 'E') {
+  if (candidatos.length > 1 && modo !== 'E' && await quedaRerank()) {
     try {
       const r = await pinecone.inference.rerank({
         model: MODELO_RERANK, query: consultaBase, documents: candidatos.map(c => c.texto),
@@ -190,6 +192,7 @@ export async function recuperarMejorado(
         returnDocuments: false, parameters: { truncate: 'END' }
       })
       puntajes = r.data.map(d => ({ index: d.index, score: d.score }))
+      contarRerank()
     } catch (err) {
       logger.warn(`⚠️ Reranker no disponible, se usa el orden de la fusión: ${(err as Error).message.slice(0, 200)}`)
     }

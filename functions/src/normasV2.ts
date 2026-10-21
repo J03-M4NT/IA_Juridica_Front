@@ -26,6 +26,7 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 import { ORIGENES_PERMITIDOS, autorizar } from './seguridad'
 import { PINECONE_API_KEY } from './consultarLexit'
 import { leerConfigBusqueda, guardarConfigBusqueda } from './configBusqueda'
+import { usosRerankDelMes } from './cuotaPinecone'
 import { INDICES, INDICE_POR_DEFECTO, type IndiceId, abrirIndice, esIndiceId } from './indicesPinecone'
 
 if (getApps().length === 0) initializeApp()
@@ -127,7 +128,7 @@ export const normasV2 = onRequest(
       try {
         const hayCambios = body.modo !== undefined || body.indice !== undefined || body.umbralRerank !== undefined || body.umbralDenso !== undefined
         if (!hayCambios) {
-          res.json(await leerConfigBusqueda())
+          res.json({ ...(await leerConfigBusqueda()), reranker: await usosRerankDelMes().catch(() => null) })
           return
         }
         if ((body.modo !== undefined && body.modo !== 'actual' && body.modo !== 'v2') || (body.namespace !== undefined && !namespaceValido(body.namespace))) {
@@ -144,7 +145,7 @@ export const normasV2 = onRequest(
         }, uid)
         const config = await leerConfigBusqueda()
         logger.info(`🔀 Búsqueda de Consultas → ${JSON.stringify(config)} por admin ${uid}`)
-        res.json(config)
+        res.json({ ...config, reranker: await usosRerankDelMes().catch(() => null) })
       } catch (err) {
         res.status(500).json({ error: (err as Error).message })
       }

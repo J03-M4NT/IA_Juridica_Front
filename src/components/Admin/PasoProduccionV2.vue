@@ -58,7 +58,14 @@
           <q-input v-model.number="umbralDenso" type="number" step="0.01" min="0" max="1" dense outlined label="Umbral denso" style="width: 140px" :dark="false" />
           <q-btn flat dense no-caps color="accent" label="Guardar índice y umbrales" :loading="cambiando" @click="guardarAjustes" />
         </div>
-        <div class="paso-v2-ayuda q-mt-xs">0 = sin umbral. Los valores recomendados salen de la evaluación (calibración con las preguntas "sin base").</div>
+        <div class="paso-v2-ayuda q-mt-xs">
+          0 = sin umbral. Recomendado según la evaluación en lexit-e5 (calibración con las preguntas "sin base"): reranker {{ RECOMENDADO.rerank }}, denso {{ RECOMENDADO.denso }}.
+          <a href="#" @click.prevent="umbralRerank = RECOMENDADO.rerank; umbralDenso = RECOMENDADO.denso">Usar recomendados</a>
+        </div>
+        <div v-if="config?.reranker" class="paso-v2-ayuda q-mt-xs">
+          Reranker en {{ config.reranker.mes }}: {{ config.reranker.usados }} de {{ config.reranker.limite }} usos (tope propio; el plan da 500).
+          Al llegar al tope, la búsqueda sigue sin reranker.
+        </div>
       </div>
       <div class="column q-gutter-xs">
         <q-btn v-if="config?.modo !== 'v2'" unelevated no-caps color="accent" icon="bolt" label="Usar la búsqueda nueva" :disable="!config" @click="pedir('v2')" />
@@ -126,6 +133,9 @@ const modoPedido = ref<'actual' | 'v2' | null>(null)
 const indiceElegido = ref<IndiceV2>('lexit')
 const umbralRerank = ref(0)
 const umbralDenso = ref(0)
+// Evaluación del 2026-10-21 en lexit-e5: sin base ≤ 0,321 y con base ≥ 0,687
+// (salvo p07); la similitud densa no separa (se solapan)
+const RECOMENDADO = { rerank: 0.5, denso: 0 }
 
 const info = ref<InfoIndices | null>(null)
 const leyendoInfo = ref(false)

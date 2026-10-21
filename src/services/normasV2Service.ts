@@ -187,7 +187,11 @@ export async function evaluarCitas(preguntas: unknown[], namespace: string, indi
 // =========================
 // PASO A PRODUCCIÓN (fase 4)
 // =========================
-export interface ConfigBusqueda { modo: 'actual' | 'v2'; indice: IndiceV2; namespace: string; umbralRerank: number; umbralDenso: number }
+export interface ConfigBusqueda {
+  modo: 'actual' | 'v2'; indice: IndiceV2; namespace: string; umbralRerank: number; umbralDenso: number
+  // Usos del reranker en el mes (tope propio por debajo de los 500 del plan)
+  reranker?: { mes: string; usados: number; limite: number } | null
+}
 
 export async function leerConfigBusqueda(): Promise<ConfigBusqueda> {
   return llamar<ConfigBusqueda>('normasV2', { accion: 'config' })
