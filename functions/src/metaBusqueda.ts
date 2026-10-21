@@ -130,7 +130,7 @@ async function metaBuscar(pregunta: string, especialidad: string | undefined, di
     'Busca en internet información OFICIAL del Estado peruano que complemente esta consulta jurídica.',
     `Consulta: ${pregunta}`,
     ...(especialidad ? [`Rama del derecho: ${especialidad.replace(/-/g, ' ')}.`] : []),
-    `Usa solo fuentes oficiales: sitios cuyo dominio termine en ${directorio.dominios.map(d => `.${d}`).join(', ')}. Incluye "site:gob.pe" en tus búsquedas.`,
+    `Usa solo fuentes oficiales: sitios cuyo dominio termine en ${directorio.dominios.map(d => `.${d}`).join(', ')}. En tus búsquedas escribe literalmente "site:gob.pe" (así, en inglés).`,
     ...(directorio.sitiosPrioritarios.length ? [`Revisa primero estos sitios: ${directorio.sitiosPrioritarios.join(', ')}.`] : []),
     ...(directorio.palabrasClave.length ? [`Palabras útiles para buscar: ${directorio.palabrasClave.join(', ')}.`] : []),
     'No uses blogs, estudios de abogados, medios de prensa ni foros.',
@@ -153,26 +153,42 @@ async function metaBuscar(pregunta: string, especialidad: string | undefined, di
   }))
   const permitida = paginas.map(p => !!p.url && dominioPermitido(p.dominio, directorio.dominios))
 
-  // Numeración de las fuentes que se muestran (solo las permitidas)
-  const numero = new Map<number, number>()
+  const textoCompleto = (candidato?.content?.parts ?? []).map(p => p.text ?? '').join('')
+
+  // Numeración de las fuentes que se muestran (solo las permitidas; una
+  // misma página llega a veces repetida: se numera una vez por dirección)
+  const numeroPorUrl = new Map<string, number>()
   const fuentes: ResultadoMetaBusqueda['fuentes'] = []
-  const vistos = new Set<string>()
+  const numeroDe = (i: number) => {
+    const p = paginas[i] ?? { titulo: '', url: '', dominio: '' }
+    if (!numeroPorUrl.has(p.url)) {
+      numeroPorUrl.set(p.url, fuentes.length + 1)
+      fuentes.push({ n: fuentes.length + 1, titulo: p.titulo || p.dominio, url: p.url, dominio: p.dominio })
+    }
+    return numeroPorUrl.get(p.url) ?? 0
+  }
+
+  // Google marca el respaldo por trozos del texto (a veces corta antes de una
+  // negrita). Se trabaja por frase completa: una frase se muestra si algún
+  // trozo suyo está respaldado por una página permitida; las que solo tienen
+  // respaldo de otras páginas, o ninguno, se descartan.
+  const plano = (t: string) => t.replace(/[*_`#>]/g, '').replace(/\s+/g, ' ').trim().toLowerCase()
+  const soportes = (meta?.groundingSupports ?? []).map(sp => ({ texto: plano(sp.segment?.text ?? ''), indices: sp.groundingChunkIndices ?? [] })).filter(sp => sp.texto.length >= 8)
+  const frases = textoCompleto
+    .split('\n')
+    .map(l => l.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, '').trim())
+    .flatMap(l => l.split(/(?<=[.;])\s+(?=[A-ZÁÉÍÓÚÑ¿(*])/))
+    .map(f => f.replace(/\*\*|__/g, '').replace(/^\*\s*/, '').trim())
+    .filter(f => f.length >= 12)
   const resumen: ResultadoMetaBusqueda['resumen'] = []
-  const soportes = [...(meta?.groundingSupports ?? [])].sort((a, b) => (a.segment?.startIndex ?? 0) - (b.segment?.startIndex ?? 0))
-  for (const s of soportes) {
-    const texto = (s.segment?.text ?? '').trim()
-    const indices = (s.groundingChunkIndices ?? []).filter(i => permitida[i])
-    if (!texto || !indices.length || vistos.has(texto)) continue
-    vistos.add(texto)
-    const nums = indices.map(i => {
-      if (!numero.has(i)) {
-        const p = paginas[i] ?? { titulo: '', url: '', dominio: '' }
-        numero.set(i, fuentes.length + 1)
-        fuentes.push({ n: fuentes.length + 1, titulo: p.titulo || p.dominio, url: p.url, dominio: p.dominio })
-      }
-      return numero.get(i)!
-    })
-    resumen.push({ texto, fuentes: [...new Set(nums)] })
+  for (const frase of frases) {
+    const f = plano(frase)
+    const indices = soportes
+      .filter(sp => f.includes(sp.texto.slice(0, 40)) || sp.texto.includes(f.slice(0, 40)))
+      .flatMap(sp => sp.indices)
+      .filter(i => permitida[i])
+    if (!indices.length || resumen.some(r => plano(r.texto) === f)) continue
+    resumen.push({ texto: frase, fuentes: [...new Set(indices.map(numeroDe))] })
   }
 
   return {
@@ -184,7 +200,7 @@ async function metaBuscar(pregunta: string, especialidad: string | undefined, di
       modelo,
       ms: Date.now() - inicio,
       dominiosDescartados: [...new Set(paginas.filter((_, i) => !permitida[i]).map(p => p.dominio))],
-      textoCompleto: (candidato?.content?.parts ?? []).map(p => p.text ?? '').join('')
+      textoCompleto
     }
   }
 }
