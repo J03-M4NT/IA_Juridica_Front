@@ -35,8 +35,8 @@ const DIRECTORIO_POR_DEFECTO: DirectorioMetaBusqueda = {
   palabrasClave: ['texto oficial', 'decreto supremo', 'resolución', 'reglamento']
 }
 
-// Modelo de respaldo si el principal no admite la búsqueda o está saturado
-const MODELOS = [GEMINI_MODEL, 'gemini-2.5-flash']
+// Solo el modelo de siempre (el de geminiClient.ts, con la clave del equipo)
+const MODELOS = [GEMINI_MODEL]
 const TIEMPO_MAX_MS = 45_000
 
 const limpiarLista = (v: unknown, max: number) => (Array.isArray(v) ? v : [])
