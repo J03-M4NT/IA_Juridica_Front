@@ -32,8 +32,16 @@ export interface SugerenciaRedaccion {
 
 export class ErrorLimiteSugerencias extends Error {}
 
-export async function redactarDocumento(pedido: string): Promise<DocumentoRedactado> {
-  const response = await postFuncion('redactarDocumentoIA', { pedido })
+// Con un escrito subido: 'trabajar' lo reescribe según la indicación;
+// 'responder' redacta la respuesta tomándolo como base
+export interface EscritoBase {
+  modo: 'trabajar' | 'responder'
+  documentoBase: string
+  nombreDocumentoBase: string
+}
+
+export async function redactarDocumento(pedido: string, escrito?: EscritoBase): Promise<DocumentoRedactado> {
+  const response = await postFuncion('redactarDocumentoIA', { pedido, ...(escrito ?? {}) })
   const data = await response.json().catch(() => ({})) as Partial<DocumentoRedactado> & { error?: string }
   if (!response.ok || !Array.isArray(data.bloques) || data.bloques.length === 0) {
     throw new Error(data.error ?? 'No se pudo redactar el documento. Intenta de nuevo.')

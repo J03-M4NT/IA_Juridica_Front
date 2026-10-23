@@ -12,6 +12,9 @@ import { verificarNormasCitadas } from './verificarNormas'
 // cargos, escritos, solicitudes, reclamos, descargos, cartas notariales...
 //  - redactarDocumentoIA: genera el borrador completo a partir de lo que
 //    el usuario pide (cupo general de IA).
+//    Con un escrito subido (opcional, "modo"): 'trabajar' lo reescribe según
+//    la indicación del usuario; 'responder' redacta la respuesta a ese
+//    escrito tomándolo como base. Sin "modo", todo es igual que antes.
 //  - sugerirRedaccionIA: mientras el usuario escribe, propone una mejor
 //    redacción del párrafo en el que está (cupo propio de sugerencias).
 // En ambos casos las normas citadas se contrastan con la base jurídica.
@@ -22,6 +25,9 @@ const MAX_PEDIDO = 2_000
 const MAX_PARRAFO = 3_000
 const MAX_CONTEXTO = 1_500
 const MAX_BLOQUES = 80
+// Texto del escrito subido (~30 páginas)
+const MAX_DOCUMENTO_BASE = 90_000
+const MODOS_CON_DOCUMENTO = new Set(['trabajar', 'responder'])
 const ALINEACIONES = new Set(['izquierda', 'derecha', 'centro', 'justificado'])
 
 export interface BloqueDocumento {
@@ -53,14 +59,65 @@ export const redactarDocumentoIA = onRequest(
     if (!uid) return
 
     try {
-      const pedido = texto((req.body as { pedido?: unknown })?.pedido, MAX_PEDIDO)?.trim()
-      if (!pedido || pedido.length < MIN_PEDIDO) {
+      const body = (req.body ?? {}) as { pedido?: unknown; modo?: unknown; documentoBase?: unknown; nombreDocumentoBase?: unknown }
+      const modo = typeof body.modo === 'string' && MODOS_CON_DOCUMENTO.has(body.modo) ? body.modo as 'trabajar' | 'responder' : null
+      const pedido = texto(body.pedido ?? '', MAX_PEDIDO)?.trim()
+
+      // Con un escrito subido: la indicación es opcional
+      let documentoBase: string | null = null
+      if (modo) {
+        documentoBase = texto(body.documentoBase, MAX_DOCUMENTO_BASE)?.trim() ?? null
+        if (pedido === undefined) {
+          res.status(400).json({ error: 'La indicación es demasiado larga' })
+          return
+        }
+        if (!documentoBase || documentoBase.length < 50) {
+          res.status(400).json({ error: typeof body.documentoBase === 'string' && body.documentoBase.length > MAX_DOCUMENTO_BASE
+            ? 'El escrito es demasiado largo (máximo unas 30 páginas).'
+            : 'No se pudo leer el texto del escrito. Prueba con un PDF que tenga texto seleccionable o con un Word.' })
+          return
+        }
+      } else if (!pedido || pedido.length < MIN_PEDIDO) {
         res.status(400).json({ error: 'Describe con un poco más de detalle el documento que necesitas' })
         return
       }
       if (!(await consumirCuotaIA(uid, res))) return
 
-      const prompt = `
+      const nombreBase = typeof body.nombreDocumentoBase === 'string' ? body.nombreDocumentoBase.slice(0, 120) : 'escrito adjunto'
+      const formatoSalida = `
+Responde SOLO JSON:
+{"tipo": "tipo de documento", "titulo": "título corto para el archivo", "bloques": [{"texto": "un párrafo", "alineacion": "izquierda|derecha|centro|justificado", "negrita": false}]}
+Cada bloque es un párrafo del documento, en orden. Los títulos y la sumilla van con "negrita": true.`
+
+      const prompt = modo === 'responder' ? `
+Eres un abogado peruano. El usuario recibió el ESCRITO de abajo (${nombreBase}) y necesita RESPONDERLO.
+
+ESCRITO RECIBIDO:
+"""${documentoBase}"""
+
+INDICACIONES DEL USUARIO (su posición, datos o lo que quiere lograr; puede estar vacío):
+"""${pedido || 'Sin indicaciones: responde de forma formal y prudente, sin aceptar responsabilidades ni hechos que el escrito no acredite.'}"""
+
+Redacta la respuesta completa tomando el escrito recibido como base:
+- Usa el tipo de respuesta que corresponda: carta de respuesta a una carta o carta notarial; absolución, descargo o contestación a un escrito, requerimiento o notificación; recurso si el usuario lo pide.
+- Toma del escrito los datos que existan: remitente (que ahora es el destinatario), destinatario (que ahora firma), número de expediente, carta, resolución o referencia, fechas y montos. Cítalo como "Referencia:" o en la sumilla.
+- Responde punto por punto a cada hecho, pretensión o requerimiento del escrito, en el mismo orden, según las indicaciones del usuario.
+- No inventes hechos ni aceptes los del escrito si el usuario no lo indica; lo que falte, con "[completar: dato]".
+${ESTILO}
+${formatoSalida}` : modo === 'trabajar' ? `
+Eres un abogado peruano. El usuario subió el ESCRITO de abajo (${nombreBase}) y quiere trabajar sobre él.
+
+ESCRITO DEL USUARIO:
+"""${documentoBase}"""
+
+INDICACIÓN DEL USUARIO:
+"""${pedido || 'Mejora la redacción jurídica sin cambiar el contenido.'}"""
+
+Devuelve el escrito completo aplicando la indicación:
+- Conserva su estructura, orden, datos, hechos, nombres, montos, fechas y firmas; cambia solo lo que la indicación pide.
+- No agregues hechos nuevos; si la indicación requiere un dato que no está, usa "[completar: dato]".
+${ESTILO}
+${formatoSalida}` : `
 Eres un abogado peruano que redacta documentos legales que no son contratos: cartas, cartas notariales, cargos, escritos, solicitudes, reclamos, descargos, requerimientos, etc.
 
 PEDIDO DEL USUARIO:
@@ -88,7 +145,7 @@ Cada bloque es un párrafo del documento, en orden. Los títulos y la sumilla va
       }
 
       const bloques: BloqueDocumento[] = (Array.isArray(datos.bloques) ? datos.bloques : [])
-        .slice(0, MAX_BLOQUES)
+        .slice(0, modo ? MAX_BLOQUES * 3 : MAX_BLOQUES)
         .map(b => (b ?? {}) as Record<string, unknown>)
         .filter(b => typeof b.texto === 'string' && b.texto.trim())
         .map(b => ({
