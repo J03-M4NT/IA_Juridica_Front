@@ -987,6 +987,10 @@ export const consultarLexit = onRequest(
               '- Siempre recomiendas consultar un abogado para casos complejos.',
               '- Respondes en formato markdown cuando sea útil (listas, negritas).',
               '- No te presentes ni saludes al inicio de cada respuesta; hazlo solo si el usuario te saluda.',
+              // Consultas: solo temas jurídicos (no recomienda restaurantes, recetas, etc.)
+              ...(modoConsulta
+                ? ['- SOLO respondes temas jurídicos o del ejercicio del derecho (normas, trámites legales, contratos, derechos y obligaciones, el trabajo de abogados, notarios o jueces, cómo redactar un escrito o un correo legal). Si la pregunta no tiene relación con el derecho (comida, restaurantes, recetas, viajes, deportes, entretenimiento, salud, tecnología, tareas escolares de otras materias, etc.), NO la respondas ni des recomendaciones: di en una o dos frases amables que LexIT es un asistente jurídico y que con gusto ayuda con una consulta legal (si el tema tiene un ángulo legal, por ejemplo la licencia de un restaurante o los derechos del consumidor, sugiérelo). Saludos y agradecimientos se responden breve, como siempre.']
+                : []),
               ...(especialidad
                 ? [`- El usuario eligió la especialización ${NOMBRE_AREA[especialidad]}: responde SOLO preguntas de esa rama del derecho peruano. Si la pregunta es claramente de otra rama, no la desarrolles: dilo en una o dos frases y sugiere elegir la especialización que corresponda (o "General"). Saludos y preguntas cotidianas se responden breve, como siempre.`]
                 : []),

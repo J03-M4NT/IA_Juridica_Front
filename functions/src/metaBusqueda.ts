@@ -38,6 +38,8 @@ const DIRECTORIO_POR_DEFECTO: DirectorioMetaBusqueda = {
 // Solo el modelo de siempre (el de geminiClient.ts, con la clave del equipo)
 const MODELOS = [GEMINI_MODEL]
 const TIEMPO_MAX_MS = 45_000
+// Respuesta del modelo cuando la consulta no es jurídica
+const NO_JURIDICA = 'CONSULTA_NO_JURIDICA'
 
 const limpiarLista = (v: unknown, max: number) => (Array.isArray(v) ? v : [])
   .filter((x): x is string => typeof x === 'string')
@@ -127,6 +129,7 @@ export interface ResultadoMetaBusqueda {
 
 async function metaBuscar(pregunta: string, especialidad: string | undefined, directorio: DirectorioMetaBusqueda) {
   const prompt = [
+    `Si la consulta no tiene relación con el derecho ni con trámites o normas (por ejemplo comida, restaurantes, viajes, deportes o entretenimiento), no busques nada y responde solo: ${NO_JURIDICA}`,
     'Busca en internet información OFICIAL del Estado peruano que complemente esta consulta jurídica.',
     `Consulta: ${pregunta}`,
     ...(especialidad ? [`Rama del derecho: ${especialidad.replace(/-/g, ' ')}.`] : []),
@@ -154,6 +157,7 @@ async function metaBuscar(pregunta: string, especialidad: string | undefined, di
   const permitida = paginas.map(p => !!p.url && dominioPermitido(p.dominio, directorio.dominios))
 
   const textoCompleto = (candidato?.content?.parts ?? []).map(p => p.text ?? '').join('')
+  const noJuridica = textoCompleto.includes(NO_JURIDICA)
 
   // Numeración de las fuentes que se muestran (solo las permitidas; una
   // misma página llega a veces repetida: se numera una vez por dirección)
@@ -181,7 +185,7 @@ async function metaBuscar(pregunta: string, especialidad: string | undefined, di
     .map(f => f.replace(/\*\*|__/g, '').replace(/^\*\s*/, '').trim())
     .filter(f => f.length >= 12)
   const resumen: ResultadoMetaBusqueda['resumen'] = []
-  for (const frase of frases) {
+  for (const frase of noJuridica ? [] : frases) {
     const f = plano(frase)
     const indices = soportes
       .filter(sp => f.includes(sp.texto.slice(0, 40)) || sp.texto.includes(f.slice(0, 40)))
