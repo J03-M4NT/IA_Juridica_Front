@@ -149,14 +149,14 @@
                           target="_blank"
                           rel="noopener noreferrer"
                           :title="mensaje.complementoWeb.resultado.fuentes[n - 1]?.dominio"
-                        >web {{ n }}</a>
+                        >[web {{ n }}]</a>
                       </span>
                     </li>
                   </ul>
                   <ol v-if="mensaje.complementoWeb.resultado.fuentes.length" class="complemento-web-fuentes">
                     <li v-for="f in mensaje.complementoWeb.resultado.fuentes" :key="f.n">
-                      <a :href="f.url" target="_blank" rel="noopener noreferrer">{{ f.titulo }}</a>
-                      <span class="complemento-web-dominio">{{ f.dominio }}</span>
+                      <a :href="f.url" target="_blank" rel="noopener noreferrer">{{ etiquetaFuenteWeb(f) }}</a>
+                      <span v-if="etiquetaFuenteWeb(f) !== f.dominio" class="complemento-web-dominio">{{ f.dominio }}</span>
                     </li>
                   </ol>
                 </template>
@@ -442,6 +442,18 @@ const chatDesplazado = ref(false)
 // Puramente visual: si el menú de especializaciones está abierto, para
 // girar la flechita del selector (QMenu no marca aria-expanded solo).
 const menuEspecialidades = ref(false)
+
+// Nombre legible de una fuente web: su título si es descriptivo; si el
+// título es solo el dominio, el nombre de la página o del archivo
+function etiquetaFuenteWeb(f: { titulo: string; url: string; dominio: string }): string {
+  if (f.titulo && !/^[\w.-]+\.[a-z]{2,}$/i.test(f.titulo)) return f.titulo
+  try {
+    const ultimo = decodeURIComponent(new URL(f.url).pathname.split('/').filter(Boolean).pop() ?? '')
+      .replace(/\.(pdf|html?|aspx?)$/i, '').replace(/[-_]+/g, ' ').replace(/^\d+\s+/, '').trim()
+    if (ultimo.length >= 4) return ultimo.length > 80 ? `${ultimo.slice(0, 80)}…` : ultimo
+  } catch { /* URL inválida */ }
+  return f.dominio
+}
 onMounted(() => { void store.cargarUsosOpciones() })
 
 function onMessagesScroll(event: Event) {
