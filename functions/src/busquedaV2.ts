@@ -236,7 +236,12 @@ export async function recuperarMejorado(
     }
   }
   const vistos = new Set<string>()
-  return [...exactos.map(e => ({ ...e, score: 1, rerank: 1 })), ...ordenados].filter(h => {
+  // Con la norma nombrada, o si ese número de artículo es de una sola norma,
+  // el artículo exacto es seguro (cuenta como confianza plena). Si el número
+  // aparece en varias normas, va primero, pero la confianza la da el
+  // reranker del resto, no él.
+  const exactoSeguro = !!normaNombrada || new Set(exactos.map(e => e.normaId)).size === 1
+  return [...exactos.map(e => exactoSeguro ? { ...e, score: 1, rerank: 1 } : { ...e, score: 1 }), ...ordenados].filter(h => {
     if (vistos.has(h.id)) return false
     vistos.add(h.id)
     return true

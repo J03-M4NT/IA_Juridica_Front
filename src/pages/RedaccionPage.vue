@@ -218,7 +218,17 @@ async function elegirEscrito(e: Event) {
   leyendoEscrito.value = true
   errorRedaccion.value = ''
   try {
-    const texto = (await extraerTextoNorma(archivo)).trim()
+    const esPdf = archivo.name.toLowerCase().endsWith('.pdf')
+    // En un PDF se conserva el membrete, la referencia y la firma (lo del
+    // margen que no se repite en todas las páginas)
+    let texto = (await extraerTextoNorma(archivo, undefined, esPdf ? { recuperarMargenes: true } : {})).trim()
+    if (esPdf) {
+      // El extractor cierra cada página con ". ": se quita donde sobra
+      // (la página ya terminaba en punto, o la oración sigue en la siguiente)
+      texto = texto
+        .replace(/([.:;!?])\s*\.\s*\n\n/g, '$1\n\n')
+        .replace(/([^.:;!?\s])\s*\.\s*\n\n(?=[a-záéíóúñü])/g, '$1 ')
+    }
     if (texto.length < 50) throw new Error('No se pudo leer el texto del escrito. Si es un PDF escaneado, usa uno con texto seleccionable o un Word.')
     // En Word se conserva el formato (negritas, alineación, listas) para abrirlo tal cual
     let htmlWord: string | null = null

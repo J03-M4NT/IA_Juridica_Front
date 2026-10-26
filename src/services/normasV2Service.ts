@@ -92,7 +92,10 @@ export async function ejecutarCarga(
     onProgreso?.(Math.min(i + LOTE, aSubir.length), aSubir.length)
     if (i + LOTE < aSubir.length) await esperar(PAUSA_ENTRE_LOTES_MS)
   }
-  if (plan.obsoletos.length) await llamar('normasV2', { accion: 'borrar', namespace, normaId, ids: plan.obsoletos, indice })
+  // El servidor acepta hasta 1000 ids por llamada
+  for (let i = 0; i < plan.obsoletos.length; i += 1000) {
+    await llamar('normasV2', { accion: 'borrar', namespace, normaId, ids: plan.obsoletos.slice(i, i + 1000), indice })
+  }
   await llamar('normasV2', { accion: 'registrar', namespace, normaId, resumen, indice })
   return { subidos: aSubir.length, eliminados: plan.obsoletos.length }
 }

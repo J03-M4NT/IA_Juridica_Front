@@ -26,7 +26,7 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 import { ORIGENES_PERMITIDOS, autorizar } from './seguridad'
 import { PINECONE_API_KEY } from './consultarLexit'
 import { leerConfigBusqueda, guardarConfigBusqueda } from './configBusqueda'
-import { usosRerankDelMes } from './cuotaPinecone'
+import { contarRerank, quedaRerank, usosRerankDelMes } from './cuotaPinecone'
 import { INDICES, INDICE_POR_DEFECTO, type IndiceId, abrirIndice, esIndiceId } from './indicesPinecone'
 
 if (getApps().length === 0) initializeApp()
@@ -351,7 +351,10 @@ export const buscarNormasV2 = onRequest(
     const k = Math.min(Math.max(Number(topK) || 10, 1), 50)
     try {
       const idx = await indice(namespace, esIndiceId(indicePedido) ? indicePedido : INDICE_POR_DEFECTO)
-      const conRerank = rerank === true
+      // El reranker de las pruebas también cuenta para el tope mensual
+      // (cuotaPinecone.ts); al llegar al tope se busca sin él
+      const conRerank = rerank === true && await quedaRerank()
+      if (conRerank) contarRerank()
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const r: any = await idx.searchRecords({
         query: { topK: conRerank ? Math.max(k, 30) : k, inputs: { text: query }, ...(filtro && typeof filtro === 'object' ? { filter: filtro as Record<string, unknown> } : {}) },

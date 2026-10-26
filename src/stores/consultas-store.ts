@@ -123,6 +123,9 @@ export const useConsultasStore = defineStore('consultas', {
       })
 
       let mensajeIA: Mensaje | null = null
+      // Meta búsqueda en curso: no frena el envío de la siguiente pregunta;
+      // al terminar se vuelve a guardar la sesión con su resultado
+      let complemento: Promise<void> | null = null
 
       try {
         // Se muestra de inmediato (vacío) y se va llenando con el efecto
@@ -148,7 +151,6 @@ export const useConsultasStore = defineStore('consultas', {
         // anti-alucinación) vive en la Cloud Function consultarLexit — ver
         // consultarLexit.ts.
         // Meta búsqueda en paralelo (no demora la respuesta de LexIT)
-        let complemento: Promise<void> | null = null
         if (this.metaBusqueda) {
           const mensajeConComplemento = mensajeIA
           mensajeConComplemento.complementoWeb = { estado: 'cargando' }
@@ -185,8 +187,6 @@ export const useConsultasStore = defineStore('consultas', {
 
         mensajeIA.fuentes = resultado.fragmentos
         this.respuesta = resultado.respuesta
-        // Se espera la meta búsqueda para guardarla en el historial
-        if (complemento) await complemento
 
       } catch (err) {
         const message = getErrorMessage(err)
@@ -235,6 +235,14 @@ export const useConsultasStore = defineStore('consultas', {
           const session = this.historialSesiones.find(s => s.id === this.sesionActualId)
           if (session) {
              guardarSesion(auth.user.uid, session.id, session.titulo, session.mensajes, null).catch(console.error)
+             // Cuando llega la meta búsqueda, se guarda de nuevo con su
+             // resultado (también si la consulta falló: no queda "cargando")
+             if (complemento) {
+               const uid = auth.user.uid
+               void complemento.then(() =>
+                 guardarSesion(uid, session.id, session.titulo, session.mensajes, null).catch(console.error)
+               )
+             }
           }
         }
 
