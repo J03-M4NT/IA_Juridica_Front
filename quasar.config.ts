@@ -59,7 +59,9 @@ export default defineConfig((ctx) => {
 
       // rebuildCache: true, // rebuilds Vite/linter/etc cache on startup
 
-      publicPath: ctx.dev ? '/' : '/IA_Juridica_Front/',
+      // Vercel sirve la app en la raíz del dominio (define VERCEL=1 al compilar);
+      // GitHub Pages la sirve en la subcarpeta del repo.
+      publicPath: ctx.dev || process.env.VERCEL ? '/' : '/IA_Juridica_Front/',
       // analyze: true,
       // env: {},
       // rawDefine: {}
