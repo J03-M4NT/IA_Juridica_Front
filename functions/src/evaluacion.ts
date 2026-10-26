@@ -251,7 +251,7 @@ export const evaluarRecuperacion = onRequest(
     // Precisión de citas: respuesta completa de Consultas con el índice de prueba
     if (body.modo === 'citas') {
       try {
-        res.json({ generadoEn: new Date().toISOString(), indice: indiceId, namespace, ...(await evaluarCitas(req.headers.authorization ?? '', preguntas, indiceId, namespace)), segundos: Math.round((Date.now() - inicio) / 1000) })
+        res.json({ generadoEn: new Date().toISOString(), indice: indiceId, namespace, ...(await evaluarCitas(req.headers.authorization ?? '', preguntas, indiceId, namespace, req.header('X-Firebase-AppCheck'))), segundos: Math.round((Date.now() - inicio) / 1000) })
       } catch (err) {
         logger.error('❌ Error evaluando citas:', (err as Error).message)
         res.status(500).json({ error: (err as Error).message })
@@ -406,14 +406,15 @@ export const evaluarRecuperacion = onRequest(
 //   - en preguntas "sin base", si la respuesta lo reconoce (aviso).
 // Cada pregunta usa una consulta del cupo diario del admin.
 // =========================
-async function evaluarCitas(autorizacion: string, preguntas: Pregunta[], indice: IndiceId, namespace: string) {
+// appCheck: el token de App Check del admin se reenvía a consultarLexit (ver appCheckVerificacion.ts)
+async function evaluarCitas(autorizacion: string, preguntas: Pregunta[], indice: IndiceId, namespace: string, appCheck?: string) {
   const proyecto = process.env.GCLOUD_PROJECT ?? 'lexit-ai'
   const url = `https://us-central1-${proyecto}.cloudfunctions.net/consultarLexit`
   const preguntar = async (p: Pregunta) => {
     const t0 = Date.now()
     const r = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: autorizacion },
+      headers: { 'Content-Type': 'application/json', Authorization: autorizacion, ...(appCheck ? { 'X-Firebase-AppCheck': appCheck } : {}) },
       body: JSON.stringify({ pregunta: p.pregunta, historialMensajes: [], busquedaPrueba: { indice, namespace } })
     })
     const data = await r.json().catch(() => ({})) as { respuesta?: string; fragmentos?: Array<{ documentoId?: string; numeroArticulo?: number; sufijoArticulo?: string; nombreDocumento?: string; vigencia?: string }>; error?: string }

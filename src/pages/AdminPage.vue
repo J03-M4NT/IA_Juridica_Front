@@ -137,6 +137,7 @@
     <EvaluacionNormasV2 />
     <PasoProduccionV2 />
     <MetaBusquedaAdmin />
+    <AppCheckAdmin />
 
     <!-- Actions bar plantillas -->
     <div class="actions-bar q-mb-md">
@@ -439,6 +440,7 @@ import CargaNormasV2 from '../components/Admin/CargaNormasV2.vue'
 import EvaluacionNormasV2 from '../components/Admin/EvaluacionNormasV2.vue'
 import PasoProduccionV2 from '../components/Admin/PasoProduccionV2.vue'
 import MetaBusquedaAdmin from '../components/Admin/MetaBusquedaAdmin.vue'
+import AppCheckAdmin from '../components/Admin/AppCheckAdmin.vue'
 const $q = useQuasar()
 
 interface Template {
