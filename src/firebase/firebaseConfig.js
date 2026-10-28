@@ -23,7 +23,8 @@ const app = initializeApp(firebaseConfig)
 // reCAPTCHA v3 es pública (va en la página); la secreta solo está en la
 // consola de Firebase. Sin clave, App Check queda apagado y las funciones
 // siguen en modo 'monitor'.
-const RECAPTCHA_SITE_KEY = ''
+// Clave de sitio de la app web "Lexit-AI-web" (dominios: Vercel, GitHub Pages y localhost)
+const RECAPTCHA_SITE_KEY = '6LcugAQuAAAAAF9zjHLROzRUAEBTNywGr7_rsUSM'
 if (import.meta.env.DEV) {
   // En desarrollo, el navegador muestra en la consola un token de
   // depuración: se registra en Firebase › App Check › Administrar tokens
