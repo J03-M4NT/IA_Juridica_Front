@@ -66,6 +66,17 @@
             :loading="cargandoStats"
             @click="cargarStatsPinecone"
           />
+          <q-btn
+            outline
+            color="accent"
+            icon="fact_check"
+            label="Auditoría (solo lectura)"
+            no-caps
+            :loading="auditando"
+            @click="descargarAuditoria"
+          >
+            <q-tooltip>Revisa el índice sin modificarlo y descarga el informe (JSON). Puede tardar unos minutos.</q-tooltip>
+          </q-btn>
         </div>
       </div>
 
@@ -120,6 +131,13 @@
         </div>
       </div>
     </div>
+
+    <!-- Normas v2 (prueba): esquema nuevo en un namespace aparte -->
+    <CargaNormasV2 />
+    <EvaluacionNormasV2 />
+    <PasoProduccionV2 />
+    <MetaBusquedaAdmin />
+    <AppCheckAdmin />
 
     <!-- Actions bar plantillas -->
     <div class="actions-bar q-mb-md">
@@ -413,10 +431,16 @@ import {
   verificarConexionPinecone,
   listarDocumentosPinecone,
   eliminarDocumentoPinecone,
+  auditarPinecone,
   type DocumentoIndexado
 } from '../services/pineconeService'
 import { extraerTextoNorma, sugerirNombreNorma } from '../utils/extraerTextoNorma'
 import { ESPECIALIDADES, etiquetaEspecialidad } from '../constants/especialidades'
+import CargaNormasV2 from '../components/Admin/CargaNormasV2.vue'
+import EvaluacionNormasV2 from '../components/Admin/EvaluacionNormasV2.vue'
+import PasoProduccionV2 from '../components/Admin/PasoProduccionV2.vue'
+import MetaBusquedaAdmin from '../components/Admin/MetaBusquedaAdmin.vue'
+import AppCheckAdmin from '../components/Admin/AppCheckAdmin.vue'
 const $q = useQuasar()
 
 interface Template {
@@ -630,6 +654,29 @@ const cargarDocumentosIndexados = async () => {
   } catch (err) {
     console.error('Error listando documentos de Pinecone:', err)
     errorDocumentos.value = err instanceof Error ? err.message : 'No se pudo cargar la lista de documentos'
+  }
+}
+
+// =========================
+// AUDITORÍA DE PINECONE (solo lectura): descarga el informe en JSON
+// =========================
+const auditando = ref(false)
+const descargarAuditoria = async () => {
+  auditando.value = true
+  try {
+    const informe = await auditarPinecone()
+    const blob = new Blob([JSON.stringify(informe, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const enlace = document.createElement('a')
+    enlace.href = url
+    enlace.download = `auditoria-pinecone-${new Date().toISOString().slice(0, 10)}.json`
+    enlace.click()
+    URL.revokeObjectURL(url)
+    $q.notify({ type: 'positive', message: 'Auditoría descargada' })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err instanceof Error ? err.message : 'No se pudo auditar Pinecone' })
+  } finally {
+    auditando.value = false
   }
 }
 

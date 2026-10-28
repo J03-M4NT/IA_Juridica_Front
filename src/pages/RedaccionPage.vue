@@ -8,6 +8,41 @@
         luego lo editas con un asistente que mejora la redacción y revisa las normas mientras escribes.
       </p>
 
+      <!-- Cómo empezar: desde cero, sobre un escrito propio o respondiendo uno recibido -->
+      <div class="rd-modos" role="tablist" aria-label="Cómo quieres empezar">
+        <button
+          v-for="m in MODOS"
+          :key="m.valor"
+          type="button"
+          role="tab"
+          class="rd-modo"
+          :class="{ 'rd-modo--activo': modo === m.valor }"
+          :aria-selected="modo === m.valor"
+          :disabled="redactando"
+          @click="cambiarModo(m.valor)"
+        >
+          <q-icon :name="m.icono" size="18px" aria-hidden="true" />
+          <span>{{ m.etiqueta }}</span>
+        </button>
+      </div>
+
+      <!-- Escrito subido (modos "trabajar" y "responder") -->
+      <div v-if="modo !== 'nuevo'" class="rd-escrito">
+        <input ref="selectorEscrito" type="file" accept=".pdf,.docx,.doc,.htm,.html" class="sr-only" @change="elegirEscrito">
+        <button v-if="!escrito" type="button" class="rd-subir" :disabled="leyendoEscrito" @click="selectorEscrito?.click()">
+          <q-spinner v-if="leyendoEscrito" size="18px" />
+          <q-icon v-else name="upload_file" size="22px" aria-hidden="true" />
+          <span>{{ leyendoEscrito ? 'Leyendo el escrito…' : (modo === 'responder' ? 'Sube el escrito que quieres responder' : 'Sube tu escrito') }}</span>
+          <span class="rd-subir-formatos">PDF o Word (.docx)</span>
+        </button>
+        <div v-else class="rd-escrito-elegido">
+          <q-icon name="description" size="20px" aria-hidden="true" />
+          <span class="rd-escrito-nombre">{{ escrito.nombre }}</span>
+          <span class="rd-escrito-tamano">{{ escrito.texto.length.toLocaleString('es-PE') }} caracteres</span>
+          <button type="button" class="rd-boton-sec rd-boton--chico" :disabled="redactando" @click="quitarEscrito">Cambiar</button>
+        </div>
+      </div>
+
       <div class="rd-pedido">
         <label for="rd-pedido-texto" class="sr-only">Describe el documento que necesitas</label>
         <textarea
@@ -16,15 +51,15 @@
           class="rd-pedido-texto"
           rows="4"
           maxlength="2000"
-          placeholder="Ej.: Quiero una carta a la Municipalidad de La Molina reclamando que mi predio se inunda por una tubería rota en la vía pública."
+          :placeholder="PLACEHOLDER[modo]"
           :disabled="redactando"
           @keydown.enter.exact.prevent="redactar"
         ></textarea>
         <div class="rd-pedido-pie">
           <span class="rd-contador">{{ pedido.length }} / 2000</span>
-          <button type="button" class="rd-boton" :disabled="pedido.trim().length < 8 || redactando" @click="redactar">
+          <button type="button" class="rd-boton" :disabled="!puedeRedactar" @click="redactar">
             <q-spinner v-if="redactando" size="16px" />
-            {{ redactando ? 'Redactando…' : 'Redactar documento' }}
+            {{ redactando ? 'Redactando…' : textoBoton }}
           </button>
         </div>
       </div>
@@ -43,6 +78,9 @@
         <div class="rd-cabecera-texto">
           <span class="rd-tipo">{{ tipoDocumento }}</span>
           <h1 class="rd-titulo-doc">{{ tituloDocumento }}</h1>
+          <span v-if="escritoBase" class="rd-base">
+            {{ escritoBase.modo === 'responder' ? 'Respuesta a' : 'Basado en' }}: {{ escritoBase.nombre }}
+          </span>
         </div>
         <div class="rd-cabecera-acciones">
           <button type="button" class="rd-boton-sec" @click="nuevoDocumento">Nuevo documento</button>
@@ -104,6 +142,11 @@
             </ul>
           </div>
 
+          <details v-if="escritoBase?.modo === 'responder'" class="rd-recibido">
+            <summary>Escrito recibido</summary>
+            <p>{{ escritoBase.texto }}</p>
+          </details>
+
           <p class="rd-nota">Borrador de apoyo. Debe ser revisado por un abogado.</p>
         </aside>
       </div>
@@ -122,6 +165,8 @@ import {
   type NormaVerificada
 } from '../services/redaccionService'
 import { bloquesAHtml, redaccionAWord } from '../utils/exportarRedaccion'
+import { extraerTextoNorma } from '../utils/extraerTextoNorma'
+import { extraerHtmlWord } from '../utils/mammothExtractor'
 
 // =========================
 // REDACCIÓN AVANZADA
@@ -140,13 +185,116 @@ const html = ref('')
 const tipoDocumento = ref('Documento')
 const tituloDocumento = ref('Documento')
 
+// ----- Cómo empezar -----
+type Modo = 'nuevo' | 'trabajar' | 'responder'
+const MODOS: Array<{ valor: Modo; etiqueta: string; icono: string }> = [
+  { valor: 'nuevo', etiqueta: 'Redactar desde cero', icono: 'edit_note' },
+  { valor: 'trabajar', etiqueta: 'Trabajar sobre un escrito', icono: 'upload_file' },
+  { valor: 'responder', etiqueta: 'Responder un escrito', icono: 'reply' }
+]
+const PLACEHOLDER: Record<Modo, string> = {
+  nuevo: 'Ej.: Quiero una carta a la Municipalidad de La Molina reclamando que mi predio se inunda por una tubería rota en la vía pública.',
+  trabajar: 'Opcional. Ej.: mejora la redacción, agrega un fundamento sobre el plazo vencido, cámbialo a carta notarial... Si lo dejas vacío, el escrito se abre tal cual en el editor.',
+  responder: 'Opcional. Tu posición y los datos que quieras incluir. Ej.: negamos la deuda porque ya se pagó el 10/09 con la transferencia N° 123; pedimos que se archive.'
+}
+const modo = ref<Modo>('nuevo')
+
+interface EscritoSubido { nombre: string; texto: string; html: string | null }
+const escrito = ref<EscritoSubido | null>(null)
+// El escrito con el que se armó el documento en edición (para la cabecera)
+const escritoBase = ref<(EscritoSubido & { modo: Modo }) | null>(null)
+const leyendoEscrito = ref(false)
+const selectorEscrito = ref<HTMLInputElement | null>(null)
+
+function cambiarModo(nuevo: Modo) {
+  modo.value = nuevo
+  errorRedaccion.value = ''
+}
+
+async function elegirEscrito(e: Event) {
+  const archivo = (e.target as HTMLInputElement).files?.[0]
+  if (selectorEscrito.value) selectorEscrito.value.value = ''
+  if (!archivo) return
+  leyendoEscrito.value = true
+  errorRedaccion.value = ''
+  try {
+    const esPdf = archivo.name.toLowerCase().endsWith('.pdf')
+    // En un PDF se conserva el membrete, la referencia y la firma (lo del
+    // margen que no se repite en todas las páginas)
+    let texto = (await extraerTextoNorma(archivo, undefined, esPdf ? { recuperarMargenes: true } : {})).trim()
+    if (esPdf) {
+      // El extractor cierra cada página con ". ": se quita donde sobra
+      // (la página ya terminaba en punto, o la oración sigue en la siguiente)
+      texto = texto
+        .replace(/([.:;!?])\s*\.\s*\n\n/g, '$1\n\n')
+        .replace(/([^.:;!?\s])\s*\.\s*\n\n(?=[a-záéíóúñü])/g, '$1 ')
+    }
+    if (texto.length < 50) throw new Error('No se pudo leer el texto del escrito. Si es un PDF escaneado, usa uno con texto seleccionable o un Word.')
+    // En Word se conserva el formato (negritas, alineación, listas) para abrirlo tal cual
+    let htmlWord: string | null = null
+    if (archivo.name.toLowerCase().endsWith('.docx')) {
+      htmlWord = (await extraerHtmlWord(archivo)).html
+        .replace(/<p class="documento-align-(center|left|justify)">/g, (_m, a: string) => `<p style="text-align: ${a}">`)
+    }
+    escrito.value = { nombre: archivo.name, texto, html: htmlWord }
+  } catch (err) {
+    errorRedaccion.value = err instanceof Error ? err.message : 'No se pudo leer el escrito.'
+  } finally {
+    leyendoEscrito.value = false
+  }
+}
+
+function quitarEscrito() {
+  escrito.value = null
+  selectorEscrito.value?.click()
+}
+
+// Texto plano a párrafos del editor. Si el texto separa los párrafos con
+// una línea en blanco (lo habitual), las líneas de un mismo párrafo se
+// unen; si no, cada línea es un párrafo.
+function textoAHtml(texto: string): string {
+  const lineas = texto.split('\n').length
+  const separados = (texto.match(/\n\s*\n/g) ?? []).length
+  const parrafos = separados >= lineas / 12
+    ? texto.split(/\n\s*\n/).map(p => p.replace(/\s*\n\s*/g, ' '))
+    : texto.split('\n')
+  return bloquesAHtml(parrafos.map(p => p.trim()).filter(Boolean)
+    .map(t => ({ texto: t, alineacion: 'justificado', negrita: false })))
+}
+
+const puedeRedactar = computed(() => {
+  if (redactando.value || leyendoEscrito.value) return false
+  return modo.value === 'nuevo' ? pedido.value.trim().length >= 8 : !!escrito.value
+})
+
+const textoBoton = computed(() => {
+  if (modo.value === 'responder') return 'Redactar respuesta'
+  if (modo.value === 'trabajar') return pedido.value.trim() ? 'Aplicar indicación' : 'Abrir en el editor'
+  return 'Redactar documento'
+})
+
 async function redactar() {
+  if (!puedeRedactar.value) return
   const texto = pedido.value.trim()
-  if (texto.length < 8 || redactando.value) return
+
+  // Trabajar sobre el escrito sin indicación: se abre tal cual (sin IA)
+  if (modo.value === 'trabajar' && escrito.value && !texto) {
+    tipoDocumento.value = 'Escrito'
+    tituloDocumento.value = escrito.value.nombre.replace(/\.[^.]+$/, '')
+    html.value = escrito.value.html ?? textoAHtml(escrito.value.texto)
+    escritoBase.value = { ...escrito.value, modo: modo.value }
+    etapa.value = 'editar'
+    return
+  }
+
   redactando.value = true
   errorRedaccion.value = ''
   try {
-    const doc = await redactarDocumento(texto)
+    const conEscrito = modo.value !== 'nuevo' && escrito.value
+      ? { modo: modo.value, documentoBase: escrito.value.texto, nombreDocumentoBase: escrito.value.nombre }
+      : undefined
+    const doc = await redactarDocumento(texto, conEscrito)
+    escritoBase.value = conEscrito && escrito.value ? { ...escrito.value, modo: modo.value } : null
     tipoDocumento.value = doc.tipo
     tituloDocumento.value = doc.titulo
     html.value = bloquesAHtml(doc.bloques)
@@ -177,6 +325,7 @@ function nuevoDocumento() {
 function reiniciar() {
   etapa.value = 'pedir'
   html.value = ''
+  escritoBase.value = null
   sugerenciaActual.value = null
   normas.value = new Map()
   revisados.clear()
@@ -343,6 +492,134 @@ onUnmounted(() => {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* ======================= 1. Cómo empezar ======================= */
+.rd-modos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.rd-modo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid #E4E6EA;
+  background: #FFFFFF;
+  color: rgba(25, 28, 31, 0.7);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.rd-modo:hover:not(:disabled) { border-color: rgba(29, 78, 137, 0.4); color: #191C1F; }
+.rd-modo:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.rd-modo--activo {
+  border-color: #1D4E89;
+  background: #EEF3F9;
+  color: #1D4E89;
+}
+
+.rd-modo:focus-visible,
+.rd-subir:focus-visible {
+  outline: 2px solid #1D4E89;
+  outline-offset: 2px;
+}
+
+.page-container.page-container.page-container.page-container :is(.rd-modo, .rd-subir, .rd-escrito-elegido) {
+  border-radius: 12px !important;
+}
+
+.rd-escrito {
+  width: 100%;
+}
+
+.rd-subir {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 22px 16px;
+  border: 1.5px dashed rgba(29, 78, 137, 0.35);
+  background: #FFFFFF;
+  color: #1D4E89;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.rd-subir:hover:not(:disabled) { background: #EEF3F9; border-color: #1D4E89; }
+
+.rd-subir-formatos {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: rgba(25, 28, 31, 0.5);
+}
+
+.rd-escrito-elegido {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 10px 16px;
+  border: 1px solid #E4E6EA;
+  background: #FFFFFF;
+  color: #191C1F;
+  text-align: left;
+}
+
+.rd-escrito-nombre {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.rd-escrito-tamano {
+  font-size: 0.8rem;
+  color: rgba(25, 28, 31, 0.5);
+  white-space: nowrap;
+}
+
+.rd-base {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.82rem;
+  color: rgba(25, 28, 31, 0.55);
+}
+
+.rd-recibido {
+  margin-top: 14px;
+  font-size: 0.85rem;
+}
+
+.rd-recibido summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #1D4E89;
+}
+
+.rd-recibido p {
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  color: rgba(25, 28, 31, 0.75);
+}
+
+@media (max-width: 600px) {
+  .rd-escrito-tamano { display: none; }
 }
 
 /* ======================= 1. Pedido ======================= */

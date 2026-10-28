@@ -12,6 +12,8 @@ export interface ConsultaLexitResultado {
   usandoPinecone: boolean
   fragmentosEncontrados: number
   fragmentos: FragmentoResultado[]
+  // Solo si se pidió razonamiento profundo
+  razonamiento?: { usado: boolean; restantes: number; limite: number }
 }
 
 interface OpcionesConsultaLexit {
@@ -21,6 +23,8 @@ interface OpcionesConsultaLexit {
   // Especialización de Consultas: limita la búsqueda y las respuestas a
   // esa rama del derecho.
   especialidad?: string
+  // Opción "Razonamiento profundo" (cupo diario propio)
+  razonamiento?: boolean
 }
 
 // Reemplaza a iniciarChatJuridico/enviarMensajeChatStream: toda la
@@ -38,7 +42,8 @@ export async function consultarLexit(
     textoDocumentoAdjunto: opciones?.textoDocumentoAdjunto,
     nombreDocumentoAdjunto: opciones?.nombreDocumentoAdjunto,
     esSolicitudAnalisis: opciones?.esSolicitudAnalisis ?? false,
-    ...(opciones?.especialidad ? { especialidad: opciones.especialidad } : {})
+    ...(opciones?.especialidad ? { especialidad: opciones.especialidad } : {}),
+    ...(opciones?.razonamiento ? { razonamiento: true } : {})
   })
 
   const data = await response.json() as Partial<ConsultaLexitResultado> & { error?: string }
@@ -56,6 +61,7 @@ export async function consultarLexit(
     respuesta: data.respuesta,
     usandoPinecone: data.usandoPinecone ?? false,
     fragmentosEncontrados: data.fragmentosEncontrados ?? 0,
-    fragmentos: data.fragmentos ?? []
+    fragmentos: data.fragmentos ?? [],
+    ...(data.razonamiento ? { razonamiento: data.razonamiento } : {})
   }
 }

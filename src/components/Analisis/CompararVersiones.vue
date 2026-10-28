@@ -1,5 +1,5 @@
 <template>
-  <section class="cv" aria-label="Comparar versiones de un contrato">
+  <section class="cv" :class="{ 'cv--ancho': resultado && totalCambios > 0 && vista === 'documento' }" aria-label="Comparar versiones de un contrato">
     <!-- Carga de las dos versiones (se oculta al ver el resultado) -->
     <div v-show="!resultado" class="cv-cargas">
       <div
@@ -66,13 +66,24 @@
             v-if="totalCambios > 0"
             type="button"
             class="cv-comparar cv-exportar"
+            :disabled="exportandoDocumento || estadoIA === 'cargando'"
+            :title="estadoIA === 'cargando' ? 'Espera a que termine el análisis de la IA' : 'Word con control de cambios y comentarios de riesgo'"
+            @click="exportarDocumento"
+          >
+            <q-spinner v-if="exportandoDocumento" size="14px" />
+            <q-icon v-else name="file_download" size="18px" />
+            Descargar documento comparado
+          </button>
+          <button
+            v-if="totalCambios > 0"
+            type="button"
+            class="cv-boton-sec cv-exportar"
             :disabled="exportando || estadoIA === 'cargando'"
-            :title="estadoIA === 'cargando' ? 'Espera a que termine el análisis de la IA' : 'Descargar la comparación en Word'"
+            :title="estadoIA === 'cargando' ? 'Espera a que termine el análisis de la IA' : 'Descargar la tabla de cambios en Word'"
             @click="exportar"
           >
             <q-spinner v-if="exportando" size="14px" />
-            <q-icon v-else name="file_download" size="18px" />
-            Exportar comparación
+            Exportar tabla de cambios
           </button>
           <button type="button" class="cv-boton-sec" @click="nuevaComparacion">Nueva comparación</button>
         </div>
@@ -114,6 +125,100 @@
       <p v-if="totalCambios === 0" class="cv-vacio">Las dos versiones tienen el mismo contenido: no se encontraron cambios.</p>
 
       <template v-else>
+        <div class="cv-vistas" role="tablist" aria-label="Cómo ver los cambios">
+          <button
+            v-for="v in VISTAS"
+            :key="v.valor"
+            type="button"
+            role="tab"
+            class="cv-vista"
+            :class="{ 'cv-vista--activa': vista === v.valor }"
+            :aria-selected="vista === v.valor"
+            @click="vista = v.valor"
+          >
+            <q-icon :name="v.icono" size="18px" aria-hidden="true" />
+            {{ v.etiqueta }}
+          </button>
+        </div>
+
+        <!-- ===== Documento comparado: el contrato completo con los cambios
+             dentro del texto (tercer documento) y su análisis al costado ===== -->
+        <div v-if="vista === 'documento'" class="cv-doc">
+          <div class="cv-doc-principal">
+            <p class="cv-leyenda">
+              <ins class="cv-agregado">Texto agregado</ins>
+              <del class="cv-eliminado">Texto eliminado</del>
+              <span>Haz clic en un cambio para ver su análisis.</span>
+            </p>
+            <article class="cv-hoja" aria-label="Documento comparado">
+              <div
+                v-for="c in resultado.cambios"
+                :id="`cv-doc-${c.id}`"
+                :key="c.id"
+                class="cv-bloque"
+                :class="[
+                  c.tipo !== 'sin_cambios' ? 'cv-bloque--cambio' : '',
+                  c.tipo !== 'sin_cambios' && explicacionDe(c.id) ? `cv-bloque--${explicacionDe(c.id)!.nivel}` : '',
+                  { 'cv-bloque--activo': activo === c.id }
+                ]"
+                @click="c.tipo !== 'sin_cambios' && seleccionar(c.id, 'documento')"
+              >
+                <span v-if="c.tipo !== 'sin_cambios'" class="cv-bloque-num" aria-hidden="true">{{ numeroCambio.get(c.id) }}</span>
+                <p
+                  v-for="(linea, li) in lineasPorCambio.get(c.id)"
+                  :key="li"
+                  class="cv-linea"
+                  :class="{ 'cv-linea--seccion': linea.seccion }"
+                >
+                  <template v-for="(t, ti) in linea.piezas" :key="ti">
+                    <del v-if="t.tipo === 'eliminado'" class="cv-eliminado">{{ t.texto }}</del>
+                    <ins v-else-if="t.tipo === 'agregado'" class="cv-agregado">{{ t.texto }}</ins>
+                    <template v-else>{{ t.texto }}</template>
+                  </template>
+                </p>
+              </div>
+            </article>
+          </div>
+
+          <aside class="cv-panel" aria-label="Análisis de los cambios">
+            <h3 class="cv-panel-titulo">Cambios <span>{{ totalCambios }}</span></h3>
+            <button
+              v-for="c in cambiosConCambio"
+              :id="`cv-panel-${c.id}`"
+              :key="c.id"
+              type="button"
+              class="cv-panel-item"
+              :class="{ 'cv-panel-item--activo': activo === c.id }"
+              :aria-pressed="activo === c.id"
+              @click="seleccionar(c.id, 'panel')"
+            >
+              <span class="cv-panel-cabecera">
+                <span class="cv-fila-numero">{{ numeroCambio.get(c.id) }}</span>
+                <span class="cv-panel-nombre">{{ c.titulo }}</span>
+              </span>
+              <span class="cv-panel-insignias">
+                <span class="cv-insignia" :class="`cv-insignia--${c.tipo}`">{{ ETIQUETA_TIPO[c.tipo] }}</span>
+                <span v-if="explicacionDe(c.id)" class="cv-insignia" :class="`cv-insignia--${explicacionDe(c.id)!.nivel}`">
+                  Riesgo {{ explicacionDe(c.id)!.nivel }}
+                </span>
+              </span>
+              <template v-if="explicacionDe(c.id)">
+                <span class="cv-panel-resumen">{{ explicacionDe(c.id)!.resumen }}</span>
+                <template v-if="activo === c.id">
+                  <span v-if="explicacionDe(c.id)!.recomendacion" class="cv-panel-dato">
+                    <strong>Recomendación:</strong> {{ explicacionDe(c.id)!.recomendacion }}
+                  </span>
+                  <span class="cv-panel-meta">
+                    Favorece: {{ textoFavorece(explicacionDe(c.id)!.favorece) }}<template v-if="explicacionDe(c.id)!.norma"> · {{ explicacionDe(c.id)!.norma }}</template>
+                  </span>
+                </template>
+              </template>
+              <span v-else-if="estadoIA === 'cargando'" class="cv-panel-pendiente">Analizando este cambio…</span>
+            </button>
+          </aside>
+        </div>
+
+        <template v-else>
         <!-- Filtros -->
         <div class="cv-filtros">
           <div class="cv-filtro" role="group" aria-label="Filtrar por tipo de cambio">
@@ -229,6 +334,7 @@
             </div>
           </article>
         </div>
+        </template>
 
         <p class="cv-nota">Borrador de apoyo. Debe ser revisado por un abogado.</p>
       </template>
@@ -248,6 +354,7 @@
 import { computed, reactive, ref } from 'vue'
 import { explicarCambios, type ExplicacionCambio } from '../../services/compararVersionesService'
 import { comparacionAWord, nombreArchivoComparacion } from '../../utils/exportarComparacion'
+import { documentoComparadoAWord, lineasComparadas, nombreArchivoDocumentoComparado, type LineaComparada } from '../../utils/documentoComparado'
 import {
   ErrorArchivoWord,
   compararDocumentos,
@@ -320,6 +427,8 @@ function comparar() {
   const modificada = cargas.modificada.documento
   if (!original || !modificada) return
   resultado.value = compararDocumentos(original.parrafos, modificada.parrafos)
+  vista.value = 'documento'
+  activo.value = null
   filtroTipo.value = 'todos'
   filtroNivel.value = 'todos'
   if (totalCambios.value > 0) void pedirExplicaciones()
@@ -482,9 +591,61 @@ function textoFavorece(f: ExplicacionCambio['favorece']): string {
   return 'No se puede determinar con el texto'
 }
 
+// ----- Documento comparado (vista por defecto del resultado) -----
+const VISTAS = [
+  { valor: 'documento', etiqueta: 'Documento comparado', icono: 'article' },
+  { valor: 'lista', etiqueta: 'Lista de cambios', icono: 'view_list' }
+] as const
+const vista = ref<typeof VISTAS[number]['valor']>('documento')
+const activo = ref<string | null>(null)
+
+const cambiosConCambio = computed(() => (resultado.value?.cambios ?? []).filter(c => c.tipo !== 'sin_cambios'))
+const numeroCambio = computed(() => new Map(cambiosConCambio.value.map((c, i) => [c.id, i + 1])))
+const lineasPorCambio = computed(() =>
+  new Map<string, LineaComparada[]>((resultado.value?.cambios ?? []).map(c => [c.id, lineasComparadas(c)]))
+)
+
+// Clic en el documento → marca el cambio en el panel, y viceversa
+function seleccionar(id: string, desde: 'documento' | 'panel') {
+  activo.value = id
+  const destino = document.getElementById(desde === 'panel' ? `cv-doc-${id}` : `cv-panel-${id}`)
+  destino?.scrollIntoView({ behavior: 'smooth', block: desde === 'panel' ? 'center' : 'nearest' })
+}
+
 // ----- Exportación a Word -----
 const exportando = ref(false)
 const errorExportar = ref('')
+const exportandoDocumento = ref(false)
+
+function descargarBlob(blob: Blob, nombre: string) {
+  const url = URL.createObjectURL(blob)
+  const enlace = document.createElement('a')
+  enlace.href = url
+  enlace.download = nombre
+  document.body.appendChild(enlace)
+  enlace.click()
+  enlace.remove()
+  URL.revokeObjectURL(url)
+}
+
+async function exportarDocumento() {
+  if (!resultado.value || exportandoDocumento.value) return
+  exportandoDocumento.value = true
+  errorExportar.value = ''
+  try {
+    const nombres = {
+      original: cargas.original.documento?.nombre ?? 'Versión original',
+      modificada: cargas.modificada.documento?.nombre ?? 'Versión modificada'
+    }
+    const blob = await documentoComparadoAWord(resultado.value.cambios, explicaciones.value, partes.value, nombres)
+    descargarBlob(blob, nombreArchivoDocumentoComparado(nombres.original, nombres.modificada))
+  } catch (err) {
+    console.error('Error al exportar el documento comparado:', err)
+    errorExportar.value = 'No se pudo descargar el documento comparado. Intenta de nuevo.'
+  } finally {
+    exportandoDocumento.value = false
+  }
+}
 
 async function exportar() {
   if (!resultado.value || exportando.value) return
@@ -1241,5 +1402,315 @@ async function cargarArchivo(lado: Lado, archivo: File) {
 
 @media (prefers-reduced-motion: reduce) {
   .cv-fila { transition: none; }
+}
+
+/* ==========================================================================
+   DOCUMENTO COMPARADO
+   El contrato completo en una hoja, con los cambios dentro del texto y el
+   análisis de cada cambio en un panel al costado (como Análisis de
+   contratos).
+   ========================================================================== */
+.cv--ancho {
+  max-width: 1240px;
+}
+
+.cv-vistas {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(var(--lexit-verde-rgb), 0.05);
+}
+
+.page-container.page-container.page-container.page-container .cv-vistas {
+  border-radius: 12px !important;
+}
+
+.cv-vista {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: none;
+  background: transparent;
+  color: rgba(var(--lexit-verde-rgb), 0.7);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.page-container.page-container.page-container.page-container .cv-vista {
+  border-radius: 9px !important;
+}
+
+.cv-vista--activa {
+  background: #FFFFFF;
+  color: var(--lexit-verde);
+  box-shadow: 0 1px 3px rgba(var(--lexit-verde-rgb), 0.12);
+}
+
+.cv-vista:focus-visible {
+  outline: 2px solid var(--lexit-verde);
+  outline-offset: 2px;
+}
+
+.cv-doc {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 20px;
+  align-items: start;
+}
+
+.cv-doc-principal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.cv-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin: 0;
+  font-size: 0.82rem;
+  color: rgba(var(--lexit-verde-rgb), 0.65);
+}
+
+.cv-leyenda ins,
+.cv-leyenda del {
+  padding: 1px 6px;
+}
+
+/* La hoja: como una página de Word */
+.cv-hoja {
+  padding: 56px 64px 64px;
+  background: #FFFFFF;
+  border: 1px solid rgba(var(--lexit-verde-rgb), 0.1);
+  color: #1F2A33;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.97rem;
+  line-height: 1.7;
+}
+
+.page-container.page-container.page-container.page-container .cv-hoja {
+  border-radius: 4px !important;
+  box-shadow: 0 1px 2px rgba(var(--lexit-verde-rgb), 0.05), 0 10px 30px -18px rgba(var(--lexit-verde-rgb), 0.25) !important;
+}
+
+.cv-bloque {
+  position: relative;
+  margin: 0 -14px;
+  padding: 2px 14px;
+  border-left: 3px solid transparent;
+}
+
+.cv-bloque--cambio {
+  border-left-color: rgba(var(--lexit-verde-rgb), 0.25);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.cv-bloque--alto { border-left-color: #8E2F25; }
+.cv-bloque--medio { border-left-color: #B08A2E; }
+.cv-bloque--bajo { border-left-color: #2F6B3A; }
+
+.cv-bloque--cambio:hover {
+  background: rgba(var(--lexit-verde-rgb), 0.025);
+}
+
+.cv-bloque--activo,
+.cv-bloque--activo:hover {
+  background: rgba(29, 78, 137, 0.06);
+}
+
+/* Número del cambio en el margen izquierdo de la hoja */
+.cv-bloque-num {
+  position: absolute;
+  top: 6px;
+  left: -40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  background: rgba(var(--lexit-verde-rgb), 0.07);
+  color: rgba(var(--lexit-verde-rgb), 0.75);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.page-container.page-container.page-container.page-container .cv-bloque-num {
+  border-radius: 6px !important;
+}
+
+.cv-bloque--activo .cv-bloque-num {
+  background: #1D4E89;
+  color: #FFFFFF;
+}
+
+.cv-linea {
+  margin: 0 0 0.75em;
+  text-align: justify;
+  overflow-wrap: anywhere;
+}
+
+.cv-linea--seccion {
+  margin-top: 1.1em;
+  font-weight: 700;
+  text-align: left;
+}
+
+/* Panel de análisis */
+.cv-panel {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: #FFFFFF;
+  border: 1px solid rgba(var(--lexit-verde-rgb), 0.1);
+}
+
+.page-container.page-container.page-container.page-container .cv-panel {
+  border-radius: 14px !important;
+}
+
+.cv-panel-titulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 14px 16px 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--lexit-verde);
+}
+
+.cv-panel-titulo span {
+  font-size: 0.8rem;
+  color: rgba(var(--lexit-verde-rgb), 0.55);
+}
+
+.cv-panel-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  border-top: 1px solid rgba(var(--lexit-verde-rgb), 0.08);
+  border-left: 3px solid transparent;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.cv-panel-item:hover {
+  background: rgba(var(--lexit-verde-rgb), 0.025);
+}
+
+.cv-panel-item--activo,
+.cv-panel-item--activo:hover {
+  border-left-color: #1D4E89;
+  background: rgba(29, 78, 137, 0.05);
+}
+
+.cv-panel-item:focus-visible {
+  outline: 2px solid var(--lexit-verde);
+  outline-offset: -2px;
+}
+
+.cv-panel-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cv-panel-nombre {
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--lexit-verde);
+}
+
+.cv-panel-insignias {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cv-panel-resumen,
+.cv-panel-dato {
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: rgba(var(--lexit-verde-rgb), 0.85);
+}
+
+.cv-panel-dato strong {
+  font-weight: 600;
+  color: var(--lexit-verde);
+}
+
+.cv-panel-meta {
+  font-size: 0.78rem;
+  color: rgba(var(--lexit-verde-rgb), 0.55);
+}
+
+.cv-panel-pendiente {
+  font-size: 0.84rem;
+  font-style: italic;
+  color: rgba(var(--lexit-verde-rgb), 0.55);
+}
+
+@media (max-width: 960px) {
+  .cv-doc {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cv-panel {
+    position: static;
+    max-height: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .cv-hoja {
+    padding: 28px 20px 32px 34px;
+    font-size: 0.93rem;
+  }
+
+  .cv-bloque-num {
+    left: -18px;
+  }
+
+  .cv-vistas {
+    align-self: stretch;
+  }
+
+  .cv-vista {
+    flex: 1 1 0;
+    justify-content: center;
+    padding: 0 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cv-vista,
+  .cv-bloque--cambio,
+  .cv-panel-item { transition: none; }
 }
 </style>

@@ -5,6 +5,7 @@ import * as logger from 'firebase-functions/logger'
 import { initializeApp, getApps } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore, FieldValue } from 'firebase-admin/firestore'
+import { modoAppCheck, revisarAppCheck } from './appCheckVerificacion'
 
 if (getApps().length === 0) {
   initializeApp()
@@ -44,6 +45,8 @@ export const MAX_MENSAJES_HISTORIAL = 30
 
 interface OpcionesAutorizacion {
   soloAdmin?: boolean
+  // Solo appCheckAdmin: no exige App Check (para poder desactivarlo)
+  sinAppCheck?: boolean
 }
 
 // Verifica el ID token de Firebase del header Authorization. Si falta, es
@@ -71,6 +74,17 @@ export async function autorizar(
     return null
   }
 
+  // App Check (además del ID token): en modo 'monitor' solo se cuenta; en
+  // 'exigir', sin un token válido se rechaza (ver appCheckVerificacion.ts)
+  if (!opciones.sinAppCheck) {
+    const appCheck = await revisarAppCheck(req)
+    if (appCheck !== 'validos' && await modoAppCheck() === 'exigir') {
+      logger.warn(`🛡️ App Check ${appCheck}: llamada rechazada de ${uid}`)
+      res.status(401).json({ error: 'No se pudo verificar que la solicitud venga de LexIT. Recarga la página e inténtalo de nuevo.' })
+      return null
+    }
+  }
+
   if (opciones.soloAdmin) {
     const perfil = await getFirestore().collection('users').doc(uid).get()
     if (perfil.get('role') !== 'admin') {
@@ -81,6 +95,13 @@ export async function autorizar(
   }
 
   return uid
+}
+
+// ¿El usuario es admin? (sin responder al cliente: para opciones solo de admin dentro
+// de funciones que también usan usuarios normales)
+export async function esAdmin(uid: string): Promise<boolean> {
+  const perfil = await getFirestore().collection('users').doc(uid).get()
+  return perfil.get('role') === 'admin'
 }
 
 function fechaPeru(): string {

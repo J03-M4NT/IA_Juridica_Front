@@ -3,6 +3,7 @@ import { defineSecret } from 'firebase-functions/params'
 import { Pinecone } from '@pinecone-database/pinecone'
 import * as logger from 'firebase-functions/logger'
 import { GEMINI_API_KEY, TIMEOUT_FUNCIONES_IA_SEGUNDOS, conModeloDeRespaldo } from './geminiClient'
+import { consumirOpcion } from './cuotasExtra'
 import {
   ORIGENES_PERMITIDOS,
   MAX_CARACTERES_CONTRATO,
@@ -10,10 +11,14 @@ import {
   MAX_MENSAJES_HISTORIAL,
   autorizar,
   consumirCuotaIA,
+  esAdmin,
   excede
 } from './seguridad'
 import { dividirEnSecciones, seleccionarSecciones } from './seccionesContrato'
 import { type Area, esArea, NOMBRE_AREA, filtroDeArea, normaEnPregunta } from './especialidades'
+import { recuperarParaConsultaV2 } from './busquedaV2'
+import { leerConfigBusqueda, type ConfigBusqueda } from './configBusqueda'
+import { abrirIndice, esIndiceId } from './indicesPinecone'
 
 export const PINECONE_INDEX = 'lexit'
 export const PINECONE_HOST = 'https://lexit-rv6se0q.svc.aped-4627-b74a.pinecone.io'
@@ -47,6 +52,8 @@ export interface FragmentoResultado {
   // Letra de los artículos como "108°-C" (Código Penal). Pinecone solo
   // guarda el número; la letra se lee del encabezado del propio texto.
   sufijoArticulo?: string
+  // Vigencia del artículo, ej. "vigente (detectada)" (esquema nuevo)
+  vigencia?: string
   // Solo interno (no se devuelve al front): el trozo estaba etiquetado con
   // un artículo pero no trae su encabezado — es un comentario de doctrina,
   // una nota o un índice del PDF, no texto de ley.
@@ -67,6 +74,11 @@ interface ConsultarLexitRequest {
   // Especialización elegida en Consultas (derecho-penal, -civil,
   // -tributario, -comercial). Sin ella, se busca en toda la base.
   especialidad?: string
+  // Solo admins (evaluación): usar la búsqueda nueva con este índice y
+  // namespace sin cambiar el interruptor de todos los usuarios.
+  busquedaPrueba?: { indice?: string; namespace?: string }
+  // Opción "Razonamiento profundo" de Consultas (cupo diario propio)
+  razonamiento?: boolean
 }
 
 interface ConsultarLexitResponse {
@@ -74,6 +86,8 @@ interface ConsultarLexitResponse {
   usandoPinecone: boolean
   fragmentosEncontrados: number
   fragmentos: FragmentoResultado[]
+  // Solo si se pidió razonamiento profundo
+  razonamiento?: { usado: boolean; restantes: number; limite: number }
 }
 
 // =========================
@@ -271,7 +285,7 @@ export function tieneEncabezadoDeArticulo(fragmento: FragmentoResultado): boolea
 // con un umbral de score, una llamada corta a Gemini decide si la pregunta
 // necesita el texto de una norma y, si sí, con qué términos buscar.
 // =========================
-interface DecisionBusqueda {
+export interface DecisionBusqueda {
   buscar: boolean
   // 1 a 4 búsquedas cortas, una por subtema. Una sola frase ("derechos
   // reales derivados de la propiedad") trae los artículos que REPITEN esas
@@ -284,7 +298,7 @@ interface DecisionBusqueda {
 const CODIGOS_VALIDOS = ['constitucion', 'codigo-civil', 'codigo-penal', 'codigo-laboral', 'codigo-tributario']
 const MAX_SUBCONSULTAS = 4
 
-async function decidirSiBuscar(pregunta: string, preguntaAnterior: string): Promise<DecisionBusqueda> {
+export async function decidirSiBuscar(pregunta: string, preguntaAnterior: string): Promise<DecisionBusqueda> {
   const prompt = [
     'Eres el filtro de búsqueda de un asistente jurídico peruano. Decide si para responder la PREGUNTA hace falta consultar el TEXTO de una norma peruana (Constitución, Código Civil, Código Penal u otro código).',
     '',
@@ -327,7 +341,7 @@ async function decidirSiBuscar(pregunta: string, preguntaAnterior: string): Prom
 const SEGUIMIENTO_REGEX = /^[¿¡]?\s*(?:y|e|pero|entonces|o sea|adem[aá]s|tambi[eé]n)\b|\b(?:eso|esto|ese|esa|este|esta|esos|esas|aquel|aquello|dicho|dicha|anterior|mismo|misma|lo que dijiste|el inciso|ese art[ií]culo)\b|\bm[aá]s\s+(?:detalle|informaci[oó]n|ejemplos?|sobre)\b|\b(?:expl[ií]ca(?:me)?|ampl[ií]a|profundiza|desarrolla)\b/i
 
 // Número de artículo nombrado en la pregunta ("artículo 2", "art. 1681°").
-function numeroArticuloEnPregunta(pregunta: string): number | undefined {
+export function numeroArticuloEnPregunta(pregunta: string): number | undefined {
   const match = /\bart(?:[íi]culo|\.)\s*(\d{1,4})\b/i.exec(pregunta)
   return match?.[1] ? Number(match[1]) : undefined
 }
@@ -472,6 +486,52 @@ function verificarCitas(respuesta: string, fragmentos: FragmentoResultado[]): { 
 }
 
 // =========================
+// ARTÍCULOS NO VERIFICADOS (solo Consultas)
+// Toda mención de un artículo ("artículo 1969 del Código Civil") que no
+// corresponda a un fragmento recuperado se marca como no verificada. Así una
+// cita que Gemini haya sacado de memoria nunca se presenta como válida.
+// Si el artículo no recuperado es una remisión que hace el texto de un
+// artículo recuperado (el 108-C remite al "artículo 36"), se dice eso: la
+// remisión sí está en la ley, pero el texto del artículo remitido no se leyó.
+// =========================
+const MARCA_NO_VERIFICADO = ' (no verificado en la base de LexIT)'
+const marcaRemision = (f: FragmentoResultado) => ` (remisión del art. ${f.numeroArticulo}°${f.sufijoArticulo ? `-${f.sufijoArticulo}` : ''}; su texto no se consultó en LexIT)`
+
+export function marcarArticulosNoVerificados(respuesta: string, fragmentos: FragmentoResultado[]): { respuesta: string; marcados: number } {
+  const articulos = fragmentos.filter(f => !f.esComentario && f.numeroArticulo !== undefined)
+  let marcados = 0
+  const resultado = respuesta.replace(MENCION_ARTICULOS_REGEX, (completa: string, _grupo: string, inicio: number) => {
+    // La mención sin el espacio final que a veces captura la expresión
+    const mencion = completa.replace(/\s+$/, '')
+    const espacio = completa.slice(mencion.length)
+    // Ya marcada antes
+    const siguiente = respuesta.slice(inicio + mencion.length, inicio + mencion.length + 40)
+    if (siguiente.startsWith(MARCA_NO_VERIFICADO) || siguiente.startsWith(' (remisión del art.')) return completa
+    const contexto = respuesta.slice(Math.max(0, inicio - 120), inicio + mencion.length + 80)
+    const codigo = claveDeCodigo(contexto)
+    const mencionados = articulosMencionados(mencion)
+    const verificado = mencionados.every(m => articulos.some(f => coincideConMencion(f, [m], codigo)))
+    if (verificado) return completa
+    marcados++
+    // ¿Lo menciona el texto de un artículo recuperado (del mismo código)?
+    const remitente = articulos.find(f => {
+      const codigoFragmento = claveDeCodigo(f.nombreDocumento)
+      if (codigo && codigoFragmento && codigo !== codigoFragmento) return false
+      const enTexto = articulosMencionados(f.texto)
+      return mencionados.every(m => enTexto.some(t => t.numero === m.numero && (!m.sufijo || t.sufijo === m.sufijo)))
+    })
+    return `${mencion}${remitente ? marcaRemision(remitente) : MARCA_NO_VERIFICADO}${espacio}`
+  })
+  return { respuesta: resultado, marcados }
+}
+
+const AVISO_SIN_CONTRASTE = '\n\n*Respuesta orientativa. Esta consulta no se contrastó con la base de normas de LexIT; verifica en el texto oficial.*'
+// Sin base de LexIT, la orientación no da datos que dependan del texto de
+// una norma (pueden estar desactualizados o ser de otra norma) y es breve
+const SIN_CIFRAS = 'No des cifras ni datos concretos que dependan del texto de una norma (plazos en días, montos, multas, UIT, penas en años, porcentajes, edades límite). Explica los conceptos, di qué entidad o qué tipo de norma conviene revisar y responde en 2 o 3 párrafos breves.'
+const AVISO_SIN_BASE = '\n\n*Respuesta orientativa. No se encontró base suficiente en la base de normas de LexIT para esta consulta; verifica en el texto oficial.*'
+
+// =========================
 // CLOUD FUNCTION
 // =========================
 // =========================
@@ -523,7 +583,9 @@ export const consultarLexit = onRequest(
         textoDocumentoAdjunto,
         nombreDocumentoAdjunto,
         esSolicitudAnalisis = false,
-        especialidad: especialidadRecibida
+        especialidad: especialidadRecibida,
+        busquedaPrueba,
+        razonamiento: razonamientoPedido
       } = req.body as ConsultarLexitRequest
       // Solo en Consultas (sin documento adjunto) y solo valores conocidos.
       const especialidad: Area | undefined = !textoDocumentoAdjunto && esArea(especialidadRecibida) ? especialidadRecibida : undefined
@@ -560,6 +622,10 @@ export const consultarLexit = onRequest(
       const modoConsulta = !textoDocumentoAdjunto
 
       let contexto = ''
+      // Paso 0: la búsqueda en la base falló (cuota, red...): respuesta orientativa sin artículos.
+      // Sin base: se buscó, pero nada superó el umbral de relevancia.
+      let busquedaFallida = false
+      let busquedaSinBase = false
       let fragmentosEncontrados: FragmentoResultado[] = []
 
       const mensajesUsuario = historialMensajes.filter(m => !m.esIA)
@@ -592,6 +658,8 @@ export const consultarLexit = onRequest(
           const pareceSeguimiento = SEGUIMIENTO_REGEX.test(pregunta.trim())
           const esPosibleSeguimiento = !esSolicitudAnalisis && esPreguntaCorta && (!modoConsulta || pareceSeguimiento)
 
+          // Búsqueda de siempre sobre la base actual (__default__)
+          const recuperarComoHoy = async () => {
           const queryBusqueda = esSolicitudAnalisis && textoDocumentoAdjunto
             ? textoDocumentoAdjunto.slice(0, 600)
             : decision?.consultas?.[0]
@@ -688,14 +756,59 @@ export const consultarLexit = onRequest(
             logger.info(`🧹 Fragmentos útiles: ${fragmentosEncontrados.length} de ${antes}` +
               ` (${fragmentosEncontrados.filter(f => f.esComentario).length} comentario/nota)`)
           }
+          }
+
+          // Consultas con el interruptor en 'v2' (config/consultas): búsqueda D
+          // sobre el esquema nuevo. Análisis (con documento) sigue con la de
+          // siempre. Si la búsqueda nueva falla, se usa la de siempre.
+          let usadaBusquedaV2 = false
+          let configBusqueda: ConfigBusqueda | null = modoConsulta ? await leerConfigBusqueda() : null
+          // Evaluación (solo admins): probar un índice sin tocar el interruptor de todos
+          if (configBusqueda && busquedaPrueba && esIndiceId(busquedaPrueba.indice) && await esAdmin(uid)) {
+            configBusqueda = {
+              ...configBusqueda,
+              modo: 'v2',
+              indice: busquedaPrueba.indice,
+              namespace: typeof busquedaPrueba.namespace === 'string' && busquedaPrueba.namespace ? busquedaPrueba.namespace : configBusqueda.namespace
+            }
+          }
+          if (configBusqueda?.modo === 'v2') {
+            try {
+              const consultaBase = esPosibleSeguimiento && preguntaAnterior && !decision?.consultas?.length
+                ? `${preguntaAnterior} ${pregunta}`
+                : pregunta
+              const indiceV2 = await abrirIndice(pinecone, configBusqueda.indice)
+              const resultado = await recuperarParaConsultaV2(pinecone, indiceV2.namespace(configBusqueda.namespace), configBusqueda.namespace, configBusqueda.indice, pregunta, decision, {
+                consultaBase,
+                tope: (decision?.consultas?.length ?? 0) > 1 ? 8 : 6,
+                // Especialidad elegida: esa área, y la Constitución en todas
+                ...(especialidad ? { filtroExtra: { $or: [{ area: { $eq: especialidad } }, { tipoNorma: { $eq: 'constitucion' } }] } } : {})
+              })
+              // Umbral de confianza (calibrado con las preguntas de prueba): con
+              // reranker se mira su puntaje; sin él, la similitud de la búsqueda
+              const { rerank, denso } = resultado.confianza
+              const bajoUmbral = rerank !== null
+                ? rerank < configBusqueda.umbralRerank
+                : denso < configBusqueda.umbralDenso
+              fragmentosEncontrados = bajoUmbral ? [] : resultado.fragmentos
+              usadaBusquedaV2 = true
+              logger.info(`🆕 Búsqueda v2 (${configBusqueda.indice}/${configBusqueda.namespace}, confianza rerank=${rerank?.toFixed(3) ?? '-'} denso=${denso.toFixed(3)}${bajoUmbral ? ', bajo el umbral' : ''}): ` +
+                `${resultado.fragmentos.map(f => `${f.nombreDocumento} ${f.numeroArticulo ?? ''}${f.sufijoArticulo ? `-${f.sufijoArticulo}` : ''}`).join(' · ') || 'sin resultados'}`)
+            } catch (err) {
+              logger.warn('⚠️ Búsqueda v2 falló, se usa la de siempre:', (err as Error).message)
+              fragmentosEncontrados = []
+            }
+          }
+          if (!usadaBusquedaV2) await recuperarComoHoy()
+          if (modoConsulta && fragmentosEncontrados.length === 0) busquedaSinBase = true
 
           if (fragmentosEncontrados.length > 0 && modoConsulta) {
             const textoFragmentos = fragmentosEncontrados
               .map((f, i) => f.esComentario
                 ? `[${i + 1}] ${f.nombreDocumento} (comentario o nota incluida en el documento, NO es texto de un artículo): ${f.texto}`
                 : f.numeroArticulo
-                  ? `[${i + 1}] ${f.nombreDocumento} - Artículo ${f.numeroArticulo}°${f.sufijoArticulo ? `-${f.sufijoArticulo}` : ''}: ${f.texto}`
-                  : `[${i + 1}] ${f.nombreDocumento}: ${f.texto}`)
+                  ? `[${i + 1}] ${f.nombreDocumento} - Artículo ${f.numeroArticulo}°${f.sufijoArticulo ? `-${f.sufijoArticulo}` : ''}${f.vigencia ? ` (vigencia: ${f.vigencia})` : ''}: ${f.texto}`
+                  : `[${i + 1}] ${f.nombreDocumento}${f.vigencia ? ` (vigencia: ${f.vigencia})` : ''}: ${f.texto}`)
               .join('\n\n')
 
             const hayFuentePrimaria = fragmentosEncontrados.some(f => f.esFuentePrimaria)
@@ -711,6 +824,8 @@ export const consultarLexit = onRequest(
               '- Cada [n] debe ir pegado a la idea que ESE fragmento sustenta. Si en la frase nombras un artículo, el [n] debe ser el del fragmento de ese mismo artículo (revisa el número del encabezado de cada fragmento). Los números [n] valen solo para los fragmentos de este mensaje: ignora cualquier numeración de respuestas anteriores.',
               '- Úsalos solo si la pregunta trata sobre lo que regula esa norma. No relaciones la pregunta con un artículo solo porque comparten palabras (ej. "pedir una reunión" por correo NO es la convocatoria a asamblea de una asociación). Si la pregunta es práctica o cotidiana (redactar un correo, un trámite general, una duda común), ignora los fragmentos.',
               '- Las citas textuales (entre comillas) solo pueden salir de estos fragmentos; no transcribas artículos de memoria.',
+              '- PROHIBIDO mencionar un número de artículo o una norma con número (ley, decreto) que NO esté en estos fragmentos. Si tu explicación necesita otra norma, nómbrala de forma general, sin número de artículo.',
+              '- Si un fragmento indica vigencia "modificado" o "derogado", dilo al citarlo.',
               '- Complementa con tu conocimiento jurídico general (doctrina, finalidad de la norma, ejemplos, relación con otras figuras o normas) sin número de cita. Los fragmentos sustentan la respuesta, no la limitan.',
               '- Los fragmentos marcados como "comentario o nota" no son texto de ley: puedes usarlos como apoyo doctrinal citándolos, pero nunca presentarlos como el texto de un artículo.',
               '- Si un fragmento no sirve, NO pongas su número [n] en ninguna parte de la respuesta, ni siquiera para decir que no sirve.',
@@ -744,6 +859,8 @@ export const consultarLexit = onRequest(
           }
         } catch (err) {
           logger.warn('⚠️ Pinecone no disponible, usando solo Gemini:', (err as Error).message)
+          busquedaFallida = true
+          busquedaSinBase = false
         }
       }
 
@@ -751,6 +868,21 @@ export const consultarLexit = onRequest(
         ? pregunta
         : contexto
           ? `${contexto}\nPREGUNTA DEL USUARIO: ${pregunta}`
+          : modoConsulta && busquedaFallida
+            ? [
+                'No fue posible consultar la base de normas para esta pregunta. Responde de forma orientativa con tu conocimiento jurídico general.',
+                'NO cites números de artículo ni normas con número (leyes, decretos); explica las figuras de forma general. No transcribas texto legal.',
+                SIN_CIFRAS,
+                'No menciones problemas técnicos ni que no pudiste consultar la base.',
+                `PREGUNTA DEL USUARIO: ${pregunta}`
+              ].join('\n')
+          : modoConsulta && busquedaSinBase
+            ? [
+                'Se buscó en la base de normas de LexIT y no se encontró base suficiente para esta pregunta.',
+                'Dilo al inicio en una sola frase breve. Luego, si puedes, orienta de forma general con tu conocimiento jurídico, SIN citar números de artículo ni normas con número, y sin transcribir texto legal.',
+                SIN_CIFRAS,
+                `PREGUNTA DEL USUARIO: ${pregunta}`
+              ].join('\n')
           : modoConsulta
             ? [
                 'No hay fragmentos de la base de datos jurídica para esta pregunta: respóndela con tu conocimiento general, de forma directa.',
@@ -821,7 +953,18 @@ export const consultarLexit = onRequest(
 
       // El chat se arma dentro del callback: si el modelo principal está
       // saturado, se vuelve a armar con el modelo de respaldo.
-      const enviarAlChat = (mensaje: string) => conModeloDeRespaldo(model => model.startChat({
+      // Razonamiento profundo (solo Consultas, si el usuario lo activó y le
+      // queda cupo): el mismo modelo piensa más antes de responder. Si el
+      // modelo no admite la opción, se responde como siempre.
+      const cupoRazonamiento = razonamientoPedido === true && modoConsulta && !tratarComoTrivial
+        ? await consumirOpcion(uid, 'razonamiento')
+        : null
+      let pensarMas = cupoRazonamiento?.permitido === true
+      const configPensar = (nombreModelo: string): Record<string, unknown> => /gemini-2\.5/.test(nombreModelo)
+        ? { thinkingConfig: { thinkingBudget: 8192 }, maxOutputTokens: 4096 + 8192 }
+        : { thinkingConfig: { thinkingLevel: 'high' }, maxOutputTokens: 16384 }
+
+      const enviarAlChatCon = (mensaje: string, pensar: boolean) => conModeloDeRespaldo(model => model.startChat({
         history: historialMensajes.map(m => ({
           role: m.esIA ? 'model' : 'user',
           // Las [n] de respuestas anteriores apuntaban a las fuentes de ESE
@@ -831,7 +974,7 @@ export const consultarLexit = onRequest(
         })),
         // Consultas pide respuestas desarrolladas (ver instrucción de
         // profundidad abajo): más margen para que no se corten.
-        generationConfig: { maxOutputTokens: modoConsulta ? 4096 : 2000 },
+        generationConfig: { maxOutputTokens: modoConsulta ? 4096 : 2000, ...(pensar ? configPensar(model.model) : {}) },
         systemInstruction: {
           role: 'user',
           parts: [{
@@ -844,6 +987,10 @@ export const consultarLexit = onRequest(
               '- Siempre recomiendas consultar un abogado para casos complejos.',
               '- Respondes en formato markdown cuando sea útil (listas, negritas).',
               '- No te presentes ni saludes al inicio de cada respuesta; hazlo solo si el usuario te saluda.',
+              // Consultas: solo temas jurídicos (no recomienda restaurantes, recetas, etc.)
+              ...(modoConsulta
+                ? ['- SOLO respondes temas jurídicos o del ejercicio del derecho (normas, trámites legales, contratos, derechos y obligaciones, el trabajo de abogados, notarios o jueces, cómo redactar un escrito o un correo legal). Si la pregunta no tiene relación con el derecho (comida, restaurantes, recetas, viajes, deportes, entretenimiento, salud, tecnología, tareas escolares de otras materias, etc.), NO la respondas ni des recomendaciones: di en una o dos frases amables que LexIT es un asistente jurídico y que con gusto ayuda con una consulta legal (si el tema tiene un ángulo legal, por ejemplo la licencia de un restaurante o los derechos del consumidor, sugiérelo). Saludos y agradecimientos se responden breve, como siempre.']
+                : []),
               ...(especialidad
                 ? [`- El usuario eligió la especialización ${NOMBRE_AREA[especialidad]}: responde SOLO preguntas de esa rama del derecho peruano. Si la pregunta es claramente de otra rama, no la desarrolles: dilo en una o dos frases y sugiere elegir la especialización que corresponda (o "General"). Saludos y preguntas cotidianas se responden breve, como siempre.`]
                 : []),
@@ -855,6 +1002,18 @@ export const consultarLexit = onRequest(
           }]
         }
       }).sendMessage(mensaje))
+      const enviarAlChat = async (mensaje: string) => {
+        if (pensarMas) {
+          try {
+            return await enviarAlChatCon(mensaje, true)
+          } catch (err) {
+            if (esBloqueoPorRecitacion(err)) throw err
+            logger.warn(`🧠 Razonamiento profundo no disponible, se responde como siempre: ${(err as Error).message.slice(0, 160)}`)
+            pensarMas = false
+          }
+        }
+        return enviarAlChatCon(mensaje, false)
+      }
 
       // Gemini bloquea la respuesta ("RECITATION") si reproduce demasiado
       // texto literal parecido a obras existentes — pasa con artículos de
@@ -913,6 +1072,18 @@ export const consultarLexit = onRequest(
         logger.info(`📌 Fragmentos citados: ${fragmentosDevueltos.length} de ${fragmentosEncontrados.length}`)
       }
 
+      // Toda mención de un artículo que no esté entre los fragmentos
+      // recuperados queda marcada como no verificada (nunca como válida)
+      if (modoConsulta && !tratarComoTrivial) {
+        const marcado = marcarArticulosNoVerificados(textoRespuesta, fragmentosEncontrados)
+        textoRespuesta = marcado.respuesta
+        if (marcado.marcados) logger.info(`🚩 Menciones de artículos no verificadas: ${marcado.marcados}`)
+      }
+      // Aviso discreto cuando la respuesta no se contrastó con la base
+      if (modoConsulta && !tratarComoTrivial && fragmentosDevueltos.length === 0 && (busquedaFallida || busquedaSinBase)) {
+        textoRespuesta += busquedaFallida ? AVISO_SIN_CONTRASTE : AVISO_SIN_BASE
+      }
+
       const usandoPinecone = !tratarComoTrivial && fragmentosDevueltos.length > 0
       // En Consultas no se agrega pie: el chat ya muestra el bloque de
       // fuentes ("Basado en N fuente(s)") debajo de la respuesta.
@@ -928,7 +1099,8 @@ export const consultarLexit = onRequest(
         fragmentosEncontrados: fragmentosDevueltos.length,
         fragmentos: fragmentosDevueltos.map(({ esComentario, ...f }) => esComentario
           ? { ...f, nombreDocumento: `${f.nombreDocumento} · Comentario o nota` }
-          : f)
+          : f),
+        ...(cupoRazonamiento ? { razonamiento: { usado: pensarMas, restantes: cupoRazonamiento.restantes, limite: cupoRazonamiento.limite } } : {})
       }
 
       res.json(respuesta)

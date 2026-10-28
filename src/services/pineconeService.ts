@@ -335,6 +335,8 @@ export interface FragmentoResultado {
   // Letra de artículos como "108°-C" (la calcula consultarLexit)
   sufijoArticulo?: string
   esFuentePrimaria?: boolean
+  // Vigencia del artículo en el esquema nuevo, p. ej. "vigente (detectada)"
+  vigencia?: string
 }
 
 // El modelo de embeddings integrado de Pinecone (llama-text-embed-v2) tiene
@@ -551,6 +553,15 @@ export async function listarDocumentosPinecone(): Promise<DocumentoIndexado[]> {
     throw new Error(data.error ?? 'No se pudo obtener la lista de documentos')
   }
   return data.documentos
+}
+
+// Auditoría del índice (solo lectura): normas cargadas, cortes,
+// duplicados y prueba del reranker. Devuelve el informe tal cual.
+export async function auditarPinecone(consulta?: string): Promise<Record<string, unknown>> {
+  const response = await postFuncion('auditarPinecone', consulta ? { consulta } : {})
+  const data = await response.json().catch(() => ({})) as Record<string, unknown> & { error?: string }
+  if (!response.ok) throw new Error(data.error ?? 'No se pudo auditar Pinecone')
+  return data
 }
 
 // Borra de Pinecone TODOS los fragmentos del documento (irreversible).

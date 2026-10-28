@@ -126,6 +126,10 @@ export interface Clausula {
   // Texto sin el encabezado ("PRIMERA.-"), para no contar una
   // renumeración como cambio de contenido
   cuerpo: string
+  // Título de sección tal como está en el documento ("OBLIGACIONES DEL
+  // COMODATARIO"), si la cláusula tenía uno antes: va en el título, no en
+  // el texto, y el documento comparado lo vuelve a mostrar
+  seccion?: string
 }
 
 const sinTildes = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -210,14 +214,15 @@ export function dividirEnClausulas(parrafos: string[]): Clausula[] {
   const detectar = conOrdinal >= 2 ? encabezadoOrdinal : (p: string) => encabezadoOrdinal(p) ?? encabezadoNumerico(p)
 
   const clausulas: Clausula[] = []
-  let actual: { numero: number | null; titulo: string; parrafos: string[]; largoEncabezado: number } | null = null
+  let actual: { numero: number | null; titulo: string; parrafos: string[]; largoEncabezado: number; seccion?: string } | null = null
   let seccionPendiente = ''
+  let seccionCruda = ''
 
   const cerrar = () => {
     if (!actual || actual.parrafos.length === 0) return
     const texto = actual.parrafos.join('\n')
     const cuerpo = [actual.parrafos[0]!.slice(actual.largoEncabezado), ...actual.parrafos.slice(1)].join('\n').trim()
-    clausulas.push({ numero: actual.numero, titulo: actual.titulo, parrafos: actual.parrafos, texto, cuerpo })
+    clausulas.push({ numero: actual.numero, titulo: actual.titulo, parrafos: actual.parrafos, texto, cuerpo, ...(actual.seccion ? { seccion: actual.seccion } : {}) })
   }
 
   let enCierre = false
@@ -243,7 +248,8 @@ export function dividirEnClausulas(parrafos: string[]): Clausula[] {
         numero: encabezado.numero,
         titulo: seccionPendiente ? `${base} · ${seccionPendiente}` : base,
         parrafos: [parrafo],
-        largoEncabezado: encabezado.largo
+        largoEncabezado: encabezado.largo,
+        ...(seccionPendiente ? { seccion: seccionCruda } : {})
       }
       seccionPendiente = ''
       continue
@@ -251,6 +257,7 @@ export function dividirEnClausulas(parrafos: string[]): Clausula[] {
     if (esTituloDeSeccion(parrafo) && clausulas.length + (actual ? 1 : 0) > 0) {
       // Título de la sección que viene: se guarda para la próxima cláusula
       seccionPendiente = limpiarTitulo(parrafo)
+      seccionCruda = parrafo
       continue
     }
     if (!actual) {
@@ -351,6 +358,9 @@ export interface CambioClausula {
   tramos: TramoDiff[]
   // La cláusula solo cambió de número (su contenido es igual)
   renumerada: boolean
+  // Títulos de sección de cada versión (ver Clausula.seccion)
+  seccionOriginal?: string
+  seccionModificada?: string
 }
 
 export interface ResultadoComparacion {
@@ -398,7 +408,9 @@ export function compararDocumentos(original: string[], modificada: string[]): Re
       textoOriginal,
       textoModificado,
       tramos,
-      renumerada
+      renumerada,
+      ...(a?.seccion ? { seccionOriginal: a.seccion } : {}),
+      ...(b?.seccion ? { seccionModificada: b.seccion } : {})
     }
   })
 

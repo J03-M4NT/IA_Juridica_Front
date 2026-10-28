@@ -34,6 +34,15 @@ export { recomendarPlantillaIA } from './recomendarPlantilla'
 export { explicarCambiosContratoIA } from './compararVersiones'
 export { redactarDocumentoIA, sugerirRedaccionIA } from './redaccion'
 export { obtenerPanoramaDia } from './panorama'
+// Fase 0 de la mejora de Consultas: auditoría de Pinecone, solo lectura y solo admins
+export { auditarPinecone } from './auditoriaPinecone'
+// Fase 2: carga y búsqueda de normas v2 en un namespace aparte (solo admins)
+export { normasV2, buscarNormasV2 } from './normasV2'
+// Fase 3: evaluación de la recuperación A/B/C (solo lectura, solo admins)
+export { evaluarRecuperacion } from './evaluacion'
+export { metaBusqueda } from './metaBusqueda'
+// App Check (Admin): conteos y modo monitor/exigir
+export { appCheckAdmin } from './appCheck'
 
 if (getApps().length === 0) {
   initializeApp()
