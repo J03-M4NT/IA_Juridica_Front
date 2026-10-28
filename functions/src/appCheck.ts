@@ -7,7 +7,7 @@
 // =========================
 import { onRequest } from 'firebase-functions/v2/https'
 import * as logger from 'firebase-functions/logger'
-import { getFirestore, FieldPath, FieldValue } from 'firebase-admin/firestore'
+import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 import { ORIGENES_PERMITIDOS, autorizar } from './seguridad'
 import { modoAppCheck, olvidarModoAppCheck, revisarAppCheck } from './appCheckVerificacion'
 
@@ -40,11 +40,17 @@ export const appCheckAdmin = onRequest(
         logger.info(`🛡️ App Check en modo ${body.modo} (por ${uid})`)
       }
 
-      const snap = await getFirestore().collection('appCheckUso').orderBy(FieldPath.documentId(), 'desc').limit(7).get()
+      // Los últimos 7 días (hora Perú), leídos por su id: no requiere índice
+      const db = getFirestore()
+      const hoy = Date.now()
+      const fechas = Array.from({ length: 7 }, (_, i) =>
+        new Date(hoy - i * 86_400_000).toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
+      )
+      const docs = await db.getAll(...fechas.map(f => db.collection('appCheckUso').doc(f)))
       res.json({
         modo: await modoAppCheck(),
         tokenPropio,
-        dias: snap.docs.map(d => ({
+        dias: docs.filter(d => d.exists).map(d => ({
           fecha: d.id,
           validos: (d.get('validos') as number | undefined) ?? 0,
           sinToken: (d.get('sinToken') as number | undefined) ?? 0,
