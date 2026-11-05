@@ -21,7 +21,7 @@
       <div class="sidebar-inner">
 
         <div class="sidebar-brand">
-          <span class="sidebar-brand-text q-mini-drawer-hide" role="link" tabindex="0" @click="$router.push('/')" @keydown.enter="$router.push('/')">LexIT</span>
+          <span class="sidebar-brand-text sidebar-solo-abierto" role="link" tabindex="0" @click="$router.push('/')" @keydown.enter="$router.push('/')">LexIT</span>
           <button
             type="button"
             class="sidebar-plegar"
@@ -46,7 +46,7 @@
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
-            <span class="sidebar-link-texto q-mini-drawer-hide">Consultas</span>
+            <span class="sidebar-link-texto sidebar-solo-abierto">Consultas</span>
             <q-tooltip v-if="esEscritorio && !drawerOpen" anchor="center right" self="center left" :offset="[12, 0]">Consultas</q-tooltip>
           </router-link>
 
@@ -57,7 +57,7 @@
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>
               <circle cx="11.5" cy="14.5" r="2.5"/><path d="M13.3 16.3L15 18"/>
             </svg>
-            <span class="sidebar-link-texto q-mini-drawer-hide">Análisis</span>
+            <span class="sidebar-link-texto sidebar-solo-abierto">Análisis</span>
             <q-tooltip v-if="esEscritorio && !drawerOpen" anchor="center right" self="center left" :offset="[12, 0]">Análisis</q-tooltip>
           </router-link>
 
@@ -67,7 +67,7 @@
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 7h18"/><path d="M3 7l2-3h14l2 3"/><path d="M5 7v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7"/><path d="M9 12h6"/>
             </svg>
-            <span class="sidebar-link-texto q-mini-drawer-hide">Contratos</span>
+            <span class="sidebar-link-texto sidebar-solo-abierto">Contratos</span>
             <q-tooltip v-if="esEscritorio && !drawerOpen" anchor="center right" self="center left" :offset="[12, 0]">Contratos</q-tooltip>
           </router-link>
 
@@ -77,7 +77,7 @@
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>
             </svg>
-            <span class="sidebar-link-texto q-mini-drawer-hide">Redacción avanzada</span>
+            <span class="sidebar-link-texto sidebar-solo-abierto">Redacción avanzada</span>
             <q-tooltip v-if="esEscritorio && !drawerOpen" anchor="center right" self="center left" :offset="[12, 0]">Redacción avanzada</q-tooltip>
           </router-link>
 
@@ -87,7 +87,7 @@
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
             </svg>
-            <span class="sidebar-link-texto q-mini-drawer-hide">Normas</span>
+            <span class="sidebar-link-texto sidebar-solo-abierto">Normas</span>
             <q-tooltip v-if="esEscritorio && !drawerOpen" anchor="center right" self="center left" :offset="[12, 0]">Normas</q-tooltip>
           </router-link>
 
@@ -97,7 +97,7 @@
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>
             </svg>
-            <span class="sidebar-link-texto q-mini-drawer-hide">Panorama del día</span>
+            <span class="sidebar-link-texto sidebar-solo-abierto">Panorama del día</span>
             <q-tooltip v-if="esEscritorio && !drawerOpen" anchor="center right" self="center left" :offset="[12, 0]">Panorama del día</q-tooltip>
           </router-link>
 
@@ -110,11 +110,11 @@
             @click="cerrarDrawerEnMobile">
             <!-- Sin ícono: espacio del ancho del ícono para que el texto quede
                  alineado con los demás ítems. -->
-            <span class="sidebar-link-sin-icono q-mini-drawer-hide" aria-hidden="true"></span>
-            <svg class="q-mini-drawer-only" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <span class="sidebar-link-sin-icono sidebar-solo-abierto" aria-hidden="true"></span>
+            <svg class="sidebar-solo-plegado" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/>
             </svg>
-            <span class="sidebar-link-texto q-mini-drawer-hide">Admin</span>
+            <span class="sidebar-link-texto sidebar-solo-abierto">Admin</span>
             <q-tooltip v-if="esEscritorio && !drawerOpen" anchor="center right" self="center left" :offset="[12, 0]">Admin</q-tooltip>
           </router-link>
 
@@ -122,10 +122,10 @@
         </nav>
 
         <!-- Separator -->
-        <div class="sidebar-separator q-mini-drawer-hide" v-if="authStore.user"></div>
+        <div class="sidebar-separator sidebar-solo-abierto" v-if="authStore.user"></div>
 
         <!-- Chat History -->
-        <div class="sidebar-history q-mini-drawer-hide" v-if="authStore.user">
+        <div class="sidebar-history sidebar-solo-abierto" v-if="authStore.user">
           <div class="history-header">
             <span class="history-title">Consultas Recientes</span>
             <q-btn flat dense round icon="add" size="sm" class="new-chat-btn" @click="nuevaConsulta" />
@@ -154,12 +154,12 @@
         </div>
 
         <div class="sidebar-footer">
-          <div class="q-mini-drawer-hide">
+          <div class="sidebar-solo-abierto">
             <auth-buttons />
           </div>
           <button
             type="button"
-            class="sidebar-usuario-mini q-mini-drawer-only"
+            class="sidebar-usuario-mini sidebar-solo-plegado"
             aria-label="Desplegar el panel para ver tu cuenta"
             title="Tu cuenta"
             @click="alternarPanel"
@@ -1213,6 +1213,31 @@ body.lexit-app-plana .app-sidebar {
 }
 
 .sidebar-usuario-mini:hover { background: rgba(238, 233, 223, 0.08); }
+
+/* Qué se ve con el panel abierto y qué solo en el riel plegado. No se usan
+   q-mini-drawer-hide / q-mini-drawer-only de Quasar porque en pantallas de
+   hasta 1023px (celulares) ocultan las dos cosas, y el panel se quedaba sin
+   nombres, solo con íconos. */
+.q-drawer--mini .app-sidebar .sidebar-solo-abierto,
+.q-drawer:not(.q-drawer--mini) .app-sidebar .sidebar-solo-plegado {
+  display: none !important;
+}
+
+/* Pantallas bajas (celular en horizontal): todo el panel se desplaza, para
+   llegar a los últimos enlaces y a la cuenta en vez de que queden cortados */
+@media (max-height: 560px) {
+  .app-sidebar .sidebar-inner {
+    height: auto;
+    overflow: visible;
+  }
+
+  .app-sidebar .sidebar-history,
+  .app-sidebar .history-list {
+    flex: none;
+    max-height: none;
+    overflow: visible;
+  }
+}
 
 /* Riel plegado (escritorio): solo íconos, centrados */
 .app-sidebar.q-drawer--mini .sidebar-inner {

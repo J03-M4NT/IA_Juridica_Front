@@ -45,6 +45,12 @@
       </div>
     </div>
 
+    <!-- Analítica: personas activas, uso por herramienta y consumo de IA -->
+    <AnaliticaAdmin />
+
+    <!-- Errores de pantalla: lo que falla en el navegador de los usuarios -->
+    <ErroresAdmin />
+
     <!-- ✅ SECCIÓN PINECONE -->
     <div class="section-block q-mb-lg">
       <div class="actions-bar q-mb-md">
@@ -441,6 +447,8 @@ import EvaluacionNormasV2 from '../components/Admin/EvaluacionNormasV2.vue'
 import PasoProduccionV2 from '../components/Admin/PasoProduccionV2.vue'
 import MetaBusquedaAdmin from '../components/Admin/MetaBusquedaAdmin.vue'
 import AppCheckAdmin from '../components/Admin/AppCheckAdmin.vue'
+import AnaliticaAdmin from '../components/Admin/AnaliticaAdmin.vue'
+import ErroresAdmin from '../components/Admin/ErroresAdmin.vue'
 const $q = useQuasar()
 
 interface Template {

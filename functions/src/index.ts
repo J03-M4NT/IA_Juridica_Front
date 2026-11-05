@@ -43,6 +43,10 @@ export { evaluarRecuperacion } from './evaluacion'
 export { metaBusqueda } from './metaBusqueda'
 // App Check (Admin): conteos y modo monitor/exigir
 export { appCheckAdmin } from './appCheck'
+// Analítica (Admin): personas activas, uso por herramienta y consumo de IA
+export { analiticaAdmin } from './analitica'
+// Errores de pantalla (front): se agrupan en Firestore y en Error Reporting
+export { reportarErrorFront, erroresAdmin } from './errores'
 
 if (getApps().length === 0) {
   initializeApp()
