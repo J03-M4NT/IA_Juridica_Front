@@ -6,6 +6,7 @@ import { initializeApp, getApps } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 import { modoAppCheck, revisarAppCheck } from './appCheckVerificacion'
+import { registrarActividad } from './analiticaRegistro'
 
 if (getApps().length === 0) {
   initializeApp()
@@ -47,6 +48,8 @@ interface OpcionesAutorizacion {
   soloAdmin?: boolean
   // Solo appCheckAdmin: no exige App Check (para poder desactivarlo)
   sinAppCheck?: boolean
+  // No cuenta la llamada en Admin › Analítica (ej. el reporte de errores)
+  sinAnalitica?: boolean
 }
 
 // Verifica el ID token de Firebase del header Authorization. Si falta, es
@@ -93,6 +96,10 @@ export async function autorizar(
       return null
     }
   }
+
+  // Analítica (Admin › Analítica): cuenta el uso de las herramientas, sin
+  // hacer esperar al usuario. Las funciones de administración no se cuentan.
+  if (!opciones.soloAdmin && !opciones.sinAnalitica) registrarActividad(uid, req)
 
   return uid
 }

@@ -15,6 +15,7 @@ export default defineConfig((ctx) => {
       'axios',
       'dark',
       'firebase',
+      'errores', // errores de pantalla → Admin › Errores (ver src/boot/errores.ts)
       'auth-sync',
       'notify'
     ],
