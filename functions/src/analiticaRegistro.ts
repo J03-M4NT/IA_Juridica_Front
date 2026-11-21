@@ -28,7 +28,7 @@ const nombreFuncion = () => (process.env.FUNCTION_TARGET ?? process.env.K_SERVIC
 // Llamadas que solo leen un estado y no son uso de una herramienta (por
 // ejemplo, al abrir Consultas se piden los usos de Meta búsqueda que
 // quedan): no se cuentan
-const ACCIONES_DE_LECTURA = new Set(['usos', 'directorio'])
+const ACCIONES_DE_LECTURA = new Set(['usos', 'directorio', 'cupo'])
 
 // Usuarios ya contados hoy en esta instancia: evita una escritura extra por
 // cada llamada del mismo usuario (se vacía al cambiar el día)

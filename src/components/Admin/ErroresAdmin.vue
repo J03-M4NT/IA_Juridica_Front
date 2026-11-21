@@ -51,7 +51,7 @@
             { label: 'Todos', value: 'todos' }
           ]"
         />
-        <q-checkbox v-model="conLocal" dense size="sm" label="Incluir localhost" class="er-check" />
+        <q-checkbox v-model="conLocal" dense size="sm" :dark="false" color="primary" label="Incluir localhost" class="er-check" />
       </div>
 
       <p v-if="!visibles.length" class="er-vacio">

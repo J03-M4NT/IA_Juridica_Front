@@ -50,6 +50,8 @@ interface OpcionesAutorizacion {
   sinAppCheck?: boolean
   // No cuenta la llamada en Admin › Analítica (ej. el reporte de errores)
   sinAnalitica?: boolean
+  // Rechaza sin token válido de App Check aunque el modo general sea 'monitor'
+  exigirAppCheck?: boolean
 }
 
 // Verifica el ID token de Firebase del header Authorization. Si falta, es
@@ -81,7 +83,7 @@ export async function autorizar(
   // 'exigir', sin un token válido se rechaza (ver appCheckVerificacion.ts)
   if (!opciones.sinAppCheck) {
     const appCheck = await revisarAppCheck(req)
-    if (appCheck !== 'validos' && await modoAppCheck() === 'exigir') {
+    if (appCheck !== 'validos' && (opciones.exigirAppCheck || await modoAppCheck() === 'exigir')) {
       logger.warn(`🛡️ App Check ${appCheck}: llamada rechazada de ${uid}`)
       res.status(401).json({ error: 'No se pudo verificar que la solicitud venga de LexIT. Recarga la página e inténtalo de nuevo.' })
       return null

@@ -1022,6 +1022,24 @@ async function descargarWordFiel(marcaLexit: boolean) {
   }
 }
 
+// Tiempo máximo de cada paso al abrir una plantilla. Si un paso no termina
+// (descarga colgada, un Word que no se puede dibujar), en vez de quedarse
+// en "Preparando la plantilla..." para siempre se muestra en qué paso se
+// trabó, con el botón Reintentar.
+const LIMITE_DESCARGA_MS = 45_000
+const LIMITE_CONVERSION_MS = 30_000
+const LIMITE_VISTA_FIEL_MS = 20_000
+
+function conLimite<T>(promesa: Promise<T>, ms: number, paso: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const reloj = setTimeout(() => reject(new Error(`Tiempo agotado: ${paso}`)), ms)
+    promesa.then(
+      valor => { clearTimeout(reloj); resolve(valor) },
+      (err: unknown) => { clearTimeout(reloj); reject(err instanceof Error ? err : new Error(String(err))) }
+    )
+  })
+}
+
 // =========================
 // CARGAR PLANTILLA WORD (mismo rol que loadPDFPreview, pero para .docx —
 // no hay "páginas" que renderizar en canvas, se muestra el HTML extraído
@@ -1037,8 +1055,10 @@ const loadWordPreview = async () => {
   pdfDoc.value = null
   reiniciarVistaWord()
 
+  let paso = 'descargar la plantilla'
   try {
-    const blob = await store.downloadOriginalPDF(currentTemplate.value.id)
+    const blob = await conLimite(store.downloadOriginalPDF(currentTemplate.value.id), LIMITE_DESCARGA_MS, paso)
+    paso = 'leer el Word'
     const archivo = new File(
       [blob],
       currentTemplate.value.name || 'plantilla.docx',
@@ -1047,9 +1067,10 @@ const loadWordPreview = async () => {
     // HTML de mammoth (para "Completar con IA" y el PDF, como siempre) y la
     // vista fiel del Word. Si la vista fiel fallara, se sigue mostrando la
     // de siempre.
+    // La vista fiel tiene su propio límite: si no termina, se usa la de siempre
     const [{ html, fuenteDetectada }, vistaFiel] = await Promise.all([
-      extraerHtmlWord(archivo),
-      renderizarWord(archivo).catch(err => {
+      conLimite(extraerHtmlWord(archivo), LIMITE_CONVERSION_MS, paso),
+      conLimite(renderizarWord(archivo), LIMITE_VISTA_FIEL_MS, 'dibujar la vista fiel').catch(err => {
         console.error('No se pudo dibujar la vista fiel del Word:', err)
         return null
       })
@@ -1065,8 +1086,8 @@ const loadWordPreview = async () => {
     }
     loadingPdf.value = false
   } catch (err) {
-    console.error('Error cargando plantilla Word:', err)
-    pdfError.value = 'No se pudo cargar la plantilla Word'
+    console.error(`Error cargando plantilla Word (al ${paso}):`, err)
+    pdfError.value = `No se pudo cargar la plantilla Word (falló al ${paso}).`
     loadingPdf.value = false
   }
 }
@@ -1082,10 +1103,12 @@ const loadPDFPreview = async () => {
   textoEditado.value = ''
   textoHtml.value = ''
 
+  let paso = 'descargar la plantilla'
   try {
-    const blob = await store.downloadOriginalPDF(currentTemplate.value.id)
+    const blob = await conLimite(store.downloadOriginalPDF(currentTemplate.value.id), LIMITE_DESCARGA_MS, paso)
+    paso = 'abrir el PDF'
     const arrayBuffer = await blob.arrayBuffer()
-    const pdf = await getDocument({ data: arrayBuffer }).promise
+    const pdf = await conLimite(getDocument({ data: arrayBuffer }).promise, LIMITE_CONVERSION_MS, paso)
 
     pdfDoc.value = pdf
     numPages.value = pdf.numPages
@@ -1100,8 +1123,8 @@ const loadPDFPreview = async () => {
     textoHtml.value = textoAHtml(texto)
 
   } catch (err) {
-    console.error('Error cargando PDF:', err)
-    pdfError.value = 'No se pudo cargar el PDF'
+    console.error(`Error cargando PDF (al ${paso}):`, err)
+    pdfError.value = `No se pudo cargar el PDF (falló al ${paso}).`
     loadingPdf.value = false
   }
 }
