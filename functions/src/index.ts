@@ -47,6 +47,8 @@ export { appCheckAdmin } from './appCheck'
 export { analiticaAdmin } from './analitica'
 // Errores de pantalla (front): se agrupan en Firestore y en Error Reporting
 export { reportarErrorFront, erroresAdmin } from './errores'
+// OCR de fotos y PDFs escaneados en Análisis de contratos (Gemini con visión)
+export { extraerTextoContratoIA } from './ocrContratos'
 
 if (getApps().length === 0) {
   initializeApp()

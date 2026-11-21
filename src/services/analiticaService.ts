@@ -47,7 +47,7 @@ export const HERRAMIENTAS: Array<{ nombre: string; icono: string; acciones: Reco
   {
     nombre: 'Análisis de contratos',
     icono: 'fact_check',
-    acciones: { generarsugerenciascontrato: 'Contratos analizados', explicarcambioscontratoia: 'Comparaciones de versiones', descargarwordeditado: 'Descargas en Word', obtenerurlfirmadadocumento: 'Documentos abiertos' }
+    acciones: { generarsugerenciascontrato: 'Contratos analizados', explicarcambioscontratoia: 'Comparaciones de versiones', descargarwordeditado: 'Descargas en Word', obtenerurlfirmadadocumento: 'Documentos abiertos', extraertextocontratoia: 'Fotos y escaneos leídos' }
   },
   {
     nombre: 'Gestión de contratos',

@@ -1,5 +1,5 @@
 <template>
-  <q-page class="analisis-page" :class="{ 'analisis-page--with-pdf': store.archivoAdjunto, 'analisis-page--trabajo': etapa === 'trabajo', 'analisis-page--comparar': modoAnalisis === 'comparar' && etapa === 'subir' }">
+  <q-page class="analisis-page" :class="{ 'analisis-page--with-pdf': store.archivoAdjunto, 'analisis-page--trabajo': etapa === 'trabajo', 'analisis-page--comparar': (modoAnalisis === 'comparar' || archivosOcr) && etapa === 'subir' }">
 
     <!-- Section header — se encoge y se atenúa al bajar en el chat, para
          devolverle espacio a la conversación sin perder el título del
@@ -58,6 +58,14 @@
     <!-- Modo "Comparar versiones" (componente aparte; no toca el flujo de abajo) -->
     <CompararVersiones v-if="modoAnalisis === 'comparar' && etapa === 'subir'" />
 
+    <!-- Fotos y PDFs escaneados (OCR): al confirmar entrega un .docx -->
+    <SubidaOcr
+      v-else-if="etapa === 'subir' && archivosOcr"
+      :archivos-iniciales="archivosOcr"
+      @confirmar="confirmarOcr"
+      @cancelar="archivosOcr = null"
+    />
+
     <!-- PASO 1: subir el contrato -->
     <div v-else-if="etapa === 'subir'" class="etapa-centro">
       <div
@@ -90,6 +98,10 @@
           <span class="subir-boton">Elegir archivo</span>
         </template>
       </div>
+      <button type="button" class="subir-ocr" :disabled="procesandoArchivo" @click="archivosOcr = []">
+        <q-icon name="document_scanner" size="18px" />
+        ¿Tienes una foto o un PDF? Léelo aquí
+      </button>
       <p v-if="errorAdjunto" class="adjunto-error etapa-error">{{ errorAdjunto }}</p>
     </div>
 
@@ -680,6 +692,8 @@
 
 <script setup lang="ts">
 import CompararVersiones from '../components/Analisis/CompararVersiones.vue'
+import SubidaOcr from '../components/Analisis/SubidaOcr.vue'
+import { esImagenOcr } from '../utils/imagenesOcr'
 import { filasMatriz, matrizAWord, matrizAExcel, nombreArchivoMatriz } from '../utils/matrizDesviaciones'
 import { ref, shallowRef, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useAnalisisContratosStore, esSolicitudDeAnalisisDeRiesgos } from '../stores/analisis-contratos-store'
@@ -1536,14 +1550,26 @@ function esPdf(archivo: File): boolean {
 // original se guarda ahí para poder descargarlo editado con su formato.
 const MAX_BYTES_WORD = 25 * 1024 * 1024
 
+// Archivos con los que se abre la lectura de fotos y escaneos (null = cerrada)
+const archivosOcr = ref<File[] | null>(null)
+
+async function confirmarOcr(archivo: File) {
+  archivosOcr.value = null
+  await procesarArchivo(archivo)
+}
+
 async function procesarArchivo(archivo: File) {
   // Solo Word: la edición conserva el formato original aplicando los
   // cambios sobre el .docx (ver utils/edicionWord.ts); con un PDF eso no es
   // posible.
   if (!esWord(archivo)) {
-    errorAdjunto.value = esPdf(archivo)
-      ? 'Solo se pueden subir documentos Word (.docx). Si tienes el contrato en PDF, guárdalo como Word primero.'
-      : 'Solo se pueden subir documentos Word (.docx).'
+    // Fotos y PDFs van a la lectura con OCR, que al final entrega un Word
+    if (esImagenOcr(archivo) || esPdf(archivo)) {
+      errorAdjunto.value = ''
+      archivosOcr.value = [archivo]
+      return
+    }
+    errorAdjunto.value = 'Solo se pueden subir documentos Word (.docx), fotos o PDF.'
     return
   }
   if (archivo.size > MAX_BYTES_WORD) {
@@ -3661,6 +3687,25 @@ button.metrica-bloque:focus-visible {
   font-weight: 600;
 }
 
+.subir-ocr {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #1D4E89;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.subir-ocr:hover { background: rgba(29, 78, 137, 0.07); }
+.subir-ocr:focus-visible { outline: 2px solid #1D4E89; outline-offset: 2px; }
+
 .etapa-error {
   margin-top: 12px;
   text-align: center;
@@ -4012,7 +4057,7 @@ button.metrica-bloque:focus-visible {
   .modo-opcion { transition: none; }
 }
 
-/* Modo "Comparar versiones": la página crece con el resultado y se
+/* Modo "Comparar versiones" y lectura de fotos (OCR): la página crece con el resultado y se
    desplaza normalmente (la altura fija con overflow oculto es para el chat
    del modo de un contrato, y cortaba la lista de cambios). */
 .q-page.analisis-page.analisis-page--comparar {
